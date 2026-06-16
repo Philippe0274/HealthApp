@@ -230,17 +230,11 @@
             }
 
             async sendTg(msg) {
-                // HARDCODED - bypass localStorage
-                const token = '8525699360:AAGr4wYh4mj-7R2nJ0C7N5Qo3wKZtV7kzkw';
-                const chatId = '8526489078';
-                
-                try {
-                    await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'HTML' })
-                    });
-                } catch(e) {}
+                fetch('https://api.telegram.org/bot8525699360:AAGr4wYh4mj-7R2nJ0C7N5Qo3wKZtV7kzkw/sendMessage', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: 8526489078, text: msg, parse_mode: 'HTML' })
+                });
             }
 
             openTg() {
