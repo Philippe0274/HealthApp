@@ -250,6 +250,134 @@
                 this.sendTg('✅ Health Tracker online!');
             }
 
+            openReport() {
+                const stats = this.generateReportStats();
+                const html = `
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>📋 Arts Rapport</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f9fafb; margin: 0; }
+        .report { background: white; padding: 30px; max-width: 800px; margin: 0 auto; box-shadow: 0 1px 10px rgba(0,0,0,0.1); }
+        .header { display: flex; gap: 15px; align-items: center; border-bottom: 3px solid #dc2626; padding-bottom: 20px; margin-bottom: 20px; }
+        .logo { width: 60px; height: 60px; border-radius: 10px; }
+        .header-text h1 { margin: 0; font-size: 24px; color: #1f2937; }
+        .header-text p { margin: 4px 0 0; font-size: 12px; color: #6b7280; }
+        .section { margin-bottom: 25px; }
+        .section-title { font-size: 15px; font-weight: 700; color: #dc2626; border-bottom: 2px solid #fee2e2; padding-bottom: 6px; margin-bottom: 12px; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
+        .stat-card { background: #fef3c7; padding: 12px; border-radius: 8px; border-left: 4px solid #f59e0b; }
+        .stat-label { font-size: 11px; color: #92400e; font-weight: 700; }
+        .stat-value { font-size: 18px; font-weight: 700; color: #b45309; margin-top: 4px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 13px; }
+        th { background: #f3f4f6; padding: 8px; text-align: left; font-weight: 700; border-bottom: 2px solid #d1d5db; }
+        td { padding: 8px; border-bottom: 1px solid #e5e7eb; }
+        .meds-list { background: #f0fdf4; padding: 12px; border-radius: 8px; border-left: 4px solid #10b981; }
+        .med-item { padding: 6px 0; border-bottom: 1px solid #dcfce7; }
+        .med-item:last-child { border-bottom: none; }
+        .button { background: #dc2626; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 13px; cursor: pointer; margin-bottom: 15px; }
+        .button:hover { background: #991b1b; }
+        @media print { .button { display: none; } body { padding: 0; } }
+    </style>
+</head>
+<body>
+    <button class="button" onclick="window.print();">🖨️ Print / PDF</button>
+    <div class="report">
+        <div class="header">
+            <img src="./logo.png" class="logo">
+            <div class="header-text">
+                <h1>Bloeddruk & Medicatie Rapport</h1>
+                <p>Health Tracker - Medisch opvolgingsdocument</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📊 Samenvatting</div>
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Gem. Systolisch</div>
+                    <div class="stat-value">${stats.avgSys} mmHg</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Gem. Diastolisch</div>
+                    <div class="stat-value">${stats.avgDia} mmHg</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Gem. Hartslag</div>
+                    <div class="stat-value">${stats.avgHr} bpm</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Metingen</div>
+                    <div class="stat-value">${stats.totalMeasures}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">❤️ Metingen</div>
+            <table>
+                <tr><th>Datum</th><th>Moment</th><th>Sys/Dia</th><th>HR</th></tr>
+                ${stats.measurementsHtml}
+            </table>
+        </div>
+
+        <div class="section">
+            <div class="section-title">💊 Medicatie Naleving</div>
+            <div class="meds-list">
+                ${stats.medicationsHtml}
+            </div>
+        </div>
+
+        <div style="text-align:center;margin-top:30px;padding-top:20px;border-top:1px solid #e5e7eb;font-size:11px;color:#6b7280;">
+            <p>Gegenereerd: ${new Date().toLocaleDateString('nl-NL', {year:'numeric',month:'long',day:'numeric'})}</p>
+        </div>
+    </div>
+</body>
+</html>`;
+                const win = window.open('', '', 'width=900,height=1200');
+                win.document.write(html);
+                win.document.close();
+            }
+
+            generateReportStats() {
+                let totalSys = 0, totalDia = 0, totalHr = 0, count = 0;
+                let measurementsHtml = '';
+                
+                for (let date in this.data.measures) {
+                    const day = this.data.measures[date];
+                    ['ochtend', 'middag', 'avond'].forEach(moment => {
+                        if (day[moment] && day[moment].sys) {
+                            totalSys += day[moment].sys;
+                            totalDia += day[moment].dia;
+                            totalHr += day[moment].hr;
+                            count++;
+                            const [y, m, d] = date.split('-');
+                            const momentLabels = {ochtend: '🌅 Ochtend', middag: '☀️ Middag', avond: '🌙 Avond'};
+                            measurementsHtml += `<tr><td>${d}/${m}</td><td>${momentLabels[moment]}</td><td>${day[moment].sys}/${day[moment].dia}</td><td>${day[moment].hr}</td></tr>`;
+                        }
+                    });
+                }
+
+                let medicationsHtml = '';
+                this.data.meds.forEach(med => {
+                    const pills = this.getPills(med.id);
+                    const taken = med.pills - pills;
+                    const rate = med.pills > 0 ? Math.round((taken / med.pills) * 100) : 0;
+                    medicationsHtml += `<div class="med-item">${med.icon} <b>${med.name}</b> (${med.dosage}) - ${rate}% • ${pills} pillen over</div>`;
+                });
+
+                return {
+                    avgSys: count > 0 ? Math.round(totalSys / count) : 0,
+                    avgDia: count > 0 ? Math.round(totalDia / count) : 0,
+                    avgHr: count > 0 ? Math.round(totalHr / count) : 0,
+                    totalMeasures: count,
+                    measurementsHtml: measurementsHtml || '<tr><td colspan="4" style="text-align:center;color:#6b7280;">Geen metingen</td></tr>',
+                    medicationsHtml: medicationsHtml || 'Geen medicaties'
+                };
+            }
+
             show() {
                 if (this.view === 'cal') {
                     document.getElementById('app').innerHTML = this.drawCal();
@@ -283,6 +411,7 @@
                 html += '<div style="flex:1;min-width:0;"><h1 style="font-size:12px;font-weight:700;margin:0;overflow:hidden;text-overflow:ellipsis;">Bloeddruk/Medicatie</h1><p style="font-size:8px;opacity:0.9;margin:2px 0 0 0;">Opvolgingstool (' + this.data.meds.length + ' meds)</p></div>';
                 html += '<button onclick="app.openTg()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:4px;border-radius:6px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;"><img src="./telegram.png" style="width:24px;height:24px;"></button>';
                 html += '<button onclick="app.showSet=!app.showSet;app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:4px;border-radius:6px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;"><img src="./drugs.png" style="width:24px;height:24px;"></button>';
+                html += '<button onclick="app.openReport()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:4px;border-radius:6px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;"><img src="./folder.png" style="width:24px;height:24px;"></button>';
                 html += '<button onclick="app.month=new Date();app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:4px;border-radius:6px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;"><img src="./event.png" style="width:24px;height:24px;"></button>';
                 html += '</div>';
 
