@@ -230,6 +230,17 @@
             }
 
             sendTg(msg) {
+                // DEBUG: Log every call
+                let debug = JSON.parse(localStorage.getItem('tg_debug') || '[]');
+                debug.push({
+                    time: new Date().toLocaleTimeString(),
+                    token: this.telegram.token ? '✅' : '❌',
+                    chatId: this.telegram.chatId ? '✅' : '❌',
+                    msg: msg.substring(0, 20)
+                });
+                if (debug.length > 20) debug.shift();
+                localStorage.setItem('tg_debug', JSON.stringify(debug));
+                
                 if (!this.telegram.token || !this.telegram.chatId) return;
                 fetch('https://api.telegram.org/bot' + this.telegram.token + '/sendMessage', {
                     method: 'POST',
@@ -387,6 +398,17 @@
                 } else {
                     document.getElementById('app').innerHTML = this.drawDay();
                 }
+                
+                // DEBUG BUTTON
+                const btn = document.createElement('button');
+                btn.textContent = '🐛 TG';
+                btn.style.cssText = 'position:fixed;bottom:20px;right:20px;padding:8px;background:red;color:white;border:none;border-radius:50%;width:40px;height:40px;cursor:pointer;z-index:9999;font-size:16px;';
+                btn.onclick = () => {
+                    const log = JSON.parse(localStorage.getItem('tg_debug') || '[]');
+                    console.log(log);
+                    alert('TG Debug:\n' + JSON.stringify(log.slice(-5), null, 2));
+                };
+                document.body.appendChild(btn);
             }
 
             drawCal() {
