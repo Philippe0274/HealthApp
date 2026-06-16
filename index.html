@@ -283,7 +283,7 @@
                 html += '<div style="flex:1;min-width:0;"><h1 style="font-size:12px;font-weight:700;margin:0;overflow:hidden;text-overflow:ellipsis;">Bloeddruk/Medicatie</h1><p style="font-size:8px;opacity:0.9;margin:2px 0 0 0;">Opvolgingstool (' + this.data.meds.length + ' meds)</p></div>';
                 html += '<button onclick="app.openTg()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:4px;border-radius:6px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;"><img src="./telegram.png" style="width:24px;height:24px;"></button>';
                 html += '<button onclick="app.showSet=!app.showSet;app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:4px;border-radius:6px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;"><img src="./drugs.png" style="width:24px;height:24px;"></button>';
-                html += '<button onclick="app.month=new Date();app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;font-size:16px;cursor:pointer;padding:6px 8px;border-radius:6px;flex-shrink:0;">📅</button>';
+                html += '<button onclick="app.month=new Date();app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:4px;border-radius:6px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;"><img src="./event.png" style="width:24px;height:24px;"></button>';
                 html += '</div>';
 
                 if (this.showSet) {
@@ -383,18 +383,20 @@
                     
                     // ROW 2: Time field + Buttons
                     html += '<div style="display:flex;gap:4px;align-items:center;margin-bottom:6px;">';
-                    html += '<input type="time" id="time-' + moment + '" value="' + measTime + '" style="flex:1;padding:6px 4px;border:2px solid #f59e0b;border-radius:6px;font-size:10px;font-weight:600;color:#f59e0b;">';
+                    html += '<input type="time" id="time-' + moment + '" value="' + measTime + '" style="width:56px;padding:6px 4px;border:2px solid #f59e0b;border-radius:6px;font-size:10px;font-weight:600;color:#f59e0b;flex-shrink:0;">';
                     html += '<button style="padding:6px 4px;background:#f59e0b;color:white;border:none;border-radius:6px;font-size:9px;font-weight:700;cursor:pointer;min-width:28px;" title="Bewaar uur" onclick="app.saveTimeOnly(\'' + moment + '\');">💾</button>';
                     if (measTime) {
                         html += '<button style="padding:6px 4px;background:#ef4444;color:white;border:none;border-radius:6px;font-size:9px;font-weight:700;cursor:pointer;min-width:28px;" title="Verwijder uur" onclick="app.deleteTimeOnly(\'' + moment + '\');">🗑️</button>';
                     }
                     html += '</div>';
                     
-                    // ROW 3: Inputs - stacked on mobile
-                    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:6px;">';
-                    html += '<input type="number" id="sys-' + moment + '" placeholder="Sys" value="' + sys + '" style="padding:6px 4px;border:2px solid #e5e7eb;border-radius:6px;font-size:11px;">';
-                    html += '<input type="number" id="dia-' + moment + '" placeholder="Dia" value="' + dia + '" style="padding:6px 4px;border:2px solid #e5e7eb;border-radius:6px;font-size:11px;">';
-                    html += '<input type="number" id="hr-' + moment + '" placeholder="HR" value="' + hr + '" style="padding:6px 4px;border:2px solid #e5e7eb;border-radius:6px;font-size:11px;">';
+                    // ROW 3: Inputs - compact widths
+                    html += '<div style="display:flex;gap:4px;margin-bottom:6px;align-items:center;">';
+                    html += '<input type="number" id="sys-' + moment + '" placeholder="Sys" value="' + sys + '" style="width:45px;padding:6px 4px;border:2px solid #e5e7eb;border-radius:6px;font-size:11px;flex-shrink:0;">';
+                    html += '<span style="font-size:10px;color:#6b7280;">/</span>';
+                    html += '<input type="number" id="dia-' + moment + '" placeholder="Dia" value="' + dia + '" style="width:45px;padding:6px 4px;border:2px solid #e5e7eb;border-radius:6px;font-size:11px;flex-shrink:0;">';
+                    html += '<span style="font-size:10px;color:#6b7280;">HR:</span>';
+                    html += '<input type="number" id="hr-' + moment + '" placeholder="HR" value="' + hr + '" style="width:45px;padding:6px 4px;border:2px solid #e5e7eb;border-radius:6px;font-size:11px;flex-shrink:0;">';
                     html += '</div>';
                     
                     // ROW 4: Action buttons
