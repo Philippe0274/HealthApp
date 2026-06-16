@@ -93,16 +93,42 @@
             saveData(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
 
             async sendTelegramMessage(message) {
-                if (!this.telegramSettings.token || !this.telegramSettings.chatId) return false;
+                if (!this.telegramSettings.token || !this.telegramSettings.chatId) {
+                    alert('❌ Telegram niet ingesteld! Click ⚙️ Settings');
+                    console.error('Telegram settings missing');
+                    return false;
+                }
+
                 try {
                     const url = `https://api.telegram.org/bot${this.telegramSettings.token}/sendMessage`;
+                    console.log('🔄 Verzenden naar Telegram...');
+                    
                     const response = await fetch(url, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ chat_id: this.telegramSettings.chatId, text: message, parse_mode: 'HTML' })
+                        body: JSON.stringify({ 
+                            chat_id: this.telegramSettings.chatId, 
+                            text: message, 
+                            parse_mode: 'HTML' 
+                        })
                     });
-                    return response.ok;
-                } catch (error) { console.error('Telegram error:', error); return false; }
+
+                    const data = await response.json();
+                    console.log('Telegram response:', data);
+                    
+                    if (data.ok) {
+                        console.log('✅ Telegram bericht verzonden!');
+                        return true;
+                    } else {
+                        console.error('❌ Telegram error:', data.description);
+                        alert('❌ Telegram fout:\n' + data.description);
+                        return false;
+                    }
+                } catch (error) { 
+                    console.error('❌ Fetch error:', error);
+                    alert('❌ Fout bij verzenden:\n' + error.message);
+                    return false; 
+                }
             }
 
             openSettings() {
@@ -174,8 +200,15 @@
 
             recordMedicationIntake(time) {
                 if (!this.data.medicationIntakes) this.data.medicationIntakes = {};
+                
                 if (time) {
                     this.data.medicationIntakes[this.selectedDate] = time;
+                    console.log('Medicatie opgeslagen:', time);
+                    console.log('Pillen over:', this.getPillsRemaining());
+                    
+                    // Telegram alert
+                    this.sendTelegramMessage(`💊 <b>Medicatie ingenomen!</b>\n\nTijd: <b>${time}</b>\nPillen over: <b>${this.getPillsRemaining()}/49</b>`);
+                    
                     if (this.getPillsRemaining() < 5) {
                         this.sendTelegramMessage(`⚠️ <b>MEDICATIE WAARSCHUWING!</b>\n\nJe hebt nog <b>${this.getPillsRemaining()} pillen</b> Belsar over.\n\nBestellen bij huisarts! 💊`);
                     }
