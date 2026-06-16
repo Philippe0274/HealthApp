@@ -43,10 +43,7 @@
                         measures: {}
                     };
                 }
-                this.telegram = {
-                    token: '8525699360:AAGr4wYh4mj-7R2nJ0C7N5Qo3wKZtV7kzkw',
-                    chatId: '8526489078'
-                };
+                this.telegram = {token:'8525699360:AAGr4wYh4mj-7R2nJ0C7N5Qo3wKZtV7kzkw',chatId:'8526489078'};
                 this.month = new Date();
                 this.date = null;
                 this.view = 'cal';
@@ -232,17 +229,15 @@
                 if (sys && dia && hr) this.setMeas(moment, sys, dia, hr, time);
             }
 
-            sendTg(msg) {
+            async sendTg(msg) {
                 if (!this.telegram.token || !this.telegram.chatId) return;
-                const url = 'https://api.telegram.org/bot' + this.telegram.token + '/sendMessage?chat_id=' + this.telegram.chatId + '&text=' + encodeURIComponent(msg) + '&parse_mode=HTML';
-                
-                // Use sendBeacon - guaranteed delivery even if page closes
-                if (navigator.sendBeacon) {
-                    navigator.sendBeacon(url);
-                } else {
-                    // Fallback: image request
-                    new Image().src = url;
-                }
+                try {
+                    await fetch('https://api.telegram.org/bot' + this.telegram.token + '/sendMessage', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ chat_id: this.telegram.chatId, text: msg, parse_mode: 'HTML' })
+                    });
+                } catch(e) {}
             }
 
             openTg() {
