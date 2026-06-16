@@ -129,20 +129,88 @@
                 this.show();
             }
 
-            setMeas(moment, sys, dia, hr) {
+            saveTimeOnly(moment) {
+                const time = document.getElementById('time-' + moment)?.value || '';
+                if (!time) { alert('Voer een uur in!'); return; }
+                
                 if (!this.data.measures[this.date]) this.data.measures[this.date] = {};
-                if (sys && dia && hr) {
-                    this.data.measures[this.date][moment] = { sys: parseInt(sys), dia: parseInt(dia), hr: parseInt(hr) };
+                
+                if (!this.data.measures[this.date][moment]) {
+                    this.data.measures[this.date][moment] = { sys: null, dia: null, hr: null, time: time };
                 } else {
-                    delete this.data.measures[this.date][moment];
+                    this.data.measures[this.date][moment].time = time;
+                }
+                
+                const icon = moment === 'ochtend' ? '🌅' : moment === 'middag' ? '☀️' : '🌙';
+                this.sendTg(`⏰ <b>${moment.toUpperCase()} UUR OPGESLAGEN</b>\n├─ ${icon} Uur: ${time}\n└─ ✅`);
+                this.save();
+                this.show();
+            }
+
+            deleteTimeOnly(moment) {
+                if (!this.data.measures[this.date]?.[moment]?.time) { alert('Geen uur om te verwijderen!'); return; }
+                
+                const oldTime = this.data.measures[this.date][moment].time;
+                this.data.measures[this.date][moment].time = '';
+                
+                const icon = moment === 'ochtend' ? '🌅' : moment === 'middag' ? '☀️' : '🌙';
+                this.sendTg(`🗑️ <b>${moment.toUpperCase()} UUR VERWIJDERD</b>\n├─ ${icon} Was: ${oldTime}\n└─ ✅`);
+                this.save();
+                this.show();
+            }
+
+            saveValuesOnly(moment) {
+                const sys = document.getElementById('sys-' + moment)?.value || '';
+                const dia = document.getElementById('dia-' + moment)?.value || '';
+                const hr = document.getElementById('hr-' + moment)?.value || '';
+                
+                if (!sys || !dia || !hr) { alert('Vul Sys/Dia/HR in!'); return; }
+                
+                if (!this.data.measures[this.date]) this.data.measures[this.date] = {};
+                const old = this.data.measures[this.date][moment];
+                const sysVal = parseInt(sys), diaVal = parseInt(dia), hrVal = parseInt(hr);
+                const timeVal = document.getElementById('time-' + moment)?.value || '';
+                
+                this.data.measures[this.date][moment] = { sys: sysVal, dia: diaVal, hr: hrVal, time: timeVal };
+                
+                const icon = moment === 'ochtend' ? '🌅' : moment === 'middag' ? '☀️' : '🌙';
+                const timeDisplay = timeVal || (moment === 'ochtend' ? '08:00' : moment === 'middag' ? '13:00' : '20:00');
+                
+                if (old && old.sys) {
+                    this.sendTg(`📊 <b>❤️ ${moment.toUpperCase()} BLOEDWAARDEN AANGEPAST</b>\n├─ ${icon} Nieuw: ${sysVal}/${diaVal} HR:${hrVal}\n├─ Oud: ${old.sys}/${old.dia} HR:${old.hr}\n├─ ⏰ ${timeDisplay}\n└─ ✅`);
+                } else {
+                    this.sendTg(`📊 <b>❤️ ${moment.toUpperCase()} BLOEDWAARDEN INGEGEVEN</b>\n├─ ${icon} ${sysVal}/${diaVal} HR:${hrVal}\n├─ ⏰ ${timeDisplay}\n└─ ✅`);
                 }
                 this.save();
+                this.show();
+            }
+
+            deleteValuesOnly(moment) {
+                if (!this.data.measures[this.date]?.[moment] || !this.data.measures[this.date][moment].sys) {
+                    alert('Geen bloedwaarden om te verwijderen!');
+                    return;
+                }
+                
+                const data = this.data.measures[this.date][moment];
+                const icon = moment === 'ochtend' ? '🌅' : moment === 'middag' ? '☀️' : '🌙';
+                const timeDisplay = data.time || (moment === 'ochtend' ? '08:00' : moment === 'middag' ? '13:00' : '20:00');
+                
+                this.sendTg(`🗑️ <b>❤️ ${moment.toUpperCase()} BLOEDWAARDEN VERWIJDERD</b>\n├─ ${icon} Was: ${data.sys}/${data.dia} HR:${data.hr}\n├─ ⏰ Uur behouden: ${timeDisplay}\n└─ ✅`);
+                
+                // ENKEL bloedwaarden wissen, uur BEHOUDEN!
+                data.sys = null;
+                data.dia = null;
+                data.hr = null;
+                
+                this.save();
+                this.show();
             }
 
             updBadge(moment) {
                 const sys = document.querySelector('.sys-' + moment)?.value || '';
                 const dia = document.querySelector('.dia-' + moment)?.value || '';
                 const hr = document.querySelector('.hr-' + moment)?.value || '';
+                const time = document.querySelector('.time-' + moment)?.value || '';
                 const badge = document.getElementById('b-' + moment);
                 if (!badge) return;
                 
@@ -156,9 +224,9 @@
                 if ((s >= 130 && s < 160) || (d >= 85 && d < 100)) color = '#f59e0b';
                 if (s >= 160 || d >= 100) color = '#ef4444';
                 
-                badge.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:6px;"></span>' + sys + '/' + dia;
+                badge.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:6px;"></span>' + sys + '/' + dia + (time ? ' ⏰' + time : '');
                 
-                if (sys && dia && hr) this.setMeas(moment, sys, dia, hr);
+                if (sys && dia && hr) this.setMeas(moment, sys, dia, hr, time);
             }
 
             async sendTg(msg) {
@@ -301,18 +369,36 @@
                     const icon = moment === 'ochtend' ? '🌅' : moment === 'middag' ? '☀️' : '🌙';
                     const time = moment === 'ochtend' ? '8:00 AM' : moment === 'middag' ? '13:00' : '20:00';
                     const data = measures[moment];
-                    const sys = data?.sys || '', dia = data?.dia || '', hr = data?.hr || '';
+                    const sys = data?.sys || '', dia = data?.dia || '', hr = data?.hr || '', measTime = data?.time || '';
                     
-                    html += '<div style="background:white;border-radius:12px;padding:14px;margin-bottom:10px;border-left:4px solid #8b5cf6;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';
-                    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
-                    html += '<div><div style="font-weight:700;font-size:14px;">' + icon + ' ' + moment.charAt(0).toUpperCase() + moment.slice(1) + '</div><div style="font-size:11px;color:#6b7280;margin-top:2px;">' + time + '</div></div>';
-                    html += '<div id="b-' + moment + '" style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:16px;font-size:12px;font-weight:600;background:#f3f4f6;">❌</div>';
+                    html += '<div style="background:white;border-radius:12px;padding:12px;margin-bottom:10px;border-left:4px solid #8b5cf6;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';
+                    
+                    // HEADER: moment + std time + time input + knop 1 + knop 2 (conditional)
+                    html += '<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;">';
+                    html += '<div style="min-width:75px;"><div style="font-weight:700;font-size:13px;">' + icon + ' ' + moment.charAt(0).toUpperCase() + moment.slice(1) + '</div><div style="font-size:10px;color:#6b7280;">Std: ' + time + '</div></div>';
+                    html += '<input type="time" id="time-' + moment + '" value="' + measTime + '" style="width:65px;padding:4px 6px;border:2px solid #f59e0b;border-radius:6px;font-size:11px;font-weight:600;color:#f59e0b;">';
+                    html += '<button style="padding:4px 6px;background:#f59e0b;color:white;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;min-width:30px;" title="Bewaar uur" onclick="app.saveTimeOnly(\'' + moment + '\');">💾</button>';
+                    if (measTime) {
+                        html += '<button style="padding:4px 6px;background:#ef4444;color:white;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;min-width:30px;" title="Verwijder uur" onclick="app.deleteTimeOnly(\'' + moment + '\');">🗑️</button>';
+                    }
                     html += '</div>';
-                    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
-                    html += '<input type="number" class="sys-' + moment + '" placeholder="Sys" value="' + sys + '" oninput="app.updBadge(\'' + moment + '\');" style="width:100%;padding:10px 12px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;">';
-                    html += '<input type="number" class="dia-' + moment + '" placeholder="Dia" value="' + dia + '" oninput="app.updBadge(\'' + moment + '\');" style="width:100%;padding:10px 12px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;">';
-                    html += '<input type="number" class="hr-' + moment + '" placeholder="HR" value="' + hr + '" oninput="app.updBadge(\'' + moment + '\');" style="width:100%;padding:10px 12px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;">';
-                    html += '</div></div>';
+                    
+                    // INPUT FIELDS: Sys Dia HR
+                    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;">';
+                    html += '<input type="number" id="sys-' + moment + '" placeholder="Sys" value="' + sys + '" style="padding:8px 10px;border:2px solid #e5e7eb;border-radius:8px;font-size:13px;">';
+                    html += '<input type="number" id="dia-' + moment + '" placeholder="Dia" value="' + dia + '" style="padding:8px 10px;border:2px solid #e5e7eb;border-radius:8px;font-size:13px;">';
+                    html += '<input type="number" id="hr-' + moment + '" placeholder="HR" value="' + hr + '" style="padding:8px 10px;border:2px solid #e5e7eb;border-radius:8px;font-size:13px;">';
+                    html += '</div>';
+                    
+                    // BUTTONS: Knop 3 (Bewaar) + Knop 4 (Verwijder - conditional) - KLEIN UITERST RECHTS
+                    html += '<div style="display:flex;justify-content:flex-end;gap:6px;">';
+                    html += '<button style="padding:6px 10px;background:#8b5cf6;color:white;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:11px;" title="Bewaar bloedwaarden" onclick="app.saveValuesOnly(\'' + moment + '\');">💾</button>';
+                    if (sys && dia && hr) {
+                        html += '<button style="padding:6px 10px;background:#ef4444;color:white;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:11px;" title="Verwijder bloedwaarden" onclick="app.deleteValuesOnly(\'' + moment + '\');">🗑️</button>';
+                    }
+                    html += '</div>';
+                    
+                    html += '</div>';
                 }
 
                 html += '</div>';
