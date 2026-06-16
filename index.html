@@ -245,6 +245,9 @@
                 this.telegram = { token: token, chatId: chatId };
                 localStorage.setItem('telegram', JSON.stringify(this.telegram));
                 this.sendTg('✅ Health Tracker online!');
+                
+                // Show what was saved
+                alert('✅ Opgeslagen!\n\nToken: ' + this.telegram.token.substring(0, 10) + '...\nChat ID: ' + this.telegram.chatId);
             }
 
             openReport() {
