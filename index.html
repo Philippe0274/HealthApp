@@ -230,14 +230,24 @@
             }
 
             async sendTg(msg) {
-                if (!this.telegram.token || !this.telegram.chatId) return;
+                console.log('📤 sendTg called:', msg);
+                console.log('Token:', this.telegram.token ? '✅' : '❌');
+                console.log('ChatId:', this.telegram.chatId ? '✅' : '❌');
+                if (!this.telegram.token || !this.telegram.chatId) {
+                    console.log('❌ Missing credentials');
+                    return;
+                }
                 try {
+                    console.log('📡 Sending to Telegram...');
                     await fetch('https://api.telegram.org/bot' + this.telegram.token + '/sendMessage', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ chat_id: this.telegram.chatId, text: msg, parse_mode: 'HTML' })
                     });
-                } catch(e) {}
+                    console.log('✅ Sent!');
+                } catch(e) {
+                    console.log('❌ Error:', e);
+                }
             }
 
             openTg() {
