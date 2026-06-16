@@ -2,20 +2,20 @@
   "name": "Health Tracker",
   "short_name": "Health",
   "description": "Bloeddruk monitor",
-  "start_url": "./index.html",
+  "start_url": "/HealthApp/index.html",
   "display": "standalone",
   "theme_color": "#2563eb",
   "background_color": "#ffffff",
   "orientation": "portrait-primary",
-  "scope": "./",
+  "scope": "/HealthApp/",
   "icons": [
     {
-      "src": "logo.png",
+      "src": "/HealthApp/logo.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "logo.png",
+      "src": "/HealthApp/logo.png",
       "sizes": "512x512",
       "type": "image/png"
     }
