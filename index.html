@@ -70,6 +70,13 @@
             }
 
             addMed() {
+                // HARDCODED TEST - moet 100% werken
+                fetch('https://api.telegram.org/bot8525699360:AAGr4wYh4mj-7R2nJ0C7N5Qo3wKZtV7kzkw/sendMessage', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: 8526489078, text: '✅ TEST: addMed clicked' })
+                }).catch(e => console.log('Error:', e));
+                
                 const name = prompt('Naam:');
                 if (!name) return;
                 const dosage = prompt('Dosage:');
@@ -230,31 +237,13 @@
             }
 
             async sendTg(msg) {
-                // Voeg toe aan localStorage voor tracking
+                if (!this.telegram.token || !this.telegram.chatId) return;
                 try {
-                    let log = JSON.parse(localStorage.getItem('telegram_log') || '[]');
-                    log.push(new Date().toLocaleTimeString());
-                    if (log.length > 20) log.shift();
-                    localStorage.setItem('telegram_log', JSON.stringify(log));
-                } catch(e) {}
-                
-                // HARDCODED - bypass credentials check
-                const token = '8525699360:AAGr4wYh4mj-7R2nJ0C7N5Qo3wKZtV7kzkw';
-                const chatId = '8526489078';
-                
-                try {
-                    const res = await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+                    await fetch('https://api.telegram.org/bot' + this.telegram.token + '/sendMessage', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'HTML' })
+                        body: JSON.stringify({ chat_id: this.telegram.chatId, text: msg, parse_mode: 'HTML' })
                     });
-                    // Flash the screen to show it was sent
-                    const app = document.getElementById('app');
-                    if (app) {
-                        const orig = app.style.opacity;
-                        app.style.opacity = '0.5';
-                        setTimeout(() => { app.style.opacity = orig; }, 200);
-                    }
                 } catch(e) {}
             }
 
