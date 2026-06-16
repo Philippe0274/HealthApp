@@ -321,7 +321,8 @@
                         </div>
                         ${medicineTime ? `<div style="background: #d1fae5; border-radius: 8px; padding: 8px; margin-bottom: 8px; font-size: 12px; color: #065f46; font-weight: 600;">✅ ${medicineTime}</div>` : `<div style="background: #fef3c7; border-radius: 8px; padding: 8px; margin-bottom: 8px; font-size: 12px; color: #92400e; font-weight: 600;">⏰ Niet ingevuld</div>`}
                         <div style="display: flex; gap: 6px;">
-                            <input type="time" class="input-field medicine-time" style="flex: 1;" value="${medicineTime || ''}" oninput="app.recordMedicationIntake(this.value);">
+                            <input type="time" id="medicineTimeInput" class="input-field medicine-time" style="flex: 1;" value="${medicineTime || ''}">
+                            <button style="padding: 10px 12px; background: #10b981; color: white; border: none; border-radius: 10px; font-weight: 700; font-size: 12px; cursor: pointer;" onclick="app.recordMedicationIntake(document.getElementById('medicineTimeInput').value);">💾</button>
                             <button style="padding: 10px 12px; background: #8b5cf6; color: white; border: none; border-radius: 10px; font-weight: 700; font-size: 12px; cursor: pointer;" onclick="app.recordMedicationIntake('');">✕</button>
                         </div>
                     </div>
