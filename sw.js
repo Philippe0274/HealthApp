@@ -1,28 +1,13 @@
-const CACHE_NAME = 'health-tracker-v1';
-const FILES = [
-  '/HealthApp/',
-  '/HealthApp/index.html',
-  '/HealthApp/manifest.json',
-  '/HealthApp/logo.png'
-];
+const CACHE = 'health-tracker-v1';
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(FILES).catch(() => {});
-    })
-  );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then((names) => {
-      return Promise.all(
-        names.map((name) => {
-          if (name !== CACHE_NAME) return caches.delete(name);
-        })
-      );
+    caches.keys().then(names => {
+      return Promise.all(names.filter(n => n !== CACHE).map(n => caches.delete(n)));
     })
   );
   self.clients.claim();
@@ -30,15 +15,17 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   e.respondWith(
-    caches.match(e.request).then((res) => {
-      return res || fetch(e.request).then((response) => {
-        return caches.open(CACHE_NAME).then((cache) => {
-          cache.put(e.request, response.clone());
-          return response;
-        });
-      });
-    }).catch(() => {
-      return caches.match('/HealthApp/index.html');
-    })
+    fetch(e.request)
+      .then(r => {
+        if (!r || r.status !== 200 || r.type === 'error') {
+          return r;
+        }
+        const c = r.clone();
+        caches.open(CACHE).then(cache => cache.put(e.request, c));
+        return r;
+      })
+      .catch(() => {
+        return caches.match(e.request);
+      })
   );
 });

@@ -1,25 +1,27 @@
 {
   "name": "Bloeddruk/Medicatie Opvolgingstool",
   "short_name": "Health Tracker",
-  "description": "Bloeddruk en medicatie tracker",
+  "description": "Bloeddruk en medicatie tracker - Made by Philippe De Meersman",
   "start_url": "/HealthApp/index.html",
   "scope": "/HealthApp/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#dc2626",
-  "orientation": "portrait-primary",
+  "orientation": "portrait",
+  "categories": ["health", "medical"],
   "icons": [
     {
       "src": "/HealthApp/logo.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
-    },
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
     {
       "src": "/HealthApp/logo.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "sizes": "540x720",
+      "type": "image/png"
     }
   ]
 }
