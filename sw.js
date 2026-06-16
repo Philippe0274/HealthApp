@@ -14,6 +14,12 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+  // Don't cache Telegram API calls - let them go direct
+  if (e.request.url.includes('api.telegram.org')) {
+    e.respondWith(fetch(e.request));
+    return;
+  }
+  
   e.respondWith(
     fetch(e.request)
       .then(r => {
