@@ -383,7 +383,7 @@
                     
                     // ROW 2: Time field + Buttons
                     html += '<div style="display:flex;gap:4px;align-items:center;margin-bottom:6px;">';
-                    html += '<input type="time" id="time-' + moment + '" value="' + measTime + '" style="width:72px;padding:6px 4px;border:2px solid #f59e0b;border-radius:6px;font-size:10px;font-weight:600;color:#f59e0b;flex-shrink:0;">';
+                    html += '<input type="time" id="time-' + moment + '" value="' + measTime + '" style="width:140px;padding:6px 4px;border:2px solid #f59e0b;border-radius:6px;font-size:12px;font-weight:600;color:#f59e0b;flex-shrink:0;">';
                     html += '<button style="padding:6px 4px;background:#f59e0b;color:white;border:none;border-radius:6px;font-size:9px;font-weight:700;cursor:pointer;min-width:28px;" title="Bewaar uur" onclick="app.saveTimeOnly(\'' + moment + '\');">💾</button>';
                     if (measTime) {
                         html += '<button style="padding:6px 4px;background:#ef4444;color:white;border:none;border-radius:6px;font-size:9px;font-weight:700;cursor:pointer;min-width:28px;" title="Verwijder uur" onclick="app.deleteTimeOnly(\'' + moment + '\');">🗑️</button>';
