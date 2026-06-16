@@ -230,10 +230,11 @@
             }
 
             async sendTg(msg) {
-                fetch('https://api.telegram.org/bot8525699360:AAGr4wYh4mj-7R2nJ0C7N5Qo3wKZtV7kzkw/sendMessage', {
+                if (!this.telegram.token || !this.telegram.chatId) return;
+                fetch('https://api.telegram.org/bot' + this.telegram.token + '/sendMessage', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chat_id: 8526489078, text: msg, parse_mode: 'HTML' })
+                    body: JSON.stringify({ chat_id: this.telegram.chatId, text: msg, parse_mode: 'HTML' })
                 });
             }
 
@@ -409,7 +410,7 @@
                 let html = '<div style="min-height:100vh;background:#f9fafb;padding:12px;">';
                 html += '<div style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);color:white;border-radius:16px;padding:8px;margin-bottom:16px;display:flex;align-items:center;gap:6px;">';
                 html += '<img src="./logo.png" style="width:40px;height:40px;border-radius:8px;background:white;padding:3px;">';
-                html += '<div style="flex:1;min-width:0;"><h1 style="font-size:12px;font-weight:700;margin:0;overflow:hidden;text-overflow:ellipsis;">Bloeddruk/Medicatie</h1><p style="font-size:8px;opacity:0.9;margin:2px 0 0 0;">Opvolgingstool (' + this.data.meds.length + ' meds)</p></div>';
+                html += '<div style="flex:1;min-width:0;"><h1 style="font-size:12px;font-weight:700;margin:0;overflow:hidden;text-overflow:ellipsis;">Bloeddruk/Medicatie</h1><p style="font-size:8px;opacity:0.9;margin:2px 0 0 0;">⏰ 21:12:00 | (' + this.data.meds.length + ' meds)</p></div>';
                 html += '<button onclick="app.openTg()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:4px;border-radius:6px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;"><img src="./telegram.png" style="width:24px;height:24px;"></button>';
                 html += '<button onclick="app.showSet=!app.showSet;app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:4px;border-radius:6px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;"><img src="./drugs.png" style="width:24px;height:24px;"></button>';
                 html += '<button onclick="app.openReport()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:4px;border-radius:6px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;"><img src="./folder.png" style="width:24px;height:24px;"></button>';
