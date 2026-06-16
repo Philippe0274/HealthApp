@@ -8,328 +8,314 @@
     <style>
         * { -webkit-user-select: none; }
         input, button { -webkit-user-select: text !important; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+        body { font-family: -apple-system; }
         .day-cell { aspect-ratio: 1; border-radius: 8px; padding: 4px; font-size: 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 48px; background: #fff; border: 2px solid #e5e7eb; font-weight: 600; }
-        .day-cell.weekend { background-color: #f9fafb; }
-        .day-cell.holiday { background: linear-gradient(135deg, #fef08a 0%, #fde047 100%); }
-        .day-cell.today { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: #333; }
-        .pill-grid { display: grid; gap: 3px; }
-        .input-field { width: 100%; padding: 10px 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px; }
-        .med-section { background: white; border-radius: 12px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.03); border-left: 4px solid; }
-        .blood-section { background: white; border-radius: 12px; padding: 14px; margin-bottom: 10px; border-left: 4px solid #8b5cf6; box-shadow: 0 1px 4px rgba(0,0,0,0.03); }
-        .input-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .day-cell.today { background: #fbbf24; color: #333; }
     </style>
 </head>
 <body class="bg-gray-50">
     <div id="app"></div>
     <script>
-        const MED_COLORS = ['#ff0000', '#0066ff', '#00cc00', '#ff6600', '#ff00ff', '#00cccc', '#ffaa00', '#ff0099', '#0099ff', '#ff3333'];
-        const MED_ICONS = ['💊', '💉', '🩺', '🏥', '🔬', '⚕️', '🩹', '🧪', '⚕️', '🩊'];
+        const MEDS_COLORS = ['#ff0000', '#0066ff', '#00cc00', '#ff6600', '#ff00ff'];
+        const MEDS_ICONS = ['💊', '💉', '🩺', '🏥', '🔬'];
 
-        class HealthTracker {
+        class App {
             constructor() {
-                this.data = JSON.parse(localStorage.getItem('healthTrackerData')) || this.initData();
-                this.telegram = JSON.parse(localStorage.getItem('telegramSettings')) || { token: '', chatId: '' };
-                this.currentMonth = new Date();
-                this.selectedDate = null;
-                this.view = 'calendar';
-                this.showSettings = false;
-                this.render();
+                try {
+                    const saved = localStorage.getItem('data');
+                    this.data = saved ? JSON.parse(saved) : {
+                        meds: [{ id: '1', name: 'Belsar', dosage: '20mg', pills: 49, color: '#ff0000', icon: '💊' }],
+                        intakes: {},
+                        measures: {}
+                    };
+                } catch(e) {
+                    this.data = {
+                        meds: [{ id: '1', name: 'Belsar', dosage: '20mg', pills: 49, color: '#ff0000', icon: '💊' }],
+                        intakes: {},
+                        measures: {}
+                    };
+                }
+                this.telegram = JSON.parse(localStorage.getItem('telegram') || '{"token":"","chatId":""}');
+                this.month = new Date();
+                this.date = null;
+                this.view = 'cal';
+                this.showSet = false;
+                this.show();
             }
 
-            initData() {
-                return {
-                    medications: [{ id: 'med_belsar', name: 'Belsar', dosage: '20mg', totalPills: 49, color: MED_COLORS[0], icon: MED_ICONS[0], resetDate: this.today() }],
-                    medicationIntakes: {},
-                    measurements: {}
-                };
+            save() {
+                localStorage.setItem('data', JSON.stringify(this.data));
             }
 
             today() {
                 const d = new Date();
-                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
             }
 
-            save() { localStorage.setItem('healthTrackerData', JSON.stringify(this.data)); }
+            getPills(id) {
+                let count = 0;
+                for (let day in this.data.intakes) {
+                    if (this.data.intakes[day][id]) count++;
+                }
+                const med = this.data.meds.find(m => m.id === id);
+                return med ? med.pills - count : 0;
+            }
 
-            async telegram_send(msg) {
+            addMed() {
+                const name = prompt('Naam:');
+                if (!name) return;
+                const dosage = prompt('Dosage:');
+                if (!dosage) return;
+                const p = parseInt(prompt('Pillen (1-70):') || '0');
+                if (p < 1 || p > 70) { alert('1-70!'); return; }
+                
+                const med = {
+                    id: Date.now().toString(),
+                    name: name,
+                    dosage: dosage,
+                    pills: p,
+                    color: MEDS_COLORS[this.data.meds.length % 5],
+                    icon: MEDS_ICONS[this.data.meds.length % 5]
+                };
+                this.data.meds.push(med);
+                this.save();
+                this.sendTg(`${med.icon} <b>${med.name}</b> TOEGEVOEGD!\n├─ ${med.dosage}\n├─ ${med.pills} pillen\n└─ ✅`);
+                this.show();
+            }
+
+            rmMed(id) {
+                if (this.data.meds.length === 1) { alert('Min 1!'); return; }
+                const med = this.data.meds.find(m => m.id === id);
+                if (!confirm(`Verwijderen: ${med.name}?`)) return;
+                this.data.meds = this.data.meds.filter(m => m.id !== id);
+                this.save();
+                this.sendTg(`🗑️ <b>${med.name}</b> VERWIJDERD`);
+                this.show();
+            }
+
+            resetMed(id) {
+                const med = this.data.meds.find(m => m.id === id);
+                const p = parseInt(prompt(`${med.name}: Nieuwe aantal?\n(1-70, nu: ${med.pills})`) || '0');
+                if (p < 1 || p > 70) { alert('1-70!'); return; }
+                const old = med.pills;
+                med.pills = p;
+                this.save();
+                this.sendTg(`🔄 <b>${med.name}</b> RESET\n├─ ${old} → ${p}\n└─ 📊 ${p}/${p}`);
+                this.show();
+            }
+
+            setIntake(id, time) {
+                if (!this.data.intakes[this.date]) this.data.intakes[this.date] = {};
+                const med = this.data.meds.find(m => m.id === id);
+                if (time) {
+                    this.data.intakes[this.date][id] = time;
+                    this.sendTg(`✅ <b>${med.icon} ${med.name}</b> INGENOMEN!\n├─ ⏰ ${time}\n├─ 📊 ${this.getPills(id)}/${med.pills}\n└─ ✅`);
+                    if (this.getPills(id) < 5) {
+                        this.sendTg(`⚠️ <b>${med.name}</b> - WAARSCHUWING!\n├─ ${this.getPills(id)} pillen\n└─ 🚨 BESTELLEN!`);
+                    }
+                } else {
+                    delete this.data.intakes[this.date][id];
+                }
+                this.save();
+                this.show();
+            }
+
+            setMeas(moment, sys, dia, hr) {
+                if (!this.data.measures[this.date]) this.data.measures[this.date] = {};
+                if (sys && dia && hr) {
+                    this.data.measures[this.date][moment] = { sys: parseInt(sys), dia: parseInt(dia), hr: parseInt(hr) };
+                } else {
+                    delete this.data.measures[this.date][moment];
+                }
+                this.save();
+            }
+
+            updBadge(moment) {
+                const sys = document.querySelector('.sys-' + moment)?.value || '';
+                const dia = document.querySelector('.dia-' + moment)?.value || '';
+                const hr = document.querySelector('.hr-' + moment)?.value || '';
+                const badge = document.getElementById('b-' + moment);
+                if (!badge) return;
+                
+                if (!sys || !dia) {
+                    badge.innerHTML = '❌';
+                    return;
+                }
+                
+                const s = parseInt(sys), d = parseInt(dia);
+                let color = '#10b981';
+                if ((s >= 130 && s < 160) || (d >= 85 && d < 100)) color = '#f59e0b';
+                if (s >= 160 || d >= 100) color = '#ef4444';
+                
+                badge.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:6px;"></span>' + sys + '/' + dia;
+                
+                if (sys && dia && hr) this.setMeas(moment, sys, dia, hr);
+            }
+
+            async sendTg(msg) {
                 if (!this.telegram.token || !this.telegram.chatId) return;
                 try {
-                    await fetch(`https://api.telegram.org/bot${this.telegram.token}/sendMessage`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    await fetch('https://api.telegram.org/bot' + this.telegram.token + '/sendMessage', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ chat_id: this.telegram.chatId, text: msg, parse_mode: 'HTML' })
                     });
                 } catch(e) {}
             }
 
-            openTelegram() {
+            openTg() {
                 const token = prompt('🔑 Bot Token:', this.telegram.token || '');
                 if (!token) return;
                 const chatId = prompt('💬 Chat ID:', this.telegram.chatId || '');
                 if (!chatId) return;
-                this.telegram = { token, chatId };
-                localStorage.setItem('telegramSettings', JSON.stringify(this.telegram));
-                alert('✅ Telegram OK!');
-                this.telegram_send('✅ Health Tracker online!');
+                this.telegram = { token: token, chatId: chatId };
+                localStorage.setItem('telegram', JSON.stringify(this.telegram));
+                this.sendTg('✅ Health Tracker online!');
             }
 
-            getPills(medId) {
-                const med = this.data.medications.find(m => m.id === medId);
-                const used = Object.values(this.data.medicationIntakes).reduce((s, d) => s + (d[medId] ? 1 : 0), 0);
-                return med.totalPills - used;
-            }
-
-            addMed() {
-                if (this.data.medications.length >= 10) { alert('Max 10!'); return; }
-                const name = prompt('Medicatie:');
-                if (!name) return;
-                const dosage = prompt('Dosage:');
-                if (!dosage) return;
-                const pills = parseInt(prompt('Pillen (max 70):') || '0');
-                if (pills < 1 || pills > 70) { alert('1-70!'); return; }
-                
-                const med = {
-                    id: `med_${Date.now()}`,
-                    name, dosage, totalPills: pills,
-                    color: MED_COLORS[this.data.medications.length % 10],
-                    icon: MED_ICONS[this.data.medications.length % 10],
-                    resetDate: this.today()
-                };
-                this.data.medications.push(med);
-                this.save();
-                this.telegram_send(`${med.icon} <b>${med.name} TOEGEVOEGD!</b>\n├─ ${med.dosage}\n├─ ${med.totalPills} pillen\n└─ ✅`);
-                this.render();
-            }
-
-            removeMed(medId) {
-                if (this.data.medications.length === 1) { alert('Min 1!'); return; }
-                const med = this.data.medications.find(m => m.id === medId);
-                if (!confirm(`Verwijderen: ${med.name}?`)) return;
-                this.data.medications = this.data.medications.filter(m => m.id !== medId);
-                this.data.medicationIntakes = Object.fromEntries(
-                    Object.entries(this.data.medicationIntakes).map(([d, m]) => [d, Object.fromEntries(Object.entries(m).filter(([mid]) => mid !== medId))])
-                );
-                this.save();
-                this.telegram_send(`🗑️ <b>${med.icon} ${med.name} VERWIJDERD</b>`);
-                this.render();
-            }
-
-            resetMed(medId) {
-                const med = this.data.medications.find(m => m.id === medId);
-                const amt = parseInt(prompt(`${med.icon} ${med.name}: Nieuwe aantal?\n(max 70, nu: ${med.totalPills})`) || '0');
-                if (amt < 1 || amt > 70) { alert('1-70!'); return; }
-                
-                const old = med.totalPills;
-                med.totalPills = amt;
-                med.resetDate = this.today();
-                this.data.medicationIntakes = Object.fromEntries(
-                    Object.entries(this.data.medicationIntakes).map(([d, m]) => {
-                        const nm = { ...m };
-                        delete nm[medId];
-                        return [d, nm];
-                    })
-                );
-                this.save();
-                this.telegram_send(`🔄 <b>${med.icon} ${med.name} RESET</b>\n├─ ${old} → ${amt}\n├─ 📊 ${amt}/${amt}\n└─ 📅 ${this.today()}`);
-                this.render();
-            }
-
-            recordMed(medId, time) {
-                const med = this.data.medications.find(m => m.id === medId);
-                if (!this.data.medicationIntakes[this.selectedDate]) this.data.medicationIntakes[this.selectedDate] = {};
-                
-                if (time) {
-                    this.data.medicationIntakes[this.selectedDate][medId] = time;
-                    this.telegram_send(
-                        `✅ <b>${med.icon} ${med.name} INGENOMEN!</b>\n` +
-                        `├─ ⏰ ${time}\n` +
-                        `├─ 📊 ${this.getPills(medId)}/${med.totalPills}\n` +
-                        `└─ ✅`
-                    );
-                    if (this.getPills(medId) < 5) {
-                        this.telegram_send(`⚠️ <b>${med.icon} ${med.name} - WAARSCHUWING!</b>\n├─ ${this.getPills(medId)} pillen\n└─ 🚨 BESTELLEN!`);
-                    }
+            show() {
+                if (this.view === 'cal') {
+                    document.getElementById('app').innerHTML = this.drawCal();
+                    this.bindCal();
                 } else {
-                    delete this.data.medicationIntakes[this.selectedDate][medId];
+                    document.getElementById('app').innerHTML = this.drawDay();
                 }
-                this.save();
-                this.render();
             }
 
-            saveMeasure(moment, sys, dia, hr) {
-                if (!this.data.measurements[this.selectedDate]) this.data.measurements[this.selectedDate] = {};
-                if (sys && dia && hr) {
-                    this.data.measurements[this.selectedDate][moment] = { sys: parseInt(sys), dia: parseInt(dia), hartslag: parseInt(hr) };
-                } else {
-                    delete this.data.measurements[this.selectedDate][moment];
-                }
-                this.save();
-            }
-
-            colorStatus(sys, dia) {
-                if (!sys || !dia) return 'empty';
-                const s = parseInt(sys), d = parseInt(dia);
-                if (isNaN(s) || isNaN(d)) return 'empty';
-                if (s < 130 && d < 85) return 'green';
-                if ((s >= 130 && s < 160) || (d >= 85 && d < 100)) return 'orange';
-                return 'red';
-            }
-
-            updateBadge(moment) {
-                const sys = document.querySelector(`.sys-${moment}`)?.value || '';
-                const dia = document.querySelector(`.dia-${moment}`)?.value || '';
-                const hr = document.querySelector(`.hartslag-${moment}`)?.value || '';
-                const status = this.colorStatus(sys, dia);
-                const badge = document.getElementById(`badge-${moment}`);
-                if (badge) {
-                    const color = status === 'green' ? '#10b981' : status === 'orange' ? '#f59e0b' : '#ef4444';
-                    badge.innerHTML = status === 'empty' ? '❌' : `<span style="width: 8px; height: 8px; border-radius: 50%; background: ${color}; margin-right: 6px;"></span>${sys}/${dia}`;
-                }
-                if (sys && dia && hr) this.saveMeasure(moment, sys, dia, hr);
-            }
-
-            render() {
-                document.getElementById('app').innerHTML = this.view === 'calendar' ? this.renderCalendar() : this.renderDay();
-                this.attach();
-            }
-
-            renderCalendar() {
-                const y = this.currentMonth.getFullYear(), m = this.currentMonth.getMonth();
+            drawCal() {
+                const y = this.month.getFullYear();
+                const m = this.month.getMonth();
                 const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
                 const days = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
                 const firstDay = (new Date(y, m, 1).getDay() + 6) % 7;
-                const daysInMonth = new Date(y, m + 1, 0).getDate();
+                const lastDay = new Date(y, m + 1, 0).getDate();
                 const today = this.today();
                 let cal = '';
 
                 for (let i = 0; i < firstDay; i++) cal += '<div></div>';
-                for (let day = 1; day <= daysInMonth; day++) {
-                    const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                for (let d = 1; d <= lastDay; d++) {
+                    const dateStr = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
                     let cls = 'day-cell';
                     if (dateStr === today) cls += ' today';
-                    cal += `<div class="${cls}" data-date="${dateStr}">${day}</div>`;
+                    cal += '<div class="' + cls + '" onclick="app.date=\'' + dateStr + '\';app.view=\'day\';app.show();">' + d + '</div>';
                 }
 
-                return `<div style="min-height: 100vh; background: #f9fafb; padding: 12px;">
-                    <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; border-radius: 16px; padding: 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
-                        <img src="./logo.png" alt="Logo" style="width: 48px; height: 48px; border-radius: 12px; background: white; padding: 4px;">
-                        <div style="flex: 1;">
-                            <h1 style="font-size: 14px; font-weight: 700; margin: 0;">Bloeddruk/Medicatie</h1>
-                            <p style="font-size: 10px; opacity: 0.9; margin: 2px 0 0 0;">Opvolgingstool (${this.data.medications.length} meds)</p>
-                            <p style="font-size: 9px; opacity: 0.8; margin: 2px 0 0 0;">Made by Philippe De Meersman</p>
-                        </div>
-                        <div style="display: flex; gap: 6px;">
-                            <button onclick="app.openTelegram()" style="background: rgba(255,255,255,0.2); border: none; color: white; font-size: 18px; cursor: pointer; padding: 8px 12px; border-radius: 8px;">💬</button>
-                            <button onclick="app.showSettings = !app.showSettings; app.render();" style="background: rgba(255,255,255,0.2); border: none; color: white; font-size: 18px; cursor: pointer; padding: 8px 12px; border-radius: 8px;">⚙️</button>
-                            <button onclick="app.currentMonth = new Date(); app.render();" style="background: rgba(255,255,255,0.2); border: none; color: white; font-size: 18px; cursor: pointer; padding: 8px 12px; border-radius: 8px;">📅</button>
-                        </div>
-                    </div>
+                let html = '<div style="min-height:100vh;background:#f9fafb;padding:12px;">';
+                html += '<div style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);color:white;border-radius:16px;padding:12px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">';
+                html += '<img src="./logo.png" style="width:48px;height:48px;border-radius:12px;background:white;padding:4px;">';
+                html += '<div style="flex:1;"><h1 style="font-size:14px;font-weight:700;margin:0;">Bloeddruk/Medicatie</h1><p style="font-size:10px;opacity:0.9;margin:2px 0 0 0;">Opvolgingstool (' + this.data.meds.length + ' meds)</p><p style="font-size:9px;opacity:0.8;margin:2px 0 0 0;">Made by Philippe De Meersman</p></div>';
+                html += '<button onclick="app.openTg()" style="background:rgba(255,255,255,0.2);border:none;color:white;font-size:18px;cursor:pointer;padding:8px 12px;border-radius:8px;">💬</button>';
+                html += '<button onclick="app.showSet=!app.showSet;app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;font-size:18px;cursor:pointer;padding:8px 12px;border-radius:8px;">⚙️</button>';
+                html += '<button onclick="app.month=new Date();app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;font-size:18px;cursor:pointer;padding:8px 12px;border-radius:8px;">📅</button>';
+                html += '</div>';
 
-                    ${this.showSettings ? `<div style="background: white; border-radius: 12px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.03);">
-                        <h2 style="font-size: 14px; font-weight: 700; margin-bottom: 10px;">💊 MEDICATIES</h2>
-                        ${this.data.medications.map(med => `<div style="background: #f9fafb; border-radius: 8px; padding: 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-                            <div><div style="font-weight: 700;">${med.icon} ${med.name}</div><div style="font-size: 11px; color: #6b7280;">${med.dosage} • ${this.getPills(med.id)}/${med.totalPills}</div></div>
-                            <div style="display: flex; gap: 6px;">
-                                <button onclick="app.resetMed('${med.id}')" style="background: #3b82f6; color: white; border: none; border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer;">Reset</button>
-                                <button onclick="app.removeMed('${med.id}')" style="background: #ef4444; color: white; border: none; border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer;">✕</button>
-                            </div>
-                        </div>`).join('')}
-                        <button onclick="app.addMed()" style="background: #10b981; color: white; border: none; border-radius: 8px; padding: 8px 12px; width: 100%; font-weight: 700; cursor: pointer; margin-top: 8px;">+ Toevoegen</button>
-                    </div>` : ''}
+                if (this.showSet) {
+                    html += '<div style="background:white;border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';
+                    html += '<h2 style="font-size:14px;font-weight:700;margin-bottom:10px;">💊 MEDICATIES</h2>';
+                    for (let med of this.data.meds) {
+                        html += '<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
+                        html += '<div><div style="font-weight:700;">' + med.icon + ' ' + med.name + '</div><div style="font-size:11px;color:#6b7280;">' + med.dosage + ' • ' + this.getPills(med.id) + '/' + med.pills + '</div></div>';
+                        html += '<div style="display:flex;gap:6px;">';
+                        html += '<button onclick="app.resetMed(\'' + med.id + '\')" style="background:#3b82f6;color:white;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;">Reset</button>';
+                        html += '<button onclick="app.rmMed(\'' + med.id + '\')" style="background:#ef4444;color:white;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;">✕</button>';
+                        html += '</div></div>';
+                    }
+                    html += '<button onclick="app.addMed()" style="background:#10b981;color:white;border:none;border-radius:8px;padding:8px 12px;width:100%;font-weight:700;cursor:pointer;margin-top:8px;">+ Toevoegen</button>';
+                    html += '</div>';
+                }
 
-                    ${this.data.medications.map(med => `<div style="background: white; border-radius: 12px; padding: 8px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.03);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <h2 style="font-size: 12px; font-weight: 700; margin: 0; color: ${med.color};">${med.icon} ${med.name}</h2>
-                            <div style="font-size: 11px; font-weight: 600; color: ${this.getPills(med.id) > (med.totalPills / 10) ? '#10b981' : this.getPills(med.id) >= 5 ? '#f59e0b' : '#ef4444'};">
-                                ${this.getPills(med.id) > (med.totalPills / 10) ? '✅' : this.getPills(med.id) >= 5 ? '⚠️' : '🚨'} ${this.getPills(med.id)}/${med.totalPills}
-                            </div>
-                        </div>
-                        <div class="pill-grid" style="background: ${med.color}33; border-radius: 8px; padding: 8px; grid-template-columns: repeat(${Math.min(10, med.totalPills)}, 1fr);">
-                            ${[...Array(med.totalPills)].map((_, i) => `<div style="font-size: 16px; opacity: ${i >= this.getPills(med.id) ? '0.3' : '1'}; filter: ${i >= this.getPills(med.id) ? 'grayscale(100%)' : 'none'};">${med.icon}</div>`).join('')}
-                        </div>
-                    </div>`).join('')}
+                for (let med of this.data.meds) {
+                    const remaining = this.getPills(med.id);
+                    const pct = remaining > (med.pills / 10) ? '#10b981' : remaining >= 5 ? '#f59e0b' : '#ef4444';
+                    html += '<div style="background:white;border-radius:12px;padding:8px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';
+                    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
+                    html += '<h2 style="font-size:12px;font-weight:700;margin:0;color:' + med.color + ';">' + med.icon + ' ' + med.name + '</h2>';
+                    html += '<div style="font-size:11px;font-weight:600;color:' + pct + ';">' + (remaining > (med.pills / 10) ? '✅' : remaining >= 5 ? '⚠️' : '🚨') + ' ' + remaining + '/' + med.pills + '</div>';
+                    html += '</div>';
+                    html += '<div style="background:' + med.color + '33;border-radius:8px;padding:8px;display:grid;gap:3px;grid-template-columns:repeat(' + Math.min(10, med.pills) + ',1fr);">';
+                    for (let i = 0; i < med.pills; i++) {
+                        html += '<div style="font-size:16px;opacity:' + (i >= remaining ? '0.3' : '1') + ';filter:' + (i >= remaining ? 'grayscale(100%)' : 'none') + ';">' + med.icon + '</div>';
+                    }
+                    html += '</div></div>';
+                }
 
-                    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                        <button style="background: white; border: none; border-radius: 10px; width: 36px; height: 36px; font-size: 16px; cursor: pointer;" onclick="app.currentMonth.setMonth(app.currentMonth.getMonth() - 1); app.render();">◀</button>
-                        <div style="flex: 1; text-align: center; font-size: 16px; font-weight: 700;">📅 ${months[m]} ${y}</div>
-                        <button style="background: white; border: none; border-radius: 10px; width: 36px; height: 36px; font-size: 16px; cursor: pointer;" onclick="app.currentMonth.setMonth(app.currentMonth.getMonth() + 1); app.render();">▶</button>
-                    </div>
-                    <div style="background: white; border-radius: 12px; padding: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.03);">
-                        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 8px;">
-                            ${days.map(d => `<div style="text-align: center; font-weight: 600; color: #6b7280; font-size: 11px; padding: 6px 0;">${d}</div>`).join('')}
-                        </div>
-                        <div class="calendar-grid">${cal}</div>
-                    </div>
-                </div>`;
+                html += '<div style="display:flex;gap:8px;margin-bottom:12px;">';
+                html += '<button style="background:white;border:none;border-radius:10px;width:36px;height:36px;font-size:16px;cursor:pointer;" onclick="app.month.setMonth(app.month.getMonth()-1);app.show();">◀</button>';
+                html += '<div style="flex:1;text-align:center;font-size:16px;font-weight:700;">📅 ' + months[m] + ' ' + y + '</div>';
+                html += '<button style="background:white;border:none;border-radius:10px;width:36px;height:36px;font-size:16px;cursor:pointer;" onclick="app.month.setMonth(app.month.getMonth()+1);app.show();">▶</button>';
+                html += '</div>';
+                html += '<div style="background:white;border-radius:12px;padding:10px;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';
+                html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:8px;">';
+                for (let d of days) {
+                    html += '<div style="text-align:center;font-weight:600;color:#6b7280;font-size:11px;padding:6px 0;">' + d + '</div>';
+                }
+                html += '</div>';
+                html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">' + cal + '</div>';
+                html += '</div></div>';
+                return html;
             }
 
-            renderDay() {
-                const [y, m, d] = this.selectedDate.split('-');
-                const dayObj = new Date(this.selectedDate);
-                const dayName = dayObj.toLocaleDateString('nl-NL', { weekday: 'short' });
-                const mName = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'][m - 1];
-                const meds = this.data.medicationIntakes?.[this.selectedDate] || {};
-                const measures = this.data.measurements[this.selectedDate] || {};
+            drawDay() {
+                const parts = this.date.split('-');
+                const y = parts[0], m = parts[1], d = parts[2];
+                const dateObj = new Date(this.date);
+                const dayName = dateObj.toLocaleDateString('nl-NL', { weekday: 'short' });
+                const months = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+                const mName = months[parseInt(m) - 1];
+                const intakes = this.data.intakes[this.date] || {};
+                const measures = this.data.measures[this.date] || {};
 
-                const renderMom = (moment, icon, time) => {
+                let html = '<div style="min-height:100vh;background:#f9fafb;padding:12px 12px 100px 12px;">';
+                html += '<div style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);color:white;border-radius:16px;padding:12px;margin-bottom:12px;">';
+                html += '<button style="background:rgba(255,255,255,0.2);border:none;border-radius:8px;width:32px;height:32px;color:white;font-size:16px;cursor:pointer;margin-bottom:8px;" onclick="app.view=\'cal\';app.show();">◀</button>';
+                html += '<h1 style="font-size:18px;font-weight:700;margin:0;">' + dayName + ' ' + d + ' ' + mName + '</h1>';
+                html += '</div>';
+
+                for (let med of this.data.meds) {
+                    const time = intakes[med.id] || '';
+                    html += '<div style="background:white;border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);border-left:4px solid ' + med.color + ';">';
+                    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+                    html += '<div><h2 style="font-size:14px;font-weight:700;margin:0;color:' + med.color + ';">' + med.icon + ' ' + med.name + '</h2><div style="font-size:11px;color:#6b7280;">' + med.dosage + '</div></div>';
+                    html += '<span style="background:' + med.color + ';color:white;padding:3px 8px;border-radius:12px;font-weight:600;font-size:12px;">' + this.getPills(med.id) + '/' + med.pills + '</span>';
+                    html += '</div>';
+                    html += time ? '<div style="background:#d1fae5;border-radius:8px;padding:8px;margin-bottom:8px;font-size:12px;color:#065f46;font-weight:600;">✅ ' + time + '</div>' : '<div style="background:#fef3c7;border-radius:8px;padding:8px;margin-bottom:8px;font-size:12px;color:#92400e;font-weight:600;">⏰ Niet ingevuld</div>';
+                    html += '<div style="display:flex;gap:6px;">';
+                    html += '<input type="time" id="t-' + med.id + '" value="' + time + '" style="flex:1;padding:10px 12px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;">';
+                    html += '<button style="padding:10px 12px;background:#10b981;color:white;border:none;border-radius:10px;font-weight:700;cursor:pointer;" onclick="app.setIntake(\'' + med.id + '\',document.getElementById(\'t-' + med.id + '\').value);">💾</button>';
+                    html += '<button style="padding:10px 12px;background:' + med.color + ';color:white;border:none;border-radius:10px;font-weight:700;cursor:pointer;" onclick="app.setIntake(\'' + med.id + '\',\'\');">✕</button>';
+                    html += '</div></div>';
+                }
+
+                html += '<h3 style="font-size:14px;font-weight:700;margin-top:20px;margin-bottom:10px;">❤️ BLOEDWAARDEN</h3>';
+
+                for (let moment of ['ochtend', 'middag', 'avond']) {
+                    const icon = moment === 'ochtend' ? '🌅' : moment === 'middag' ? '☀️' : '🌙';
+                    const time = moment === 'ochtend' ? '8:00 AM' : moment === 'middag' ? '13:00' : '20:00';
                     const data = measures[moment];
-                    const sys = data?.sys || '', dia = data?.dia || '', hr = data?.hartslag || '';
-                    const status = this.colorStatus(sys, dia);
-                    return `<div class="blood-section">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <div><div style="font-weight: 700; font-size: 14px;">${icon} ${moment.charAt(0).toUpperCase() + moment.slice(1)}</div><div style="font-size: 11px; color: #6b7280; margin-top: 2px;">${time}</div></div>
-                            <div id="badge-${moment}" style="display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 16px; font-size: 12px; font-weight: 600; background: ${status === 'green' ? '#d1fae5' : status === 'orange' ? '#fed7aa' : status === 'red' ? '#fecaca' : '#f3f4f6'};">
-                                ${status === 'empty' ? '❌' : `<span style="width: 6px; height: 6px; border-radius: 50%; background: ${status === 'green' ? '#10b981' : status === 'orange' ? '#f59e0b' : '#ef4444'}; margin-right: 4px;"></span>${sys}/${dia}`}
-                            </div>
-                        </div>
-                        <div class="input-group">
-                            <input type="number" class="input-field sys-${moment}" placeholder="Sys" value="${sys}" oninput="app.updateBadge('${moment}');">
-                            <input type="number" class="input-field dia-${moment}" placeholder="Dia" value="${dia}" oninput="app.updateBadge('${moment}');">
-                            <input type="number" class="input-field hartslag-${moment}" placeholder="HR" value="${hr}" oninput="app.updateBadge('${moment}');">
-                        </div>
-                    </div>`;
-                };
+                    const sys = data?.sys || '', dia = data?.dia || '', hr = data?.hr || '';
+                    
+                    html += '<div style="background:white;border-radius:12px;padding:14px;margin-bottom:10px;border-left:4px solid #8b5cf6;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';
+                    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
+                    html += '<div><div style="font-weight:700;font-size:14px;">' + icon + ' ' + moment.charAt(0).toUpperCase() + moment.slice(1) + '</div><div style="font-size:11px;color:#6b7280;margin-top:2px;">' + time + '</div></div>';
+                    html += '<div id="b-' + moment + '" style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:16px;font-size:12px;font-weight:600;background:#f3f4f6;">❌</div>';
+                    html += '</div>';
+                    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
+                    html += '<input type="number" class="sys-' + moment + '" placeholder="Sys" value="' + sys + '" oninput="app.updBadge(\'' + moment + '\');" style="width:100%;padding:10px 12px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;">';
+                    html += '<input type="number" class="dia-' + moment + '" placeholder="Dia" value="' + dia + '" oninput="app.updBadge(\'' + moment + '\');" style="width:100%;padding:10px 12px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;">';
+                    html += '<input type="number" class="hr-' + moment + '" placeholder="HR" value="' + hr + '" oninput="app.updBadge(\'' + moment + '\');" style="width:100%;padding:10px 12px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;">';
+                    html += '</div></div>';
+                }
 
-                return `<div style="min-height: 100vh; background: #f9fafb; padding: 12px 12px 100px 12px;">
-                    <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; border-radius: 16px; padding: 12px; margin-bottom: 12px;">
-                        <button style="background: rgba(255,255,255,0.2); border: none; border-radius: 8px; width: 32px; height: 32px; color: white; font-size: 16px; cursor: pointer; margin-bottom: 8px;" onclick="app.view = 'calendar'; app.render();">◀</button>
-                        <h1 style="font-size: 18px; font-weight: 700; margin: 0;">${dayName} ${d} ${mName}</h1>
-                    </div>
-
-                    ${this.data.medications.map(med => {
-                        const time = meds[med.id] || '';
-                        return `<div class="med-section" style="border-left-color: ${med.color};">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <div><h2 style="font-size: 14px; font-weight: 700; margin: 0; color: ${med.color};">${med.icon} ${med.name}</h2><div style="font-size: 11px; color: #6b7280;">${med.dosage}</div></div>
-                                <span style="background: ${med.color}; color: white; padding: 3px 8px; border-radius: 12px; font-weight: 600; font-size: 12px;">${this.getPills(med.id)}/${med.totalPills}</span>
-                            </div>
-                            ${time ? `<div style="background: #d1fae5; border-radius: 8px; padding: 8px; margin-bottom: 8px; font-size: 12px; color: #065f46; font-weight: 600;">✅ ${time}</div>` : `<div style="background: #fef3c7; border-radius: 8px; padding: 8px; margin-bottom: 8px; font-size: 12px; color: #92400e; font-weight: 600;">⏰ Niet ingevuld</div>`}
-                            <div style="display: flex; gap: 6px;">
-                                <input type="time" class="input-field med-time-${med.id}" style="flex: 1;" value="${time || ''}">
-                                <button style="padding: 10px 12px; background: #10b981; color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer;" onclick="app.recordMed('${med.id}', document.querySelector('.med-time-${med.id}').value);">💾</button>
-                                <button style="padding: 10px 12px; background: ${med.color}; color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer;" onclick="app.recordMed('${med.id}', '');">✕</button>
-                            </div>
-                        </div>`;
-                    }).join('')}
-
-                    <h3 style="font-size: 14px; font-weight: 700; margin-top: 20px; margin-bottom: 10px;">❤️ BLOEDWAARDEN</h3>
-                    ${renderMom('ochtend', '🌅', '8:00 AM')}
-                    ${renderMom('middag', '☀️', '13:00')}
-                    ${renderMom('avond', '🌙', '20:00')}
-                </div>`;
+                html += '</div>';
+                return html;
             }
 
-            attach() {
-                if (this.view === 'calendar') {
-                    document.querySelectorAll('.day-cell').forEach(cell => {
-                        cell.addEventListener('click', () => { this.selectedDate = cell.dataset.date; this.view = 'day'; this.render(); });
-                    });
-                }
+            bindCal() {
+                // Calendar click binding already in HTML onclick
             }
         }
 
-        const app = new HealthTracker();
+        const app = new App();
     </script>
 </body>
 </html>
