@@ -70,12 +70,15 @@
             }
 
             addMed() {
-                // HARDCODED TEST - moet 100% werken
+                // TEST: Show we reach this point
+                alert('🔄 Sending to Telegram...');
+                
                 fetch('https://api.telegram.org/bot8525699360:AAGr4wYh4mj-7R2nJ0C7N5Qo3wKZtV7kzkw/sendMessage', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chat_id: 8526489078, text: '✅ TEST: addMed clicked' })
-                }).catch(e => console.log('Error:', e));
+                    body: JSON.stringify({ chat_id: 8526489078, text: '✅ addMed TEST' })
+                }).then(r => alert('✅ Sent: ' + r.status))
+                  .catch(e => alert('❌ Error: ' + e.message));
                 
                 const name = prompt('Naam:');
                 if (!name) return;
