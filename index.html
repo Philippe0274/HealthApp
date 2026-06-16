@@ -251,6 +251,7 @@
             }
 
             openReport() {
+                this.sendTg('📋 RAPPORT GEGENEREERD');
                 const stats = this.generateReportStats();
                 const html = `
 <!DOCTYPE html>
