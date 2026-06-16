@@ -5,6 +5,7 @@ const urlsToCache = [
   './blood-pressure-tracker.html',
   './manifest.json',
   './logo.png',
+  './sw.js',
   'https://cdn.tailwindcss.com'
 ];
 
@@ -13,7 +14,10 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        return cache.addAll(urlsToCache).catch(() => Promise.resolve());
+        return cache.addAll(urlsToCache).catch(err => {
+          console.log('Cache error:', err);
+          return Promise.resolve();
+        });
       })
       .then(() => self.skipWaiting())
   );
