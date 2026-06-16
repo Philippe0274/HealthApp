@@ -231,22 +231,19 @@
 
             async sendTg(msg) {
                 console.log('📤 sendTg called:', msg);
-                console.log('Token:', this.telegram.token ? '✅' : '❌');
-                console.log('ChatId:', this.telegram.chatId ? '✅' : '❌');
                 if (!this.telegram.token || !this.telegram.chatId) {
-                    console.log('❌ Missing credentials');
+                    console.log('❌ Missing: token=' + (this.telegram.token?'✅':'❌') + ' chatId=' + (this.telegram.chatId?'✅':'❌'));
                     return;
                 }
                 try {
-                    console.log('📡 Sending to Telegram...');
-                    await fetch('https://api.telegram.org/bot' + this.telegram.token + '/sendMessage', {
+                    const response = await fetch('https://api.telegram.org/bot' + this.telegram.token + '/sendMessage', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ chat_id: this.telegram.chatId, text: msg, parse_mode: 'HTML' })
                     });
-                    console.log('✅ Sent!');
+                    console.log('✅ Telegram response:', response.status);
                 } catch(e) {
-                    console.log('❌ Error:', e);
+                    console.log('❌ Telegram error:', e.message);
                 }
             }
 
