@@ -1,69 +1,44 @@
 const CACHE_NAME = 'health-tracker-v1';
-const urlsToCache = [
-  './',
-  './index.html',
-  './blood-pressure-tracker.html',
-  './manifest.json',
-  './logo.png',
-  './sw.js',
-  'https://cdn.tailwindcss.com'
+const FILES = [
+  '/HealthApp/',
+  '/HealthApp/index.html',
+  '/HealthApp/manifest.json',
+  '/HealthApp/logo.png'
 ];
 
-// Install event
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        return cache.addAll(urlsToCache).catch(err => {
-          console.log('Cache error:', err);
-          return Promise.resolve();
-        });
-      })
-      .then(() => self.skipWaiting())
+self.addEventListener('install', (e) => {
+  e.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(FILES).catch(() => {});
+    })
   );
+  self.skipWaiting();
 });
 
-// Activate event
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then((names) => {
       return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
+        names.map((name) => {
+          if (name !== CACHE_NAME) return caches.delete(name);
         })
       );
-    }).then(() => self.clients.claim())
+    })
   );
+  self.clients.claim();
 });
 
-// Fetch event - Network first, fallback to cache
-self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') {
-    return;
-  }
-
-  event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        if (!response || response.status !== 200 || response.type === 'error') {
+self.addEventListener('fetch', (e) => {
+  e.respondWith(
+    caches.match(e.request).then((res) => {
+      return res || fetch(e.request).then((response) => {
+        return caches.open(CACHE_NAME).then((cache) => {
+          cache.put(e.request, response.clone());
           return response;
-        }
-
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAME)
-          .then(cache => {
-            cache.put(event.request, responseToCache);
-          });
-
-        return response;
-      })
-      .catch(() => {
-        return caches.match(event.request)
-          .then(response => {
-            return response || caches.match('./index.html');
-          });
-      })
+        });
+      });
+    }).catch(() => {
+      return caches.match('/HealthApp/index.html');
+    })
   );
 });

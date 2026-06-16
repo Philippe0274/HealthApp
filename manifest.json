@@ -1,23 +1,25 @@
 {
-  "name": "Health Tracker",
-  "short_name": "Health",
-  "description": "Bloeddruk monitor",
+  "name": "Bloeddruk/Medicatie Opvolgingstool",
+  "short_name": "Health Tracker",
+  "description": "Bloeddruk en medicatie tracker",
   "start_url": "/HealthApp/index.html",
-  "display": "standalone",
-  "theme_color": "#2563eb",
-  "background_color": "#ffffff",
-  "orientation": "portrait-primary",
   "scope": "/HealthApp/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#dc2626",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "/HealthApp/logo.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/HealthApp/logo.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
