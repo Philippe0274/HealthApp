@@ -123,6 +123,7 @@
                     }
                 } else {
                     delete this.data.intakes[this.date][id];
+                    this.sendTg(`❌ <b>${med.icon} ${med.name}</b> VERWIJDERD\n├─ Inname uit ${this.date}\n└─ 📊 ${this.getPills(id)}/${med.pills}`);
                 }
                 this.save();
                 this.show();
