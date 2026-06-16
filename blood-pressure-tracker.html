@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>❤️ Health Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { -webkit-user-select: none; user-select: none; }
+        input, button { -webkit-user-select: text !important; user-select: text !important; }
+        
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        
+        .calendar-grid { 
+            display: grid; 
+            grid-template-columns: repeat(7, 1fr); 
+            gap: 5px; 
+        }
+        
+        .day-cell {
+            aspect-ratio: 1;
+            border-radius: 12px;
+            padding: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 60px;
+            background: #ffffff;
+            border: 2px solid #e5e7eb;
+            font-weight: 600;
+        }
+        
+        .day-cell:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+        }
+        
+        .day-cell.weekend { background-color: #f9fafb; border-color: #d1d5db; }
+        .day-cell.holiday { background: linear-gradient(135deg, #fef08a 0%, #fde047 100%); border-color: #eab308; }
+        .day-cell.today { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border-color: #1d4ed8; }
+        
+        .day-cell.color-green { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-color: #6ee7b7; }
+        .day-cell.color-orange { background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); border-color: #fb923c; }
+        .day-cell.color-red { background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%); border-color: #f87171; }
+        
+        .pill-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            margin: 12px 0;
+        }
+        
+        .pill {
+            aspect-ratio: 1;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            min-height: 40px;
+        }
+        
+        .pill.taken { 
+            background: #d1d5db;
+            transform: scale(0.6);
+            box-shadow: none;
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            background: #ffffff;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        
+        .status-badge.empty {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+        
+        .status-badge.green {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-badge.orange {
+            background: #fed7aa;
+            color: #92400e;
+        }
+        
+        .status-badge.red {
+            background: #fecaca;
+            color: #7f1d1d;
+        }
+        
+        .moment-section {
+            background: white;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 10px;
+            border-left: 4px solid;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+        }
+        
+        .moment-section.ochtend { border-color: #f59e0b; }
+        .moment-section.middag { border-color: #ef4444; }
+        .moment-section.avond { border-color: #8b5cf6; }
+        
+        .input-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .save-btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2);
+        }
+        
+        .save-btn:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="app"></div>
+
+    <script>
+        function generateHolidays() {
+            const holidays = {};
+            
+            for (let year = 2024; year <= 2060; year++) {
+                holidays[year] = {
+                    '01-01': 'Nieuwjaarsdag',
+                    '05-01': 'Dag van de Arbeid',
+                    '07-21': 'Belgische Nationale Feestdag',
+                    '08-15': 'Onze-Lieve-Vrouw ten Hemelopneming',
+                    '11-01': 'Allerheiligen',
+                    '11-11': 'Wapenstilstand',
+                    '12-25': 'Kerstmis'
+                };
+                
+                const easter = computeEaster(year);
+                const easterDate = `${String(easter.month).padStart(2, '0')}-${String(easter.date).padStart(2, '0')}`;
+                holidays[year][easterDate] = 'Pasen';
+                
+                const ascension = new Date(year, easter.month - 1, easter.date + 39);
+                const ascensionDate = `${String(ascension.getMonth() + 1).padStart(2, '0')}-${String(ascension.getDate()).padStart(2, '0')}`;
+                holidays[year][ascensionDate] = 'Hemelvaartsdag';
+                
+                const pentecost = new Date(year, easter.month - 1, easter.date + 49);
+                const pentecostDate = `${String(pentecost.getMonth() + 1).padStart(2, '0')}-${String(pentecost.getDate()).padStart(2, '0')}`;
+                holidays[year][pentecostDate] = 'Eerste Pinksterdag';
+            }
+            
+            return holidays;
+        }
+
+        function computeEaster(year) {
+            const a = year % 19;
+            const b = Math.floor(year / 100);
+            const c = year % 100;
+            const d = Math.floor(b / 4);
+            const e = b % 4;
+            const f = Math.floor((b + 8) / 25);
+            const g = Math.floor((b - f + 1) / 3);
+            const h = (19 * a + b - d - g + 15) % 30;
+            const i = Math.floor(c / 4);
+            const k = c % 4;
+            const l = (32 + 2 * e + 2 * i - h - k) % 7;
+            const m = Math.floor((a + 11 * h + 22 * l) / 451);
+            const month = Math.floor((h + l - 7 * m + 114) / 31);
+            const date = ((h + l - 7 * m + 114) % 31) + 1;
+            return { month, date };
+        }
+
+        const HOLIDAYS = generateHolidays();
+
+        class HealthTracker {
+            constructor() {
+                this.data = this.loadData('healthTrackerData') || {
+                    measurements: {},
+                    medicationIntakes: {},
+                };
+                
+                this.currentMonth = new Date();
+                this.selectedDate = null;
+                this.view = 'calendar';
+                
+                this.render();
+            }
+
+            loadData(key) {
+                return JSON.parse(localStorage.getItem(key));
+            }
+
+            saveData(key, value) {
+                localStorage.setItem(key, JSON.stringify(value));
+            }
+
+            getTodayDate() {
+                const d = new Date();
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            }
+
+            getColorStatus(sys, dia) {
+                if (!sys || !dia) return 'empty';
+                const s = parseInt(sys);
+                const d = parseInt(dia);
+                if (isNaN(s) || isNaN(d)) return 'empty';
+                if (s < 130 && d < 85) return 'green';
+                if ((s >= 130 && s < 160) || (d >= 85 && d < 100)) return 'orange';
+                return 'red';
+            }
+
+            isHoliday(dateStr) {
+                const [year, month, day] = dateStr.split('-');
+                return HOLIDAYS[year]?.[`${month}-${day}`];
+            }
+
+            isWeekend(dateStr) {
+                const date = new Date(dateStr);
+                return date.getDay() === 0 || date.getDay() === 6;
+            }
+
+            getPillsRemaining() {
+                return 49 - Object.keys(this.data.medicationIntakes || {}).length;
+            }
+
+            getBestColorForDay(dateStr) {
+                const measurements = this.data.measurements[dateStr];
+                if (!measurements) return null;
+                
+                let worst = 'green';
+                ['ochtend', 'middag', 'avond'].forEach(moment => {
+                    const m = measurements[moment];
+                    if (m?.sys && m?.dia) {
+                        const color = this.getColorStatus(m.sys, m.dia);
+                        if (color === 'red') worst = 'red';
+                        else if (color === 'orange' && worst !== 'red') worst = 'orange';
+                    }
+                });
+                return worst;
+            }
+
+            selectDate(dateStr) {
+                this.selectedDate = dateStr;
+                this.view = 'day';
+                this.render();
+            }
+
+            goBackToCalendar() {
+                this.view = 'calendar';
+                this.render();
+            }
+
+            saveMeasurement(moment, sys, dia, hartslag) {
+                if (!this.data.measurements) this.data.measurements = {};
+                if (!this.data.measurements[this.selectedDate]) {
+                    this.data.measurements[this.selectedDate] = {};
+                }
+                
+                if (sys && dia && hartslag) {
+                    this.data.measurements[this.selectedDate][moment] = {
+                        sys: parseInt(sys),
+                        dia: parseInt(dia),
+                        hartslag: parseInt(hartslag)
+                    };
+                } else {
+                    delete this.data.measurements[this.selectedDate][moment];
+                }
+                
+                this.saveData('healthTrackerData', this.data);
+            }
+
+            recordMedicationIntake(time) {
+                if (!this.data.medicationIntakes) this.data.medicationIntakes = {};
+                
+                if (time) {
+                    this.data.medicationIntakes[this.selectedDate] = time;
+                } else {
+                    delete this.data.medicationIntakes[this.selectedDate];
+                }
+                
+                this.saveData('healthTrackerData', this.data);
+                this.render();
+            }
+
+            updateStatusBadge(moment) {
+                const sys = document.querySelector(`.sys-${moment}`)?.value || '';
+                const dia = document.querySelector(`.dia-${moment}`)?.value || '';
+                const status = this.getColorStatus(sys, dia);
+                const badge = document.getElementById(`status-${moment}`);
+                
+                if (badge) {
+                    badge.className = `status-badge ${status}`;
+                    badge.innerHTML = status === 'empty' ? '❌' : `<span style="width: 8px; height: 8px; border-radius: 50%; background: ${status === 'green' ? '#10b981' : status === 'orange' ? '#f59e0b' : '#ef4444'}; margin-right: 6px;"></span>${sys}/${dia}`;
+                }
+                
+                // Auto-save
+                const hartslag = document.querySelector(`.hartslag-${moment}`)?.value || '';
+                if (sys && dia && hartslag) {
+                    this.saveMeasurement(moment, sys, dia, hartslag);
+                }
+            }
+
+            render() {
+                if (this.view === 'calendar') {
+                    document.getElementById('app').innerHTML = this.renderCalendar();
+                } else {
+                    document.getElementById('app').innerHTML = this.renderDayView();
+                }
+                this.attachListeners();
+            }
+
+            renderCalendar() {
+                const year = this.currentMonth.getFullYear();
+                const month = this.currentMonth.getMonth();
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
+                const daysInMonth = lastDay.getDate();
+                const startingDayOfWeek = firstDay.getDay();
+                
+                const monthNames = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+                const dayNames = ['Zo', 'Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za'];
+                
+                const today = this.getTodayDate();
+                let calendarDays = '';
+
+                for (let i = 0; i < startingDayOfWeek; i++) {
+                    calendarDays += '<div></div>';
+                }
+
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const isToday = dateStr === today;
+                    const isWeekend = this.isWeekend(dateStr);
+                    const holiday = this.isHoliday(dateStr);
+                    const dataColor = this.getBestColorForDay(dateStr);
+                    const hasMeasurements = dataColor !== null;
+
+                    let classes = 'day-cell';
+                    if (isToday) classes += ' today';
+                    if (isWeekend && !isToday) classes += ' weekend';
+                    if (holiday) classes += ' holiday';
+                    if (hasMeasurements) classes += ` color-${dataColor}`;
+
+                    calendarDays += `
+                        <div class="${classes}" data-date="${dateStr}">
+                            <div style="font-size: 16px; font-weight: 700;">${day}</div>
+                            ${holiday ? `<div style="font-size: 8px; margin-top: 2px; opacity: 0.6;">${holiday.substring(0, 4)}</div>` : ''}
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div style="min-height: 100vh; background: #f9fafb; padding: 12px;">
+                        <!-- Header -->
+                        <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border-radius: 16px; padding: 12px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2); display: flex; align-items: center; gap: 12px;">
+                            <img src="logo.png" alt="Health Tracker" style="width: 48px; height: 48px; border-radius: 12px; background: white; padding: 4px;">
+                            <div>
+                                <h1 style="font-size: 18px; font-weight: 700; margin: 0;">Health Tracker</h1>
+                                <p style="font-size: 12px; opacity: 0.9; margin: 0;">Dagelijkse monitoring</p>
+                            </div>
+                        </div>
+
+                        <!-- Pill Status -->
+                        <div style="background: white; border-radius: 12px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.03);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <h2 style="font-size: 14px; font-weight: 700;">💊 ${this.getPillsRemaining()}/49</h2>
+                                <div style="font-size: 12px; font-weight: 600; ${this.getPillsRemaining() > 10 ? "color: #10b981;" : this.getPillsRemaining() >= 5 ? "color: #f59e0b;" : "color: #ef4444;"}">
+                                    ${this.getPillsRemaining() > 10 ? '✅ OK' : this.getPillsRemaining() >= 5 ? '⚠️ Laag' : '🚨 Kritiek'}
+                                </div>
+                            </div>
+                            <div class="pill-grid">
+                                ${[...Array(49)].map((_, i) => `
+                                    <div class="pill ${i >= this.getPillsRemaining() ? 'taken' : ''}"></div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Month Navigation -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px;">
+                            <button class="prev-month" style="background: white; border: none; border-radius: 10px; width: 36px; height: 36px; font-size: 16px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.03);">◀</button>
+                            <h2 style="font-size: 16px; font-weight: 700; text-transform: capitalize; flex: 1; text-align: center;">${monthNames[month]} ${year}</h2>
+                            <button class="next-month" style="background: white; border: none; border-radius: 10px; width: 36px; height: 36px; font-size: 16px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.03);">▶</button>
+                        </div>
+
+                        <!-- Calendar -->
+                        <div style="background: white; border-radius: 12px; padding: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.03); overflow-y: auto; max-height: 400px;">
+                            <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 8px;">
+                                ${dayNames.map(d => `<div style="text-align: center; font-weight: 600; color: #6b7280; font-size: 11px; padding: 8px 0;">${d}</div>`).join('')}
+                            </div>
+                            <div class="calendar-grid">
+                                ${calendarDays}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderDayView() {
+                const [year, month, day] = this.selectedDate.split('-');
+                const dateObj = new Date(this.selectedDate);
+                const dayName = dateObj.toLocaleDateString('nl-NL', { weekday: 'short' });
+                const monthName = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'][month - 1];
+                const holiday = this.isHoliday(this.selectedDate);
+                const measurements = this.data.measurements[this.selectedDate] || {};
+                const medicineTime = this.data.medicationIntakes?.[this.selectedDate];
+
+                const renderMoment = (moment, icon, timeDisplay) => {
+                    const data = measurements[moment];
+                    const sys = data?.sys || '';
+                    const dia = data?.dia || '';
+                    const hartslag = data?.hartslag || '';
+                    const status = this.getColorStatus(sys, dia);
+
+                    return `
+                        <div class="moment-section ${moment}">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <div>
+                                    <div style="font-weight: 700; font-size: 14px;">${icon} ${moment.charAt(0).toUpperCase() + moment.slice(1)}</div>
+                                    <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">${timeDisplay}</div>
+                                </div>
+                                <div class="status-badge ${status}" id="status-${moment}">
+                                    ${status === 'empty' ? '❌' : `<span style="width: 6px; height: 6px; border-radius: 50%; background: ${status === 'green' ? '#10b981' : status === 'orange' ? '#f59e0b' : '#ef4444'}; margin-right: 4px;"></span>${sys}/${dia}`}
+                                </div>
+                            </div>
+
+                            <div class="input-group">
+                                <input type="number" class="input-field sys-${moment}" placeholder="Sys" value="${sys}" oninput="app.updateStatusBadge('${moment}');">
+                                <input type="number" class="input-field dia-${moment}" placeholder="Dia" value="${dia}" oninput="app.updateStatusBadge('${moment}');">
+                                <input type="number" class="input-field hartslag-${moment}" placeholder="HR" value="${hartslag}" oninput="app.updateStatusBadge('${moment}');">
+                            </div>
+                        </div>
+                    `;
+                };
+
+                return `
+                    <div style="min-height: 100vh; background: #f9fafb; padding: 12px 12px 100px 12px;">
+                        <!-- Header -->
+                        <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border-radius: 16px; padding: 12px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                <button class="back-btn" style="background: rgba(255,255,255,0.2); border: none; border-radius: 8px; width: 32px; height: 32px; color: white; font-size: 16px; cursor: pointer;">◀</button>
+                                <img src="logo.png" alt="Health Tracker" style="width: 32px; height: 32px; border-radius: 8px; background: white; padding: 2px;">
+                            </div>
+                            <h1 style="font-size: 18px; font-weight: 700; margin-bottom: 2px; text-transform: capitalize;">${dayName} ${day} ${monthName}</h1>
+                            ${holiday ? `<p style="font-size: 12px; opacity: 0.95;">🎉 ${holiday}</p>` : ''}
+                        </div>
+
+                        <!-- Medication -->
+                        <div style="background: white; border-radius: 12px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.03); border-left: 4px solid #8b5cf6;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <h2 style="font-size: 14px; font-weight: 700;">💊 Belsar</h2>
+                                <span style="background: #8b5cf6; color: white; padding: 3px 8px; border-radius: 12px; font-weight: 600; font-size: 12px;">${this.getPillsRemaining()}/49</span>
+                            </div>
+                            ${medicineTime ? `<div style="background: #d1fae5; border-radius: 8px; padding: 8px; margin-bottom: 8px; font-size: 12px; color: #065f46; font-weight: 600;">✅ ${medicineTime}</div>` : `<div style="background: #fef3c7; border-radius: 8px; padding: 8px; margin-bottom: 8px; font-size: 12px; color: #92400e; font-weight: 600;">⏰ Niet ingevuld</div>`}
+                            <div style="display: flex; gap: 6px;">
+                                <input type="time" class="input-field medicine-time" style="flex: 1;" value="${medicineTime || ''}" oninput="app.recordMedicationIntake(this.value);">
+                                <button style="padding: 10px 12px; background: #8b5cf6; color: white; border: none; border-radius: 10px; font-weight: 700; font-size: 12px; cursor: pointer;" onclick="app.recordMedicationIntake('');">✕</button>
+                            </div>
+                        </div>
+
+                        <!-- Moments -->
+                        ${renderMoment('ochtend', '🌅', '8:00 AM')}
+                        ${renderMoment('middag', '☀️', '13:00 (1 PM)')}
+                        ${renderMoment('avond', '🌙', '20:00 (8 PM)')}
+                    </div>
+                `;
+            }
+
+            attachListeners() {
+                if (this.view === 'calendar') {
+                    document.querySelectorAll('.day-cell').forEach(cell => {
+                        cell.addEventListener('click', () => {
+                            const date = cell.dataset.date;
+                            if (date) this.selectDate(date);
+                        });
+                    });
+
+                    document.querySelector('.prev-month')?.addEventListener('click', () => {
+                        this.currentMonth.setMonth(this.currentMonth.getMonth() - 1);
+                        this.render();
+                    });
+
+                    document.querySelector('.next-month')?.addEventListener('click', () => {
+                        this.currentMonth.setMonth(this.currentMonth.getMonth() + 1);
+                        this.render();
+                    });
+                } else {
+                    document.querySelector('.back-btn')?.addEventListener('click', () => {
+                        this.goBackToCalendar();
+                    });
+                }
+            }
+        }
+
+        const app = new HealthTracker();
+    </script>
+</body>
+</html>
