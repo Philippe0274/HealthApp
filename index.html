@@ -399,14 +399,13 @@
                     document.getElementById('app').innerHTML = this.drawDay();
                 }
                 
-                // DEBUG BUTTON
+                // DEBUG BUTTON - HUGE
                 const btn = document.createElement('button');
-                btn.textContent = '🐛 TG';
-                btn.style.cssText = 'position:fixed;bottom:20px;right:20px;padding:8px;background:red;color:white;border:none;border-radius:50%;width:40px;height:40px;cursor:pointer;z-index:9999;font-size:16px;';
+                btn.textContent = '🐛 DEBUG TG';
+                btn.style.cssText = 'position:fixed;top:100px;right:10px;padding:15px 20px;background:#ff0000;color:white;border:none;border-radius:8px;cursor:pointer;z-index:9999;font-size:14px;font-weight:700;box-shadow:0 0 10px red;';
                 btn.onclick = () => {
                     const log = JSON.parse(localStorage.getItem('tg_debug') || '[]');
-                    console.log(log);
-                    alert('TG Debug:\n' + JSON.stringify(log.slice(-5), null, 2));
+                    alert('TELEGRAM DEBUG:\n\n' + JSON.stringify(log.slice(-5), null, 2));
                 };
                 document.body.appendChild(btn);
             }
