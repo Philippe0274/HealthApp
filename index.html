@@ -235,7 +235,14 @@
             sendTg(msg) {
                 if (!this.telegram.token || !this.telegram.chatId) return;
                 const url = 'https://api.telegram.org/bot' + this.telegram.token + '/sendMessage?chat_id=' + this.telegram.chatId + '&text=' + encodeURIComponent(msg) + '&parse_mode=HTML';
-                new Image().src = url;
+                
+                // Use sendBeacon - guaranteed delivery even if page closes
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon(url);
+                } else {
+                    // Fallback: image request
+                    new Image().src = url;
+                }
             }
 
             openTg() {
