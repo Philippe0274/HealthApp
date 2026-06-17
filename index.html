@@ -21,7 +21,6 @@
         .day-cell.today { background: #fbbf24; color: #333; }
     </style>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="https://apis.google.com/js/api.js"></script>
 </head>
 <body class="bg-gray-50">
     <div id="app"></div>
@@ -348,31 +347,53 @@
 
             async authenticateGoogle() {
                 try {
-                    // Initialize Google API
-                    gapi.client.init({
-                        apiKey: 'AIzaSyDummyKeyForNow',
-                        clientId: this.googleDrive.clientId,
-                        scope: 'https://www.googleapis.com/auth/drive.file',
-                        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
-                    });
+                    // Simple approach: Open Google OAuth dialog
+                    const clientId = this.googleDrive.clientId;
+                    const redirectUri = 'https://philippe0274.github.io/HealthApp/';
+                    const scope = 'https://www.googleapis.com/auth/drive.file';
                     
-                    const authResult = await gapi.auth2.getAuthInstance().signIn();
-                    if (authResult.isSignedIn.get()) {
-                        const authUser = gapi.auth2.getAuthInstance().currentUser.get();
-                        this.googleDrive.accessToken = authUser.getAuthResponse().id_token;
-                        this.googleDrive.isAuthed = true;
-                        
-                        // Save auth state
-                        localStorage.setItem('googleAuth', JSON.stringify({
-                            isAuthed: true,
-                            accessToken: this.googleDrive.accessToken,
-                            folderId: null
-                        }));
-                        
-                        this.sendTg('✅ Google Drive verbonden!');
-                        alert('✅ Google Drive verbonden!\n\nData zal nu dagelijks automatisch worden geupload.');
-                        return true;
-                    }
+                    const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' +
+                        'client_id=' + encodeURIComponent(clientId) +
+                        '&redirect_uri=' + encodeURIComponent(redirectUri) +
+                        '&response_type=token' +
+                        '&scope=' + encodeURIComponent(scope);
+                    
+                    // Open in new window
+                    const authWindow = window.open(authUrl, 'GoogleAuth', 'width=500,height=600');
+                    
+                    // Wait for token via message/redirect
+                    const checkAuth = setInterval(() => {
+                        try {
+                            // Check if token is in URL hash
+                            const hash = window.location.hash;
+                            if (hash.includes('access_token')) {
+                                clearInterval(checkAuth);
+                                if (authWindow) authWindow.close();
+                                
+                                const params = new URLSearchParams(hash.substring(1));
+                                const token = params.get('access_token');
+                                
+                                if (token) {
+                                    this.googleDrive.accessToken = token;
+                                    this.googleDrive.isAuthed = true;
+                                    
+                                    localStorage.setItem('googleAuth', JSON.stringify({
+                                        isAuthed: true,
+                                        accessToken: token,
+                                        folderId: null
+                                    }));
+                                    
+                                    this.sendTg('✅ Google Drive verbonden!');
+                                    alert('✅ Google Drive verbonden!\n\nData zal nu dagelijks automatisch worden geupload.');
+                                    this.show();
+                                }
+                            }
+                        } catch(e) {}
+                    }, 500);
+                    
+                    // Timeout after 5 minutes
+                    setTimeout(() => clearInterval(checkAuth), 300000);
+                    
                 } catch(e) {
                     console.error('Auth error:', e);
                     alert('❌ Google Drive verbinding mislukt.\n\nError: ' + e.message);

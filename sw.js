@@ -1,4 +1,4 @@
-const CACHE = 'health-tracker-v1';
+const CACHE = 'health-tracker-v' + Date.now(); // Force new cache on every load
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
@@ -7,15 +7,18 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then(names => {
-      return Promise.all(names.filter(n => n !== CACHE).map(n => caches.delete(n)));
+      return Promise.all(names.map(n => caches.delete(n))); // Delete ALL old caches
     })
   );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', (e) => {
-  // Allow Telegram API calls - don't cache
-  if (e.request.url.includes('api.telegram.org')) {
+  // Allow external APIs - don't cache
+  if (e.request.url.includes('api.telegram.org') || 
+      e.request.url.includes('googleapis.com') ||
+      e.request.url.includes('accounts.google.com') ||
+      e.request.url.includes('gsi/client')) {
     return e.respondWith(fetch(e.request));
   }
   
