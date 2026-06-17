@@ -1,0 +1,30 @@
+name: Daily Health Checks
+
+on:
+  schedule:
+    - cron: '0 10 * * *'
+    - cron: '0 13 * * *'
+    - cron: '0 19 * * *'
+    - cron: '0 21 * * *'
+
+jobs:
+  send-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram check
+        run: |
+          HOUR=$(date -u +%H)
+          
+          if [ "$HOUR" = "10" ]; then
+            MESSAGE="💊 MEDICATIE CHECK%0AHeb je je medicatie al ingenomen?"
+          elif [ "$HOUR" = "13" ]; then
+            MESSAGE="🌤️ MIDDAG BLOEDWAARDEN%0AHeb je je metingen gedaan?"
+          elif [ "$HOUR" = "19" ]; then
+            MESSAGE="🌙 AVOND BLOEDWAARDEN%0AHeb je je metingen gedaan?"
+          elif [ "$HOUR" = "21" ]; then
+            MESSAGE="📊 DAGELIJKS RAPPORT%0AWachten op app data..."
+          fi
+          
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHATID }}" \
+            -d "text=$MESSAGE"
