@@ -2,10 +2,10 @@ name: Daily Health Checks
 
 on:
   schedule:
-    - cron: '0 10 * * *'
-    - cron: '0 13 * * *'
+    - cron: '0 8 * * *'
+    - cron: '0 11 * * *'
+    - cron: '0 17 * * *'
     - cron: '0 19 * * *'
-    - cron: '0 21 * * *'
   workflow_dispatch:
 
 jobs:
@@ -16,14 +16,14 @@ jobs:
         run: |
           HOUR=$(date -u +%H)
           
-          if [ "$HOUR" = "10" ]; then
+          if [ "$HOUR" = "08" ]; then
             MESSAGE="💊 MEDICATIE CHECK - 10:00%0AHeb je je medicatie al ingenomen?"
-          elif [ "$HOUR" = "13" ]; then
+          elif [ "$HOUR" = "11" ]; then
             MESSAGE="🌤️ MIDDAG BLOEDWAARDEN - 13:00%0AHeb je je metingen gedaan?"
-          elif [ "$HOUR" = "19" ]; then
+          elif [ "$HOUR" = "17" ]; then
             MESSAGE="🌙 AVOND BLOEDWAARDEN - 19:00%0AHeb je je metingen gedaan?"
-          elif [ "$HOUR" = "21" ]; then
-            MESSAGE="📊 DAGELIJKS RAPPORT%0AWachting op app data..."
+          elif [ "$HOUR" = "19" ]; then
+            MESSAGE="📊 DAGELIJKS RAPPORT - 21:00%0AWachting op app data..."
           fi
           
           curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
