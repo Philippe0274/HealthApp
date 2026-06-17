@@ -9,23 +9,42 @@ on:
   workflow_dispatch:
 
 jobs:
-  send-check:
+  send-med-check:
     runs-on: ubuntu-latest
+    if: github.event.schedule == '0 8 * * *' || github.event_name == 'workflow_dispatch'
     steps:
-      - name: Send Telegram check
+      - name: Send Medicatie Check
         run: |
-          HOUR=$(date -u +%H)
-          
-          if [ "$HOUR" = "08" ]; then
-            MESSAGE="💊 MEDICATIE CHECK - 10:00%0AHeb je je medicatie al ingenomen?"
-          elif [ "$HOUR" = "11" ]; then
-            MESSAGE="🌤️ MIDDAG BLOEDWAARDEN - 13:00%0AHeb je je metingen gedaan?"
-          elif [ "$HOUR" = "17" ]; then
-            MESSAGE="🌙 AVOND BLOEDWAARDEN - 19:00%0AHeb je je metingen gedaan?"
-          elif [ "$HOUR" = "19" ]; then
-            MESSAGE="📊 DAGELIJKS RAPPORT - 21:00%0AWachting op app data..."
-          fi
-          
           curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
             -d "chat_id=8526489078" \
-            -d "text=$MESSAGE"
+            -d "text=💊 MEDICATIE CHECK - 10:00%0AHeb je je medicatie al ingenomen?"
+
+  send-middag-check:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 11 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Send Middag Check
+        run: |
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
+            -d "chat_id=8526489078" \
+            -d "text=🌤️ MIDDAG BLOEDWAARDEN - 13:00%0AHeb je je metingen gedaan?"
+
+  send-avond-check:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 17 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Send Avond Check
+        run: |
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
+            -d "chat_id=8526489078" \
+            -d "text=🌙 AVOND BLOEDWAARDEN - 19:00%0AHeb je je metingen gedaan?"
+
+  send-rapport:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 19 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Send Rapport
+        run: |
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
+            -d "chat_id=8526489078" \
+            -d "text=📊 DAGELIJKS RAPPORT - 21:00%0AWachting op app data..."
