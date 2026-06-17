@@ -34,7 +34,8 @@
                     this.data = saved ? JSON.parse(saved) : {
                         meds: [{ id: '1', name: 'Belsar', dosage: '20mg', pills: 49, color: '#ff0000', icon: '💊' }],
                         intakes: {},
-                        measures: {}
+                        measures: {},
+                        rapportages: {}
                     };
                 } catch(e) {
                     this.data = {
@@ -48,6 +49,14 @@
                 this.date = null;
                 this.view = 'cal';
                 this.showSet = false;
+                this.settingsVisible = false;
+                this.settings = JSON.parse(localStorage.getItem('settings') || JSON.stringify({
+                    ochtendDeadline: '10:00',
+                    middagDeadline: '13:00',
+                    avondDeadline: '19:00',
+                    medicatieCheck: '10:00',
+                    rapportCheck: '21:00'
+                }));
                 this.show();
             }
 
@@ -244,7 +253,9 @@
                 const backup = {
                     meds: this.data.meds,
                     intakes: this.data.intakes,
-                    measures: this.data.measures
+                    measures: this.data.measures,
+                    rapportages: this.data.rapportages || {},
+                    settings: this.settings
                 };
                 const blob = new Blob([JSON.stringify(backup)], {type: 'application/json'});
                 const url = URL.createObjectURL(blob);
@@ -253,6 +264,55 @@
                 a.download = 'backup-' + new Date().toISOString().split('T')[0] + '.json';
                 a.click();
                 URL.revokeObjectURL(url);
+            }
+
+            sendReport() {
+                const rapport = this.generateReport();
+                if (!rapport) return;
+                
+                const msg = '📊 DAGELIJKS RAPPORT - ' + rapport.date + '\n\n🌅 Ochtend: ' + rapport.measurements.ochtend + '\n🌤️ Middag: ' + rapport.measurements.middag + '\n🌙 Avond: ' + rapport.measurements.avond + '\n\nGemiddelden: ' + rapport.averages.sys + '/' + rapport.averages.dia + ' (HR:' + rapport.averages.hr + ')\n\n' + rapport.status.esc + '\n' + rapport.status.thuis + '\n\n' + rapport.message;
+                this.sendTg(msg);
+            }
+
+            generateReport() {
+                const today = new Date().toISOString().split('T')[0];
+                const measures = this.data.measures[today] || {};
+                
+                if (!measures.ochtend && !measures.middag && !measures.avond) return null;
+                
+                const o = measures.ochtend;
+                const m = measures.middag;
+                const a = measures.avond;
+                
+                let sL = [];
+                let dL = [];
+                let hL = [];
+                if (o) { sL.push(o.sys); dL.push(o.dia); hL.push(o.hr); }
+                if (m) { sL.push(m.sys); dL.push(m.dia); hL.push(m.hr); }
+                if (a) { sL.push(a.sys); dL.push(a.dia); hL.push(a.hr); }
+                
+                const avgS = Math.round(sL.reduce((x,y) => x+y, 0) / sL.length);
+                const avgD = Math.round(dL.reduce((x,y) => x+y, 0) / dL.length);
+                const avgH = Math.round(hL.reduce((x,y) => x+y, 0) / hL.length);
+                
+                let esc, thuis, msg;
+                if (avgS < 120 && avgD < 80) { esc = '✅ NORMAAL'; thuis = '🟢 GOED'; msg = 'Fantastisch!'; }
+                else if (avgS < 135 && avgD < 85) { esc = '🟡 VERHOOGD'; thuis = '🟡 ATTENTIE'; msg = 'Prima!'; }
+                else if (avgS < 140 && avgD < 90) { esc = '🟠 HYPERTENSIE 1'; thuis = '🟠 ALERT'; msg = 'Let op!'; }
+                else { esc = '🔴 HYPERTENSIE 2'; thuis = '🔴 KRITISCH'; msg = 'Neem contact arts!'; }
+                
+                const r = {
+                    date: today,
+                    measurements: { ochtend: o ? o.sys + '/' + o.dia + ' (HR:' + o.hr + ') @ ' + o.time : 'Niet ingegeven', middag: m ? m.sys + '/' + m.dia + ' (HR:' + m.hr + ') @ ' + m.time : 'Niet ingegeven', avond: a ? a.sys + '/' + a.dia + ' (HR:' + a.hr + ') @ ' + a.time : 'Niet ingegeven' },
+                    averages: { sys: avgS, dia: avgD, hr: avgH },
+                    status: { esc: esc, thuis: thuis },
+                    message: msg
+                };
+                
+                this.data.rapportages = this.data.rapportages || {};
+                this.data.rapportages[today] = r;
+                localStorage.setItem('data', JSON.stringify(this.data));
+                return r;
             }
 
             uploadBackup() {
@@ -268,15 +328,34 @@
                             this.data.meds = backup.meds || [];
                             this.data.intakes = backup.intakes || {};
                             this.data.measures = backup.measures || {};
+                            this.data.rapportages = backup.rapportages || {};
+                            this.settings = backup.settings || this.settings;
                             localStorage.setItem('data', JSON.stringify(this.data));
+                            localStorage.setItem('settings', JSON.stringify(this.settings));
                             this.show();
                         } catch(err) {
-                            console.error('Restore error:', err);
+                            console.error('Error:', err);
                         }
                     };
                     reader.readAsText(file);
                 };
                 input.click();
+            }
+
+            showSettings() {
+                this.settingsVisible = !this.settingsVisible;
+                this.show();
+            }
+
+            saveSettings() {
+                this.settings.ochtendDeadline = document.getElementById('ochtendInput').value;
+                this.settings.middagDeadline = document.getElementById('middagInput').value;
+                this.settings.avondDeadline = document.getElementById('avondInput').value;
+                this.settings.medicatieCheck = document.getElementById('medicatieInput').value;
+                this.settings.rapportCheck = document.getElementById('rapportInput').value;
+                localStorage.setItem('settings', JSON.stringify(this.settings));
+                this.settingsVisible = false;
+                setTimeout(() => { this.show(); }, 100);
             }
 
             openTg() {
@@ -452,6 +531,7 @@
                 html += '<button onclick="app.openTg()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:4px;border-radius:6px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;"><img src="./telegram.png" style="width:24px;height:24px;"></button>';
                 html += '<button onclick="app.downloadBackup()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:4px;border-radius:6px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;"><img src="./recovery.png" style="width:24px;height:24px;"></button>';
                 html += '<button onclick="app.uploadBackup()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:4px;border-radius:6px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;"><img src="./database-management.png" style="width:24px;height:24px;"></button>';
+                html += '<button onclick="app.showSettings()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:4px;border-radius:6px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;"><img src="./24-hours.png" style="width:24px;height:24px;"></button>';
                 html += '<button onclick="app.showSet=!app.showSet;app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:4px;border-radius:6px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;"><img src="./drugs.png" style="width:24px;height:24px;"></button>';
                 html += '<button onclick="app.openReport()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:4px;border-radius:6px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;"><img src="./folder.png" style="width:24px;height:24px;"></button>';
                 html += '<button onclick="app.month=new Date();app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:4px;border-radius:6px;flex-shrink:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;"><img src="./event.png" style="width:24px;height:24px;"></button>';
@@ -469,6 +549,39 @@
                         html += '</div></div>';
                     }
                     html += '<button onclick="app.addMed()" style="background:#10b981;color:white;border:none;border-radius:8px;padding:8px 12px;width:100%;font-weight:700;cursor:pointer;margin-top:8px;">+ Toevoegen</button>';
+                    html += '</div>';
+                }
+
+                if (this.settingsVisible) {
+                    html += '<div style="background:white;border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';
+                    html += '<h2 style="font-size:14px;font-weight:700;margin-bottom:10px;">⏰ REMINDERS INSTELLINGEN</h2>';
+                    
+                    html += '<div style="margin-bottom:8px;">';
+                    html += '<label style="font-size:11px;font-weight:600;color:#374151;">Ochtend deadline</label>';
+                    html += '<input id="ochtendInput" type="time" value="' + this.settings.ochtendDeadline + '" style="width:50%;padding:6px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;">';
+                    html += '</div>';
+                    
+                    html += '<div style="margin-bottom:8px;">';
+                    html += '<label style="font-size:11px;font-weight:600;color:#374151;">Middag deadline</label>';
+                    html += '<input id="middagInput" type="time" value="' + this.settings.middagDeadline + '" style="width:50%;padding:6px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;">';
+                    html += '</div>';
+                    
+                    html += '<div style="margin-bottom:8px;">';
+                    html += '<label style="font-size:11px;font-weight:600;color:#374151;">Avond deadline</label>';
+                    html += '<input id="avondInput" type="time" value="' + this.settings.avondDeadline + '" style="width:50%;padding:6px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;">';
+                    html += '</div>';
+                    
+                    html += '<div style="margin-bottom:8px;">';
+                    html += '<label style="font-size:11px;font-weight:600;color:#374151;">Medicatie check</label>';
+                    html += '<input id="medicatieInput" type="time" value="' + this.settings.medicatieCheck + '" style="width:50%;padding:6px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;">';
+                    html += '</div>';
+                    
+                    html += '<div style="margin-bottom:8px;">';
+                    html += '<label style="font-size:11px;font-weight:600;color:#374151;">Rapport check</label>';
+                    html += '<input id="rapportInput" type="time" value="' + this.settings.rapportCheck + '" style="width:50%;padding:6px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;">';
+                    html += '</div>';
+                    
+                    html += '<button onclick="app.saveSettings()" style="background:#8b5cf6;color:white;border:none;border-radius:8px;padding:6px 10px;width:50%;font-weight:700;font-size:12px;cursor:pointer;">💾 OPSLAAN</button>';
                     html += '</div>';
                 }
 
