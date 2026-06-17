@@ -3,6 +3,7 @@ name: Daily Health Checks
 on:
   schedule:
     - cron: '* * * * *'
+  workflow_dispatch:
 
 jobs:
   send-check:
