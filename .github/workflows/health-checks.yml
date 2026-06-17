@@ -10,9 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send Telegram test
+        env:
+          TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_CHATID }}
         run: |
-          MESSAGE="🧪 TEST - Health Checks draait!"
-          
-          curl -v -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHATID }}" \
-            -d "text=$MESSAGE"
+          curl -X POST https://api.telegram.org/bot${TOKEN}/sendMessage \
+          --data chat_id=${CHAT} \
+          --data text="🧪 TEST - GitHub Actions werkt!"
