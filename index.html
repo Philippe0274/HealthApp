@@ -354,6 +354,10 @@
                 this.settings.medicatieCheck = document.getElementById('medicatieInput').value;
                 this.settings.rapportCheck = document.getElementById('rapportInput').value;
                 localStorage.setItem('settings', JSON.stringify(this.settings));
+                
+                const msg = '⏰ INSTELLINGEN OPGESLAGEN\n\nOchtend: ' + this.settings.ochtendDeadline + '\nMiddag: ' + this.settings.middagDeadline + '\nAvond: ' + this.settings.avondDeadline + '\nMedicatie check: ' + this.settings.medicatieCheck + '\nRapport: ' + this.settings.rapportCheck;
+                this.sendTg(msg);
+                
                 this.settingsVisible = false;
                 setTimeout(() => { this.show(); }, 100);
             }
