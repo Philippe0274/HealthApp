@@ -14,10 +14,9 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // Don't cache Telegram API calls - let them go direct
+  // Allow Telegram API calls - don't cache
   if (e.request.url.includes('api.telegram.org')) {
-    e.respondWith(fetch(e.request));
-    return;
+    return e.respondWith(fetch(e.request));
   }
   
   e.respondWith(
