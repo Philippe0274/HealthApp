@@ -13,6 +13,6 @@ jobs:
         run: |
           MESSAGE="🧪 TEST - Health Checks draait!"
           
-          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
+          curl -v -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_CHATID }}" \
             -d "text=$MESSAGE"
