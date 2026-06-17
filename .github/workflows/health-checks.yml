@@ -3,6 +3,7 @@ name: Daily Health Checks
 on:
   schedule:
     - cron: '0 8 * * *'
+    - cron: '0 9 * * *'
     - cron: '0 11 * * *'
     - cron: '0 17 * * *'
     - cron: '0 19 * * *'
@@ -17,7 +18,17 @@ jobs:
         run: |
           curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
             -d "chat_id=8526489078" \
-            -d "text=💊 MEDICATIE CHECK - 10:00%0AHeb je je medicatie al ingenomen?"
+            -d "text=💊 MEDICATIE INNAME TIJD%0A⏰ Neem je medicatie nu in!"
+
+  send-ochtend-check:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 9 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Send Ochtend Check
+        run: |
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
+            -d "chat_id=8526489078" \
+            -d "text=🌅 OCHTEND BLOEDWAARDEN%0A📊 Meet nu je bloeddruk!"
 
   send-middag-check:
     runs-on: ubuntu-latest
@@ -27,7 +38,7 @@ jobs:
         run: |
           curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
             -d "chat_id=8526489078" \
-            -d "text=🌤️ MIDDAG BLOEDWAARDEN - 13:00%0AHeb je je metingen gedaan?"
+            -d "text=🌤️ MIDDAG BLOEDWAARDEN%0A📊 Meet nu je bloeddruk!"
 
   send-avond-check:
     runs-on: ubuntu-latest
@@ -37,7 +48,7 @@ jobs:
         run: |
           curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
             -d "chat_id=8526489078" \
-            -d "text=🌙 AVOND BLOEDWAARDEN - 19:00%0AHeb je je metingen gedaan?"
+            -d "text=🌙 AVOND BLOEDWAARDEN%0A📊 Meet nu je bloeddruk!"
 
   send-rapport:
     runs-on: ubuntu-latest
@@ -47,4 +58,4 @@ jobs:
         run: |
           curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
             -d "chat_id=8526489078" \
-            -d "text=📊 DAGELIJKS RAPPORT - 21:00%0AWachting op app data..."
+            -d "text=📊 DAGELIJKS RAPPORT%0A📈 Check je rapportage in app!"
