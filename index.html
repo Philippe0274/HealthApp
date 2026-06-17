@@ -439,6 +439,34 @@
         </div>
 
         <div class="section">
+            <div class="section-title">📈 Trends Analyse (${stats.sortedDates.length} dagen)</div>
+            
+            <div style="margin-bottom:15px;">
+                <h4 style="margin:0 0 8px 0;font-size:13px;color:#1f2937;">Systolisch (Bovendruk):</h4>
+                <div style="background:#fef3c7;padding:10px;border-radius:6px;border-left:4px solid #f59e0b;font-size:12px;font-family:monospace;line-height:1.6;">
+                    ${stats.trendSysHtml}
+                </div>
+                <div style="margin-top:8px;font-size:12px;">
+                    <span style="color:#6b7280;">Bereik:</span> ${stats.minSys}-${stats.maxSys} mmHg | 
+                    <span style="color:#6b7280;">Variatie:</span> ±${stats.varSys} mmHg | 
+                    <span style="font-weight:700;">${stats.trendStatusSys}</span>
+                </div>
+            </div>
+
+            <div>
+                <h4 style="margin:0 0 8px 0;font-size:13px;color:#1f2937;">Diastolisch (Onderdruk):</h4>
+                <div style="background:#fef3c7;padding:10px;border-radius:6px;border-left:4px solid #f59e0b;font-size:12px;font-family:monospace;line-height:1.6;">
+                    ${stats.trendDiaHtml}
+                </div>
+                <div style="margin-top:8px;font-size:12px;">
+                    <span style="color:#6b7280;">Bereik:</span> ${stats.minDia}-${stats.maxDia} mmHg | 
+                    <span style="color:#6b7280;">Variatie:</span> ±${stats.varDia} mmHg | 
+                    <span style="font-weight:700;">${stats.trendStatusDia}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
             <div class="section-title">❤️ Metingen</div>
             <table>
                 <tr><th>Datum</th><th>Moment</th><th>Sys/Dia</th><th>HR</th></tr>
@@ -450,6 +478,44 @@
             <div class="section-title">💊 Medicatie Naleving</div>
             <div class="meds-list">
                 ${stats.medicationsHtml}
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">⚠️ Aanbevelingen & Advies</div>
+            
+            <div style="background:#fef2f2;padding:12px;border-radius:8px;border-left:4px solid #dc2626;margin-bottom:12px;">
+                <h4 style="margin:0 0 8px 0;font-size:12px;color:#991b1b;">🍷 ALCOHOL BEPERKING:</h4>
+                <p style="margin:0;font-size:12px;color:#7f1d1d;line-height:1.5;">
+                    Beperk alcohol tot maximum 1 glas per dag. Alcohol verhoogt bloeddruk en kan medicatie-effectiviteit verminderen.
+                </p>
+            </div>
+
+            <div style="background:#f0fdf4;padding:12px;border-radius:8px;border-left:4px solid #10b981;margin-bottom:12px;">
+                <h4 style="margin:0 0 8px 0;font-size:12px;color:#15803d;">✅ VOEDING:</h4>
+                <ul style="margin:6px 0;padding-left:18px;font-size:12px;color:#166534;line-height:1.6;">
+                    <li>Beperk zout (max 5g per dag)</li>
+                    <li>Drink genoeg water (1.5-2L per dag)</li>
+                    <li>Vermijd cafeïne-overmatige inname</li>
+                    <li>Eet groenten & magere eiwitten</li>
+                </ul>
+            </div>
+
+            <div style="background:#f3e8ff;padding:12px;border-radius:8px;border-left:4px solid #7c3aed;margin-bottom:12px;">
+                <h4 style="margin:0 0 8px 0;font-size:12px;color:#5b21b6;">🧘 STRESS & RUST:</h4>
+                <ul style="margin:6px 0;padding-left:18px;font-size:12px;color:#581c87;line-height:1.6;">
+                    <li>Rusttijd: 3x per dag (10 minuten)</li>
+                    <li>Diepademhalings-oefeningen</li>
+                    <li>Regelmatige slaap (7-8 uur)</li>
+                    <li>Vermijd plotse stress</li>
+                </ul>
+            </div>
+
+            <div style="background:#fef3c7;padding:12px;border-radius:8px;border-left:4px solid #f59e0b;">
+                <h4 style="margin:0 0 8px 0;font-size:12px;color:#92400e;">📞 NEEM CONTACT OP MET ARTS:</h4>
+                <p style="margin:0;font-size:12px;color:#b45309;line-height:1.5;">
+                    Bij persistente hoge waarden (>140/90), hoofdpijn, of ongewone symptomen.
+                </p>
             </div>
         </div>
 
@@ -467,11 +533,17 @@
             generateReportStats() {
                 let totalSys = 0, totalDia = 0, totalHr = 0, count = 0;
                 let measurementsHtml = '';
+                let dailyData = {};
                 
+                // Collect all measurements and organize by day
                 for (let date in this.data.measures) {
                     const day = this.data.measures[date];
+                    let daySys = [], dayDia = [], dayHr = [];
                     ['ochtend', 'middag', 'avond'].forEach(moment => {
                         if (day[moment] && day[moment].sys) {
+                            daySys.push(day[moment].sys);
+                            dayDia.push(day[moment].dia);
+                            dayHr.push(day[moment].hr);
                             totalSys += day[moment].sys;
                             totalDia += day[moment].dia;
                             totalHr += day[moment].hr;
@@ -481,7 +553,51 @@
                             measurementsHtml += `<tr><td>${d}/${m}</td><td>${momentLabels[moment]}</td><td>${day[moment].sys}/${day[moment].dia}</td><td>${day[moment].hr}</td></tr>`;
                         }
                     });
+                    if (daySys.length > 0) {
+                        dailyData[date] = {
+                            sys: Math.round(daySys.reduce((a,b)=>a+b)/daySys.length),
+                            dia: Math.round(dayDia.reduce((a,b)=>a+b)/dayDia.length),
+                            hr: Math.round(dayHr.reduce((a,b)=>a+b)/dayHr.length)
+                        };
+                    }
                 }
+
+                // Calculate trends
+                const sortedDates = Object.keys(dailyData).sort();
+                let trendSysHtml = '';
+                let trendDiaHtml = '';
+                let sysTrend = [], diaTrend = [], sysValues = [], diaValues = [];
+                
+                sortedDates.forEach((date, idx) => {
+                    const data = dailyData[date];
+                    const [y, m, d] = date.split('-');
+                    sysValues.push(data.sys);
+                    diaValues.push(data.dia);
+                    
+                    if (idx === 0) {
+                        trendSysHtml += `<div style="padding:6px;border-bottom:1px solid #fecaca;">├─ ${d}/${m}: ${data.sys} mmHg</div>`;
+                        sysTrend.push({date, val: data.sys, change: 0});
+                    } else {
+                        const change = data.sys - dailyData[sortedDates[idx-1]].sys;
+                        const arrow = change > 0 ? '📈' : change < 0 ? '📉' : '➡️';
+                        trendSysHtml += `<div style="padding:6px;border-bottom:1px solid #fecaca;">├─ ${d}/${m}: ${data.sys} mmHg  → ${arrow} ${change > 0 ? '+' : ''}${change}</div>`;
+                        sysTrend.push({date, val: data.sys, change});
+                        trendDiaHtml += `<div style="padding:6px;border-bottom:1px solid #fecaca;">├─ ${d}/${m}: ${data.dia} mmHg  → ${arrow} ${change > 0 ? '+' : ''}${(data.dia - dailyData[sortedDates[idx-1]].dia)}</div>`;
+                        diaTrend.push({date, val: data.dia, change: data.dia - dailyData[sortedDates[idx-1]].dia});
+                    }
+                });
+
+                const avgSys = count > 0 ? Math.round(totalSys / count) : 0;
+                const avgDia = count > 0 ? Math.round(totalDia / count) : 0;
+                const minSys = Math.min(...sysValues);
+                const maxSys = Math.max(...sysValues);
+                const minDia = Math.min(...diaValues);
+                const maxDia = Math.max(...diaValues);
+                const varSys = maxSys - minSys;
+                const varDia = maxDia - minDia;
+                
+                const trendStatusSys = varSys > 15 ? '🔴 INSTABIEL' : varSys > 8 ? '🟡 MATIG' : '🟢 STABIEL';
+                const trendStatusDia = varDia > 10 ? '🔴 INSTABIEL' : varDia > 5 ? '🟡 MATIG' : '🟢 STABIEL';
 
                 let medicationsHtml = '';
                 this.data.meds.forEach(med => {
@@ -492,12 +608,19 @@
                 });
 
                 return {
-                    avgSys: count > 0 ? Math.round(totalSys / count) : 0,
-                    avgDia: count > 0 ? Math.round(totalDia / count) : 0,
+                    avgSys: avgSys,
+                    avgDia: avgDia,
                     avgHr: count > 0 ? Math.round(totalHr / count) : 0,
                     totalMeasures: count,
                     measurementsHtml: measurementsHtml || '<tr><td colspan="4" style="text-align:center;color:#6b7280;">Geen metingen</td></tr>',
-                    medicationsHtml: medicationsHtml || 'Geen medicaties'
+                    medicationsHtml: medicationsHtml || 'Geen medicaties',
+                    trendSysHtml: trendSysHtml,
+                    trendDiaHtml: trendDiaHtml,
+                    trendStatusSys: trendStatusSys,
+                    trendStatusDia: trendStatusDia,
+                    minSys, maxSys, varSys,
+                    minDia, maxDia, varDia,
+                    sortedDates: sortedDates
                 };
             }
 
