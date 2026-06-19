@@ -191,7 +191,7 @@
             app.data.measures = backup.measures || {};
             app.data.rapportages = backup.rapportages || {};
             app.settings = backup.settings || app.settings;
-            app.saveData();
+            app.save(); // CORRECT methode!
             
             app.sendTg('☁️ Backup hersteld van Google Drive!');
             alert('✅ Backup hersteld van Google Drive!');
