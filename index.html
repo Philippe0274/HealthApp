@@ -45,10 +45,22 @@
         let gLastSync = parseInt(localStorage.getItem('gdrive_last_sync') || '0');
 
         function isGTokenValid() {
-          return !!(gAccessToken && Date.now() < gTokenExpiry - 60000);
+          if (!gAccessToken || gAccessToken === 'null' || gAccessToken === '') return false;
+          if (!gTokenExpiry || gTokenExpiry <= 0) return false;
+          return Date.now() < gTokenExpiry - 60000;
         }
 
         function initGoogleDrive() {
+          // Clean invalid tokens at startup
+          if (!gAccessToken || gAccessToken === 'null' || gAccessToken === '') {
+            localStorage.removeItem('gdrive_token');
+            localStorage.removeItem('gdrive_token_expiry');
+            localStorage.removeItem('gdrive_user_name');
+            gAccessToken = null;
+            gTokenExpiry = 0;
+            gUserName = null;
+          }
+          
           if (typeof google === 'undefined' || !google.accounts) {
             setTimeout(initGoogleDrive, 1000);
             return;
