@@ -45,8 +45,8 @@ jobs:
           
           # Check based on hour
           case $HOUR in
-            14)
-              echo "Checking: TEST MOMENT (14:00)"
+            15)
+              echo "Checking: TEST MOMENT (15:00)"
               # Test all three times
               SYS=$(echo "$BACKUP" | grep -o '"ochtend":{[^}]*"sys":[0-9]*' | grep -o '[0-9]*$')
               DIA=$(echo "$BACKUP" | grep -o '"ochtend":{[^}]*"dia":[0-9]*' | grep -o '[0-9]*$')
