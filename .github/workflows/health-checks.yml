@@ -24,7 +24,6 @@ jobs:
           DRIVE_FILE_ID: 1ycJ-3xac6yxBbDEl3rLen8VLrRYHYi4W
         run: |
           node << 'NODEJS_EOF'
-          const https = require('https');
           const fs = require('fs');
           const { execSync } = require('child_process');
           
@@ -32,109 +31,115 @@ jobs:
           const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
           const CHAT_ID = process.env.CHAT_ID;
           
-          // Download file from Google Drive
-          const url = `https://drive.google.com/uc?export=download&id=${DRIVE_FILE_ID}`;
-          
-          https.get(url, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => {
-              try {
-                const backup = JSON.parse(data);
-                const today = new Date().toISOString().split('T')[0];
-                const hour = new Date().getHours();
-                
-                console.log(`Checking date: ${today}, Hour: ${hour}`);
-                
-                let alerts = [];
-                
-                // Test hour (for testing)
-                if (hour === 15) {
-                  console.log('TEST MOMENT (15:00)');
-                  const ochtend = backup.measures?.[today]?.ochtend || {};
-                  let missing = [];
-                  if (!ochtend.sys) missing.push('Systolisch');
-                  if (!ochtend.dia) missing.push('Diastolisch');
-                  if (!ochtend.hr) missing.push('Hartslag');
-                  if (missing.length > 0) {
-                    alerts.push(`❌ TEST ALERT!%0AOntbreekt: ${missing.join(', ')}`);
-                  }
-                }
-                
-                // 08:00 - Ochtend bloedwaarden
-                if (hour === 8) {
-                  console.log('Checking: Ochtend bloedwaarden');
-                  const ochtend = backup.measures?.[today]?.ochtend || {};
-                  let missing = [];
-                  if (!ochtend.sys) missing.push('Systolisch');
-                  if (!ochtend.dia) missing.push('Diastolisch');
-                  if (!ochtend.hr) missing.push('Hartslag');
-                  if (missing.length > 0) {
-                    alerts.push(`❌ OCHTEND BLOEDWAARDEN MISSEN!%0AOntbreekt: ${missing.join(', ')}`);
-                  }
-                }
-                
-                // 10:00 - Medicatie
-                if (hour === 10) {
-                  console.log('Checking: Medicatie');
-                  const intakes = backup.intakes || {};
-                  let missing = [];
-                  
-                  if (!intakes.belsar?.[today]?.ochtend) missing.push('Belsar');
-                  if (!intakes.pantomed?.[today]?.ochtend) missing.push('Pantomed');
-                  
-                  if (missing.length > 0) {
-                    alerts.push(`❌ MEDICATIE NIET INGENOMEN!%0AOntbreekt: ${missing.join(', ')}`);
-                  }
-                }
-                
-                // 13:00 - Middag bloedwaarden
-                if (hour === 13) {
-                  console.log('Checking: Middag bloedwaarden');
-                  const middag = backup.measures?.[today]?.middag || {};
-                  let missing = [];
-                  if (!middag.sys) missing.push('Systolisch');
-                  if (!middag.dia) missing.push('Diastolisch');
-                  if (!middag.hr) missing.push('Hartslag');
-                  if (missing.length > 0) {
-                    alerts.push(`❌ MIDDAG BLOEDWAARDEN MISSEN!%0AOntbreekt: ${missing.join(', ')}`);
-                  }
-                }
-                
-                // 22:00 - Avond bloedwaarden
-                if (hour === 22) {
-                  console.log('Checking: Avond bloedwaarden');
-                  const avond = backup.measures?.[today]?.avond || {};
-                  let missing = [];
-                  if (!avond.sys) missing.push('Systolisch');
-                  if (!avond.dia) missing.push('Diastolisch');
-                  if (!avond.hr) missing.push('Hartslag');
-                  if (missing.length > 0) {
-                    alerts.push(`❌ AVOND BLOEDWAARDEN MISSEN!%0AOntbreekt: ${missing.join(', ')}`);
-                  }
-                }
-                
-                // Send Telegram alerts
-                if (alerts.length > 0) {
-                  alerts.forEach(alert => {
-                    const cmd = `curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" -d "chat_id=${CHAT_ID}" -d "text=${alert}"`;
-                    try {
-                      execSync(cmd);
-                      console.log(`✅ Sent: ${alert.substring(0, 30)}...`);
-                    } catch (e) {
-                      console.error('Telegram error:', e.message);
-                    }
-                  });
-                } else {
-                  console.log('✅ Alles OK - geen bericht gestuurd');
-                }
-              } catch (e) {
-                console.error('Parse error:', e.message);
-                process.exit(1);
+          try {
+            // Download file from Google Drive using curl (handles redirects better)
+            const downloadUrl = `https://drive.google.com/uc?export=download&id=${DRIVE_FILE_ID}`;
+            const fileContent = execSync(`curl -L "${downloadUrl}" 2>/dev/null`).toString();
+            
+            // Validate the download
+            if (!fileContent || fileContent.trim().length === 0) {
+              throw new Error('Downloaded file is empty - check DRIVE_FILE_ID');
+            }
+            
+            // Parse JSON
+            let backup;
+            try {
+              backup = JSON.parse(fileContent);
+            } catch (parseError) {
+              console.error('JSON Parse Error:', parseError.message);
+              console.error('Downloaded content preview:', fileContent.substring(0, 200));
+              process.exit(1);
+            }
+            
+            const today = new Date().toISOString().split('T')[0];
+            const hour = new Date().getHours();
+            
+            console.log(`Checking date: ${today}, Hour: ${hour}`);
+            
+            let alerts = [];
+            
+            // Test hour (for testing)
+            if (hour === 15) {
+              console.log('TEST MOMENT (15:00)');
+              const ochtend = backup.measures?.[today]?.ochtend || {};
+              let missing = [];
+              if (!ochtend.sys) missing.push('Systolisch');
+              if (!ochtend.dia) missing.push('Diastolisch');
+              if (!ochtend.hr) missing.push('Hartslag');
+              if (missing.length > 0) {
+                alerts.push(`❌ TEST ALERT!%0AOntbreekt: ${missing.join(', ')}`);
               }
-            });
-          }).on('error', (e) => {
-            console.error('Download error:', e.message);
+            }
+            
+            // 08:00 - Ochtend bloedwaarden
+            if (hour === 8) {
+              console.log('Checking: Ochtend bloedwaarden');
+              const ochtend = backup.measures?.[today]?.ochtend || {};
+              let missing = [];
+              if (!ochtend.sys) missing.push('Systolisch');
+              if (!ochtend.dia) missing.push('Diastolisch');
+              if (!ochtend.hr) missing.push('Hartslag');
+              if (missing.length > 0) {
+                alerts.push(`❌ OCHTEND BLOEDWAARDEN MISSEN!%0AOntbreekt: ${missing.join(', ')}`);
+              }
+            }
+            
+            // 10:00 - Medicatie
+            if (hour === 10) {
+              console.log('Checking: Medicatie');
+              const intakes = backup.intakes || {};
+              let missing = [];
+              
+              if (!intakes.belsar?.[today]?.ochtend) missing.push('Belsar');
+              if (!intakes.pantomed?.[today]?.ochtend) missing.push('Pantomed');
+              
+              if (missing.length > 0) {
+                alerts.push(`❌ MEDICATIE NIET INGENOMEN!%0AOntbreekt: ${missing.join(', ')}`);
+              }
+            }
+            
+            // 13:00 - Middag bloedwaarden
+            if (hour === 13) {
+              console.log('Checking: Middag bloedwaarden');
+              const middag = backup.measures?.[today]?.middag || {};
+              let missing = [];
+              if (!middag.sys) missing.push('Systolisch');
+              if (!middag.dia) missing.push('Diastolisch');
+              if (!middag.hr) missing.push('Hartslag');
+              if (missing.length > 0) {
+                alerts.push(`❌ MIDDAG BLOEDWAARDEN MISSEN!%0AOntbreekt: ${missing.join(', ')}`);
+              }
+            }
+            
+            // 22:00 - Avond bloedwaarden
+            if (hour === 22) {
+              console.log('Checking: Avond bloedwaarden');
+              const avond = backup.measures?.[today]?.avond || {};
+              let missing = [];
+              if (!avond.sys) missing.push('Systolisch');
+              if (!avond.dia) missing.push('Diastolisch');
+              if (!avond.hr) missing.push('Hartslag');
+              if (missing.length > 0) {
+                alerts.push(`❌ AVOND BLOEDWAARDEN MISSEN!%0AOntbreekt: ${missing.join(', ')}`);
+              }
+            }
+            
+            // Send Telegram alerts
+            if (alerts.length > 0) {
+              alerts.forEach(alert => {
+                const cmd = `curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" -d "chat_id=${CHAT_ID}" -d "text=${alert}"`;
+                try {
+                  execSync(cmd);
+                  console.log(`✅ Sent: ${alert.substring(0, 30)}...`);
+                } catch (e) {
+                  console.error('Telegram error:', e.message);
+                }
+              });
+            } else {
+              console.log('✅ Alles OK - geen bericht gestuurd');
+            }
+          } catch (e) {
+            console.error('Error:', e.message);
             process.exit(1);
-          });
+          }
           NODEJS_EOF
