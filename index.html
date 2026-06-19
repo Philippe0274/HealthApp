@@ -33,7 +33,7 @@
         // ══════════════════════════════════════════════════════════
         const GDRIVE_CLIENT_ID = '333079195698-gt6gm0ra37e53ujd782424nea5e9iiqq.apps.googleusercontent.com';
         const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile';
-        const GDRIVE_SPACES = 'appDataFolder';
+        const GDRIVE_FOLDER_ID = '1flE6MFq5be0xCPpPJbyozIVTIZOhzu0X'; // SyncHealthapp folder
         const GDRIVE_FILE_NAME = 'healthapp-backup.json';
 
         let gTokenClient = null;
@@ -129,7 +129,7 @@
               timestamp: new Date().toISOString()
             };
             const json = JSON.stringify(backup, null, 2);
-            const meta = { name: GDRIVE_FILE_NAME, parents: [GDRIVE_SPACES] };
+            const meta = { name: GDRIVE_FILE_NAME, parents: [GDRIVE_FOLDER_ID] }; // Upload to folder!
             const form = new FormData();
             form.append('metadata', new Blob([JSON.stringify(meta)], {type:'application/json'}));
             form.append('file', new Blob([json], {type:'application/json'}));
@@ -143,7 +143,7 @@
               localStorage.setItem('gdrive_file_id', gFileId);
               gLastSync = Date.now();
               localStorage.setItem('gdrive_last_sync', String(gLastSync));
-              app.sendTg('☁️ Backup naar Google Drive gestuurd!');
+              app.sendTg('☁️ Backup naar Google Drive gestuurd! → https://drive.google.com/drive/folders/1flE6MFq5be0xCPpPJbyozIVTIZOhzu0X');
               alert('✅ Backup gestuurd naar Google Drive!');
             } else {
               alert('❌ Upload mislukt: ' + r.status);
