@@ -20,12 +20,129 @@
         .day-cell { aspect-ratio: 1; border-radius: 8px; padding: 4px; font-size: 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 48px; background: #fff; border: 2px solid #e5e7eb; font-weight: 600; }
         .day-cell.today { background: #fbbf24; color: #333; }
     </style>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body class="bg-gray-50">
     <div id="app"></div>
     <script>
         const MEDS_COLORS = ['#ff0000', '#0066ff', '#00cc00', '#ff6600', '#ff00ff'];
         const MEDS_ICONS = ['💊', '💉', '🩺', '🏥', '🔬'];
+
+        // ══════════════════════════════════════════════════════════
+        // GOOGLE DRIVE - GLOBALE VARIABLES & FUNCTIES
+        // ══════════════════════════════════════════════════════════
+        const GDRIVE_CLIENT_ID = '333079195698-gt6gm0ra37e53ujd782424nea5e9iiqq.apps.googleusercontent.com';
+        const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile';
+        const GDRIVE_SPACES = 'appDataFolder';
+        const GDRIVE_FILE_NAME = 'healthapp-backup.json';
+
+        let gTokenClient = null;
+        let gAccessToken = localStorage.getItem('gdrive_token') || null;
+        let gTokenExpiry = parseInt(localStorage.getItem('gdrive_token_expiry') || '0');
+        let gFileId = localStorage.getItem('gdrive_file_id') || null;
+        let gUserName = localStorage.getItem('gdrive_user_name') || null;
+        let gSyncing = false;
+        let gLastSync = parseInt(localStorage.getItem('gdrive_last_sync') || '0');
+
+        function isGTokenValid() {
+          return !!(gAccessToken && Date.now() < gTokenExpiry - 60000);
+        }
+
+        function initGoogleDrive() {
+          if (typeof google === 'undefined' || !google.accounts) {
+            setTimeout(initGoogleDrive, 1000);
+            return;
+          }
+          gTokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: GDRIVE_CLIENT_ID,
+            scope: GDRIVE_SCOPE,
+            callback: async (resp) => {
+              if (resp.error) {
+                alert('❌ Google login: ' + resp.error);
+                return;
+              }
+              gAccessToken = resp.access_token;
+              gTokenExpiry = Date.now() + (resp.expires_in * 1000);
+              localStorage.setItem('gdrive_token', gAccessToken);
+              localStorage.setItem('gdrive_token_expiry', String(gTokenExpiry));
+              await fetchGUserInfo();
+              app.sendTg('✅ Google Drive verbonden!');
+              alert('✅ Google Drive verbonden!');
+              app.show();
+            }
+          });
+          if (isGTokenValid()) {
+            app.show();
+          }
+        }
+
+        async function fetchGUserInfo() {
+          try {
+            const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: `Bearer ${gAccessToken}` }
+            });
+            const d = await r.json();
+            gUserName = d.name || d.email || 'Google';
+            localStorage.setItem('gdrive_user_name', gUserName);
+          } catch(e) { console.warn('userinfo:', e); }
+        }
+
+        function handleSyncAction() {
+          if (isGTokenValid()) {
+            gAccessToken = null;
+            gTokenExpiry = 0;
+            gUserName = null;
+            localStorage.removeItem('gdrive_token');
+            localStorage.removeItem('gdrive_token_expiry');
+            localStorage.removeItem('gdrive_user_name');
+            alert('✅ Google Drive ontkoppeld');
+            app.show();
+          } else {
+            if (!gTokenClient) { alert('Google laden...'); return; }
+            gTokenClient.requestAccessToken({ prompt: gUserName ? '' : 'consent' });
+          }
+        }
+
+        async function driveSync() {
+          if (!isGTokenValid()) { alert('Niet verbonden met Google Drive'); return; }
+          if (gSyncing) return;
+          gSyncing = true;
+          try {
+            const backup = {
+              meds: app.data.meds,
+              intakes: app.data.intakes,
+              measures: app.data.measures,
+              rapportages: app.data.rapportages || {},
+              settings: app.settings,
+              timestamp: new Date().toISOString()
+            };
+            const json = JSON.stringify(backup, null, 2);
+            const meta = { name: GDRIVE_FILE_NAME, parents: [GDRIVE_SPACES] };
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(meta)], {type:'application/json'}));
+            form.append('file', new Blob([json], {type:'application/json'}));
+            const r = await fetch(
+              'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+              { method:'POST', headers:{ Authorization:`Bearer ${gAccessToken}` }, body:form }
+            );
+            if (r.ok) {
+              const created = await r.json();
+              gFileId = created.id;
+              localStorage.setItem('gdrive_file_id', gFileId);
+              gLastSync = Date.now();
+              localStorage.setItem('gdrive_last_sync', String(gLastSync));
+              app.sendTg('☁️ Backup naar Google Drive gestuurd!');
+              alert('✅ Backup gestuurd naar Google Drive!');
+            } else {
+              alert('❌ Upload mislukt: ' + r.status);
+            }
+          } catch(e) {
+            console.error('Drive sync error:', e);
+            alert('❌ Error: ' + e.message);
+          } finally {
+            gSyncing = false;
+          }
+        }
 
         class App {
             constructor() {
@@ -45,7 +162,6 @@
                     };
                 }
                 this.telegram = {token:'8525699360:AAGr4wYh4mj-7R2nJ0C7N5Qo3wKZtV7kzkw',chatId:'8526489078'};
-                
                 this.month = new Date();
                 this.date = null;
                 this.view = 'cal';
@@ -258,11 +374,11 @@
                     rapportages: this.data.rapportages || {},
                     settings: this.settings
                 };
-                const blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'});
+                const blob = new Blob([JSON.stringify(backup)], {type: 'application/json'});
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'health_backup_' + new Date().toISOString().split('T')[0] + '.json';
+                a.download = 'backup-' + new Date().toISOString().split('T')[0] + '.json';
                 a.click();
                 URL.revokeObjectURL(url);
             }
@@ -656,9 +772,14 @@
                 html += '<div style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);color:white;border-radius:16px;padding:12px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px;">';
                 
                 // LEFT: Logo + Title
-                html += '<div style="display:flex;gap:8px;align-items:center;flex:1;">';
+                html += '<div style="display:flex;gap:8px;align-items:center;">';
                 html += '<img src="./logo.png" style="width:48px;height:48px;border-radius:8px;background:white;padding:3px;flex-shrink:0;">';
                 html += '<div style="min-width:0;"><h1 style="font-size:13px;font-weight:700;margin:0;">Bloeddruk/Medicatie</h1><p style="font-size:9px;opacity:0.9;margin:2px 0 0 0;">Opvolgingstool (' + this.data.meds.length + ' meds)</p></div>';
+                html += '</div>';
+                
+                // CENTER: SPACER + Google button (centered)
+                html += '<div style="flex:1;display:flex;align-items:center;justify-content:center;">';
+                html += '<button onclick="handleSyncAction()" style="background:' + (isGTokenValid() ? '#10b981' : '#6b7280') + ';border:none;color:white;cursor:pointer;padding:8px;border-radius:8px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;transition:all 0.3s;" title="' + (isGTokenValid() ? 'Google verbonden' : 'Google verbinden') + '">☁️</button>';
                 html += '</div>';
                 
                 // RIGHT: Icons in 3 columns
@@ -839,7 +960,6 @@
                     html += '</div>';
                 }
 
-                html += '</div>';
                 return html;
             }
 
@@ -849,6 +969,15 @@
         }
 
         const app = new App();
+
+        // Initialize Google Drive AFTER app setup (Garage pattern)
+        (async () => {
+          try {
+            setTimeout(initGoogleDrive, 1500);
+          } catch(err) {
+            console.error('Google init error:', err);
+          }
+        })();
 
         // Register Service Worker
         if ('serviceWorker' in navigator) {
