@@ -2,147 +2,139 @@ name: Smart Daily Health Checks
 
 on:
   schedule:
-    - cron: '0 8 * * *'   # 08:00 - Ochtend bloedwaarden
-    - cron: '0 10 * * *'  # 10:00 - Medicatie
-    - cron: '0 13 * * *'  # 13:00 - Middag bloedwaarden
-    - cron: '0 22 * * *'  # 22:00 - Avond bloedwaarden
+    - cron: '0 8 * * *'   # 08:00 UTC
+    - cron: '0 10 * * *'  # 10:00 UTC
+    - cron: '0 13 * * *'  # 13:00 UTC
+    - cron: '0 22 * * *'  # 22:00 UTC
   workflow_dispatch:
 
 jobs:
   check-and-alert:
     runs-on: ubuntu-latest
     steps:
-      - name: Download backup from Google Drive
-        env:
-          DRIVE_FILE_ID: 1ycJ-3xac6yxBbDEl3rLen8VLrRYHYi4W
-        run: |
-          curl -L "https://drive.google.com/uc?export=download&id=$DRIVE_FILE_ID" -o backup.json
-          echo "✅ Download OK"
-          cat backup.json | head -20
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
 
-      - name: Check and send alerts
+      - name: Download backup and check
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: 8526489078
+          DRIVE_FILE_ID: 1ycJ-3xac6yxBbDEl3rLen8VLrRYHYi4W
         run: |
-          #!/bin/bash
+          node << 'NODEJS_EOF'
+          const https = require('https');
+          const fs = require('fs');
+          const { execSync } = require('child_process');
           
-          # Read backup file
-          BACKUP=$(cat backup.json)
-          TODAY=$(date +%Y-%m-%d)
-          HOUR=$(date +%H)
+          const DRIVE_FILE_ID = process.env.DRIVE_FILE_ID;
+          const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
+          const CHAT_ID = process.env.CHAT_ID;
           
-          echo "Checking date: $TODAY, Hour: $HOUR"
+          // Download file from Google Drive
+          const url = `https://drive.google.com/uc?export=download&id=${DRIVE_FILE_ID}`;
           
-          # Function to send Telegram
-          send_telegram() {
-            local MSG="$1"
-            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
-              -d "chat_id=${CHAT_ID}" \
-              -d "text=${MSG}"
-            echo "✅ Sent: ${MSG:0:30}..."
-          }
-          
-          # Check based on hour
-          case $HOUR in
-            15)
-              echo "Checking: TEST MOMENT (15:00)"
-              # Test all three times
-              SYS=$(echo "$BACKUP" | grep -o '"ochtend":{[^}]*"sys":[0-9]*' | grep -o '[0-9]*$')
-              DIA=$(echo "$BACKUP" | grep -o '"ochtend":{[^}]*"dia":[0-9]*' | grep -o '[0-9]*$')
-              HR=$(echo "$BACKUP" | grep -o '"ochtend":{[^}]*"hr":[0-9]*' | grep -o '[0-9]*$')
-              
-              MISSING=""
-              [ -z "$SYS" ] && MISSING="Systolisch, "
-              [ -z "$DIA" ] && MISSING="${MISSING}Diastolisch, "
-              [ -z "$HR" ] && MISSING="${MISSING}Hartslag"
-              MISSING="${MISSING%, }"
-              
-              if [ ! -z "$MISSING" ]; then
-                send_telegram "❌ TEST ALERT!%0AOntbreekt: ${MISSING}"
-              else
-                echo "✅ TEST - Alles OK"
-              fi
-              ;;
-            08)
-              echo "Checking: Ochtend bloedwaarden"
-              # Extract ochtend values
-              SYS=$(echo "$BACKUP" | grep -o '"ochtend":{[^}]*"sys":[0-9]*' | grep -o '[0-9]*$')
-              DIA=$(echo "$BACKUP" | grep -o '"ochtend":{[^}]*"dia":[0-9]*' | grep -o '[0-9]*$')
-              HR=$(echo "$BACKUP" | grep -o '"ochtend":{[^}]*"hr":[0-9]*' | grep -o '[0-9]*$')
-              
-              MISSING=""
-              [ -z "$SYS" ] && MISSING="Systolisch, "
-              [ -z "$DIA" ] && MISSING="${MISSING}Diastolisch, "
-              [ -z "$HR" ] && MISSING="${MISSING}Hartslag"
-              MISSING="${MISSING%, }"
-              
-              if [ ! -z "$MISSING" ]; then
-                send_telegram "❌ OCHTEND BLOEDWAARDEN MISSEN!%0AOntbreekt: ${MISSING}"
-              else
-                echo "✅ Alles OK"
-              fi
-              ;;
-            
-            10)
-              echo "Checking: Medicatie"
-              # Simple check - if both meds logged for today
-              BELSAR=$(echo "$BACKUP" | grep -o '"belsar":{[^}]*"'$TODAY'"' | wc -l)
-              PANTOMED=$(echo "$BACKUP" | grep -o '"pantomed":{[^}]*"'$TODAY'"' | wc -l)
-              
-              MISSING=""
-              [ "$BELSAR" -eq 0 ] && MISSING="Belsar, "
-              [ "$PANTOMED" -eq 0 ] && MISSING="${MISSING}Pantomed"
-              MISSING="${MISSING%, }"
-              
-              if [ ! -z "$MISSING" ]; then
-                send_telegram "❌ MEDICATIE NIET INGENOMEN!%0AOntbreekt: ${MISSING}"
-              else
-                echo "✅ Alles OK"
-              fi
-              ;;
-            
-            13)
-              echo "Checking: Middag bloedwaarden"
-              # Extract middag values
-              SYS=$(echo "$BACKUP" | grep -o '"middag":{[^}]*"sys":[0-9]*' | grep -o '[0-9]*$')
-              DIA=$(echo "$BACKUP" | grep -o '"middag":{[^}]*"dia":[0-9]*' | grep -o '[0-9]*$')
-              HR=$(echo "$BACKUP" | grep -o '"middag":{[^}]*"hr":[0-9]*' | grep -o '[0-9]*$')
-              
-              MISSING=""
-              [ -z "$SYS" ] && MISSING="Systolisch, "
-              [ -z "$DIA" ] && MISSING="${MISSING}Diastolisch, "
-              [ -z "$HR" ] && MISSING="${MISSING}Hartslag"
-              MISSING="${MISSING%, }"
-              
-              if [ ! -z "$MISSING" ]; then
-                send_telegram "❌ MIDDAG BLOEDWAARDEN MISSEN!%0AOntbreekt: ${MISSING}"
-              else
-                echo "✅ Alles OK"
-              fi
-              ;;
-            
-            22)
-              echo "Checking: Avond bloedwaarden"
-              # Extract avond values
-              SYS=$(echo "$BACKUP" | grep -o '"avond":{[^}]*"sys":[0-9]*' | grep -o '[0-9]*$')
-              DIA=$(echo "$BACKUP" | grep -o '"avond":{[^}]*"dia":[0-9]*' | grep -o '[0-9]*$')
-              HR=$(echo "$BACKUP" | grep -o '"avond":{[^}]*"hr":[0-9]*' | grep -o '[0-9]*$')
-              
-              MISSING=""
-              [ -z "$SYS" ] && MISSING="Systolisch, "
-              [ -z "$DIA" ] && MISSING="${MISSING}Diastolisch, "
-              [ -z "$HR" ] && MISSING="${MISSING}Hartslag"
-              MISSING="${MISSING%, }"
-              
-              if [ ! -z "$MISSING" ]; then
-                send_telegram "❌ AVOND BLOEDWAARDEN MISSEN!%0AOntbreekt: ${MISSING}"
-              else
-                echo "✅ Alles OK"
-              fi
-              ;;
-            
-            *)
-              echo "No check scheduled for hour: $HOUR"
-              ;;
-          esac
+          https.get(url, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+              try {
+                const backup = JSON.parse(data);
+                const today = new Date().toISOString().split('T')[0];
+                const hour = new Date().getHours();
+                
+                console.log(`Checking date: ${today}, Hour: ${hour}`);
+                
+                let alerts = [];
+                
+                // Test hour (for testing)
+                if (hour === 15) {
+                  console.log('TEST MOMENT (15:00)');
+                  const ochtend = backup.measures?.[today]?.ochtend || {};
+                  let missing = [];
+                  if (!ochtend.sys) missing.push('Systolisch');
+                  if (!ochtend.dia) missing.push('Diastolisch');
+                  if (!ochtend.hr) missing.push('Hartslag');
+                  if (missing.length > 0) {
+                    alerts.push(`❌ TEST ALERT!%0AOntbreekt: ${missing.join(', ')}`);
+                  }
+                }
+                
+                // 08:00 - Ochtend bloedwaarden
+                if (hour === 8) {
+                  console.log('Checking: Ochtend bloedwaarden');
+                  const ochtend = backup.measures?.[today]?.ochtend || {};
+                  let missing = [];
+                  if (!ochtend.sys) missing.push('Systolisch');
+                  if (!ochtend.dia) missing.push('Diastolisch');
+                  if (!ochtend.hr) missing.push('Hartslag');
+                  if (missing.length > 0) {
+                    alerts.push(`❌ OCHTEND BLOEDWAARDEN MISSEN!%0AOntbreekt: ${missing.join(', ')}`);
+                  }
+                }
+                
+                // 10:00 - Medicatie
+                if (hour === 10) {
+                  console.log('Checking: Medicatie');
+                  const intakes = backup.intakes || {};
+                  let missing = [];
+                  
+                  if (!intakes.belsar?.[today]?.ochtend) missing.push('Belsar');
+                  if (!intakes.pantomed?.[today]?.ochtend) missing.push('Pantomed');
+                  
+                  if (missing.length > 0) {
+                    alerts.push(`❌ MEDICATIE NIET INGENOMEN!%0AOntbreekt: ${missing.join(', ')}`);
+                  }
+                }
+                
+                // 13:00 - Middag bloedwaarden
+                if (hour === 13) {
+                  console.log('Checking: Middag bloedwaarden');
+                  const middag = backup.measures?.[today]?.middag || {};
+                  let missing = [];
+                  if (!middag.sys) missing.push('Systolisch');
+                  if (!middag.dia) missing.push('Diastolisch');
+                  if (!middag.hr) missing.push('Hartslag');
+                  if (missing.length > 0) {
+                    alerts.push(`❌ MIDDAG BLOEDWAARDEN MISSEN!%0AOntbreekt: ${missing.join(', ')}`);
+                  }
+                }
+                
+                // 22:00 - Avond bloedwaarden
+                if (hour === 22) {
+                  console.log('Checking: Avond bloedwaarden');
+                  const avond = backup.measures?.[today]?.avond || {};
+                  let missing = [];
+                  if (!avond.sys) missing.push('Systolisch');
+                  if (!avond.dia) missing.push('Diastolisch');
+                  if (!avond.hr) missing.push('Hartslag');
+                  if (missing.length > 0) {
+                    alerts.push(`❌ AVOND BLOEDWAARDEN MISSEN!%0AOntbreekt: ${missing.join(', ')}`);
+                  }
+                }
+                
+                // Send Telegram alerts
+                if (alerts.length > 0) {
+                  alerts.forEach(alert => {
+                    const cmd = `curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" -d "chat_id=${CHAT_ID}" -d "text=${alert}"`;
+                    try {
+                      execSync(cmd);
+                      console.log(`✅ Sent: ${alert.substring(0, 30)}...`);
+                    } catch (e) {
+                      console.error('Telegram error:', e.message);
+                    }
+                  });
+                } else {
+                  console.log('✅ Alles OK - geen bericht gestuurd');
+                }
+              } catch (e) {
+                console.error('Parse error:', e.message);
+                process.exit(1);
+              }
+            });
+          }).on('error', (e) => {
+            console.error('Download error:', e.message);
+            process.exit(1);
+          });
+          NODEJS_EOF
