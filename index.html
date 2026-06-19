@@ -129,7 +129,7 @@
               timestamp: new Date().toISOString()
             };
             const json = JSON.stringify(backup, null, 2);
-            const meta = { name: GDRIVE_FILE_NAME, parents: [GDRIVE_FOLDER_ID] }; // Upload to folder!
+            const meta = { name: GDRIVE_FILE_NAME, parents: [GDRIVE_FOLDER_ID] };
             const form = new FormData();
             form.append('metadata', new Blob([JSON.stringify(meta)], {type:'application/json'}));
             form.append('file', new Blob([json], {type:'application/json'}));
@@ -151,6 +151,60 @@
           } catch(e) {
             console.error('Drive sync error:', e);
             alert('❌ Error: ' + e.message);
+          } finally {
+            gSyncing = false;
+          }
+        }
+
+        async function driveRestore() {
+          if (!isGTokenValid()) { alert('Niet verbonden met Google Drive'); return; }
+          if (gSyncing) return;
+          gSyncing = true;
+          try {
+            // Search for backup file in folder
+            const q = `name='${GDRIVE_FILE_NAME}' and '${GDRIVE_FOLDER_ID}' in parents and trashed=false`;
+            const searchUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&spaces=drive&fields=files(id,name)`;
+            const searchRes = await fetch(searchUrl, {
+              headers: { Authorization: `Bearer ${gAccessToken}` }
+            });
+            const searchData = await searchRes.json();
+            
+            if (!searchData.files || searchData.files.length === 0) {
+              alert('❌ Backup bestand niet gevonden in Google Drive!');
+              gSyncing = false;
+              return;
+            }
+            
+            const fileId = searchData.files[0].id;
+            
+            // Download file
+            const downloadUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+            const downloadRes = await fetch(downloadUrl, {
+              headers: { Authorization: `Bearer ${gAccessToken}` }
+            });
+            const jsonText = await downloadRes.text();
+            const backup = JSON.parse(jsonText);
+            
+            // Restore data
+            app.data.meds = backup.meds || [];
+            app.data.intakes = backup.intakes || {};
+            app.data.measures = backup.measures || {};
+            app.data.rapportages = backup.rapportages || {};
+            app.settings = backup.settings || app.settings;
+            app.saveData();
+            
+            app.sendTg('☁️ Backup hersteld van Google Drive!');
+            alert('✅ Backup hersteld van Google Drive!');
+            
+            // Open folder in new window
+            setTimeout(() => {
+              window.open('https://drive.google.com/drive/folders/1flE6MFq5be0xCPpPJbyozIVTIZOhzu0X', '_blank');
+            }, 500);
+            
+            app.show();
+          } catch(e) {
+            console.error('Drive restore error:', e);
+            alert('❌ Restore error: ' + e.message);
           } finally {
             gSyncing = false;
           }
@@ -807,6 +861,7 @@
                 html += '<button onclick="app.month=new Date();app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./event.png" style="width:24px;height:24px;"></button>';
                 html += '<button onclick="handleSyncAction()" style="background:' + (isGTokenValid() ? '#10b981' : '#6b7280') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.3s;" title="' + (isGTokenValid() ? 'Google verbonden - Klik om uit te loggen' : 'Klik om in te loggen') + '">☁️</button>';
                 html += '<button onclick="driveSync()" style="background:' + (isGTokenValid() ? '#3b82f6' : '#9ca3af') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all 0.3s;" title="Upload naar Google Drive" ' + (isGTokenValid() ? '' : 'disabled') + '>⬆️</button>';
+                html += '<button onclick="driveRestore()" style="background:' + (isGTokenValid() ? '#8b5cf6' : '#9ca3af') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all 0.3s;" title="Restore van Google Drive" ' + (isGTokenValid() ? '' : 'disabled') + '>⬇️</button>';
                 html += '<div></div>';
                 
                 html += '</div>';
