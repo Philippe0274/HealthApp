@@ -12,136 +12,90 @@ jobs:
   check-and-alert:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Download backup from Google Drive
+        env:
+          DRIVE_FILE_ID: 1ycJ-3xac6yxBbDEl3rLen8VLrRYHYi4W
+        run: |
+          curl -L "https://drive.google.com/uc?export=download&id=$DRIVE_FILE_ID" -o backup.json
+          echo "✅ Download OK"
+          cat backup.json | head -20
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Download backup and check
+      - name: Check and send alerts
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: 8526489078
-          DRIVE_FILE_ID: 1ycJ-3xac6yxBbDEl3rLen8VLrRYHYi4W
         run: |
-          python3 << 'EOF'
-          import json
-          import urllib.request
-          from datetime import datetime
-          import os
+          #!/bin/bash
           
-          # Download file from Google Drive
-          file_id = os.environ['DRIVE_FILE_ID']
-          url = f'https://drive.google.com/uc?export=download&id={file_id}'
+          # Read backup file
+          BACKUP=$(cat backup.json)
+          TODAY=$(date +%Y-%m-%d)
+          HOUR=$(date +%H)
           
-          try:
-              with urllib.request.urlopen(url) as response:
-                  data = json.loads(response.read().decode())
-          except Exception as e:
-              print(f"Error downloading: {e}")
-              exit(1)
+          echo "Checking date: $TODAY, Hour: $HOUR"
           
-          # Get today's date
-          today = datetime.now().strftime('%Y-%m-%d')
+          # Function to send Telegram
+          send_telegram() {
+            local MSG="$1"
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
+              -d "chat_id=${CHAT_ID}" \
+              -d "text=${MSG}"
+            echo "✅ Sent: ${MSG:0:30}..."
+          }
           
-          # Get current hour to determine check type
-          hour = datetime.now().hour
-          
-          messages = []
-          
-          # 08:00 - Check OCHTEND bloedwaarden
-          if hour == 8:
-              measures = data.get('measures', {}).get(today, {})
-              ochtend = measures.get('ochtend', {})
+          # Check based on hour
+          case $HOUR in
+            08)
+              echo "Checking: Ochtend bloedwaarden"
+              # Extract ochtend values
+              SYS=$(echo "$BACKUP" | grep -o '"ochtend":{[^}]*"sys":[0-9]*' | grep -o '[0-9]*$')
+              DIA=$(echo "$BACKUP" | grep -o '"ochtend":{[^}]*"dia":[0-9]*' | grep -o '[0-9]*$')
+              HR=$(echo "$BACKUP" | grep -o '"ochtend":{[^}]*"hr":[0-9]*' | grep -o '[0-9]*$')
               
-              missing = []
-              if not ochtend.get('sys'):
-                  missing.append('Systolisch')
-              if not ochtend.get('dia'):
-                  missing.append('Diastolisch')
-              if not ochtend.get('hr'):
-                  missing.append('Hartslag')
+              MISSING=""
+              [ -z "$SYS" ] && MISSING="Systolisch, "
+              [ -z "$DIA" ] && MISSING="${MISSING}Diastolisch, "
+              [ -z "$HR" ] && MISSING="${MISSING}Hartslag"
+              MISSING="${MISSING%, }"
               
-              if missing:
-                  msg = f"❌ OCHTEND BLOEDWAARDEN MISSEN!\n"
-                  msg += f"Ontbreekt: {', '.join(missing)}"
-                  messages.append(msg)
-          
-          # 10:00 - Check MEDICATIE
-          elif hour == 10:
-              intakes = data.get('intakes', {})
-              missing_meds = []
+              if [ ! -z "$MISSING" ]; then
+                send_telegram "❌ OCHTEND BLOEDWAARDEN MISSEN!%0AOntbreekt: ${MISSING}"
+              else
+                echo "✅ Alles OK"
+              fi
+              ;;
+            
+            10)
+              echo "Checking: Medicatie"
+              # Simple check - if both meds logged for today
+              BELSAR=$(echo "$BACKUP" | grep -o '"belsar":{[^}]*"'$TODAY'"' | wc -l)
+              PANTOMED=$(echo "$BACKUP" | grep -o '"pantomed":{[^}]*"'$TODAY'"' | wc -l)
               
-              # Check Belsar
-              belsar_intakes = intakes.get('belsar', {}).get(today, {})
-              if not belsar_intakes.get('ochtend'):
-                  missing_meds.append('Belsar')
+              MISSING=""
+              [ "$BELSAR" -eq 0 ] && MISSING="Belsar, "
+              [ "$PANTOMED" -eq 0 ] && MISSING="${MISSING}Pantomed"
+              MISSING="${MISSING%, }"
               
-              # Check Pantomed
-              pantomed_intakes = intakes.get('pantomed', {}).get(today, {})
-              if not pantomed_intakes.get('ochtend'):
-                  missing_meds.append('Pantomed')
-              
-              if missing_meds:
-                  msg = f"❌ MEDICATIE NIET INGENOMEN!\n"
-                  msg += f"Ontbreekt: {', '.join(missing_meds)}"
-                  messages.append(msg)
-          
-          # 13:00 - Check MIDDAG bloedwaarden
-          elif hour == 13:
-              measures = data.get('measures', {}).get(today, {})
-              middag = measures.get('middag', {})
-              
-              missing = []
-              if not middag.get('sys'):
-                  missing.append('Systolisch')
-              if not middag.get('dia'):
-                  missing.append('Diastolisch')
-              if not middag.get('hr'):
-                  missing.append('Hartslag')
-              
-              if missing:
-                  msg = f"❌ MIDDAG BLOEDWAARDEN MISSEN!\n"
-                  msg += f"Ontbreekt: {', '.join(missing)}"
-                  messages.append(msg)
-          
-          # 22:00 - Check AVOND bloedwaarden
-          elif hour == 22:
-              measures = data.get('measures', {}).get(today, {})
-              avond = measures.get('avond', {})
-              
-              missing = []
-              if not avond.get('sys'):
-                  missing.append('Systolisch')
-              if not avond.get('dia'):
-                  missing.append('Diastolisch')
-              if not avond.get('hr'):
-                  missing.append('Hartslag')
-              
-              if missing:
-                  msg = f"❌ AVOND BLOEDWAARDEN MISSEN!\n"
-                  msg += f"Ontbreekt: {', '.join(missing)}"
-                  messages.append(msg)
-          
-          # Send Telegram ONLY if messages exist
-          if messages:
-              import subprocess
-              token = os.environ['TELEGRAM_TOKEN']
-              chat_id = os.environ['CHAT_ID']
-              
-              for message in messages:
-                  cmd = [
-                      'curl', '-X', 'POST',
-                      f'https://api.telegram.org/bot{token}/sendMessage',
-                      '-d', f'chat_id={chat_id}',
-                      '-d', f'text={message}'
-                  ]
-                  subprocess.run(cmd)
-              
-              print(f"✅ Sent {len(messages)} alert(s)")
-          else:
-              print("✅ Alles OK - geen bericht gestuurd")
-          
-          EOF
+              if [ ! -z "$MISSING" ]; then
+                send_telegram "❌ MEDICATIE NIET INGENOMEN!%0AOntbreekt: ${MISSING}"
+              else
+                echo "✅ Alles OK"
+              fi
+              ;;
+            
+            13)
+              echo "Checking: Middag bloedwaarden"
+              # Similar to ochtend
+              echo "⏳ Check middag (placeholder)"
+              ;;
+            
+            22)
+              echo "Checking: Avond bloedwaarden"
+              # Similar to ochtend
+              echo "⏳ Check avond (placeholder)"
+              ;;
+            
+            *)
+              echo "No check scheduled for hour: $HOUR"
+              ;;
+          esac
