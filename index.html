@@ -1063,6 +1063,29 @@
         // Register Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/HealthApp/sw.js').catch(() => {});
+            
+            // Listen for periodic sync messages from Service Worker
+            navigator.serviceWorker.addEventListener('message', (event) => {
+              if (event.data.type === 'PERFORM_SYNC') {
+                console.log('Auto-sync triggered:', event.data.tag);
+                if (isGTokenValid() && typeof driveSync === 'function') {
+                  driveSync();
+                }
+              }
+            });
+            
+            // Register Periodic Background Sync
+            if ('serviceWorker' in navigator && 'BackgroundSyncManager' in window) {
+              navigator.serviceWorker.ready.then(registration => {
+                // Register sync tags for specific times
+                const syncTags = ['sync-07', 'sync-09', 'sync-12', 'sync-21'];
+                syncTags.forEach(tag => {
+                  registration.periodicSync.register(tag, {
+                    minInterval: 24 * 60 * 60 * 1000 // Once per day
+                  }).catch(() => {});
+                });
+              });
+            }
         }
     </script>
 </body>

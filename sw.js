@@ -37,3 +37,26 @@ self.addEventListener('fetch', (e) => {
       })
   );
 });
+
+// Periodic Background Sync - Auto-sync naar Google Drive
+self.addEventListener('periodicsync', (e) => {
+  if (e.tag && e.tag.startsWith('sync-')) {
+    e.waitUntil(
+      (async () => {
+        try {
+          // Send message to app to trigger sync
+          const clients = await self.clients.matchAll({ type: 'window' });
+          clients.forEach(client => {
+            client.postMessage({
+              type: 'PERFORM_SYNC',
+              tag: e.tag
+            });
+          });
+        } catch (err) {
+          console.error('Periodic sync error:', err);
+        }
+      })()
+    );
+  }
+});
+
