@@ -130,50 +130,50 @@
             };
             const json = JSON.stringify(backup, null, 2);
             
-            // Find existing file
-            const q = `name='${GDRIVE_FILE_NAME}' and '${GDRIVE_FOLDER_ID}' in parents and trashed=false`;
-            const searchUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&spaces=drive&fields=files(id)`;
-            const searchRes = await fetch(searchUrl, {
-              headers: { Authorization: `Bearer ${gAccessToken}` }
-            });
-            const searchData = await searchRes.json();
-            
-            let fileId = searchData.files && searchData.files.length > 0 ? searchData.files[0].id : null;
+            let fileId = localStorage.getItem('gdrive_file_id');
             
             if (fileId) {
               // UPDATE existing file
-              const form = new FormData();
-              form.append('file', new Blob([json], {type:'application/json'}));
               const updateUrl = `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`;
               const r = await fetch(updateUrl, {
                 method: 'PATCH',
                 headers: { Authorization: `Bearer ${gAccessToken}` },
-                body: new Blob([json], {type:'application/json'})
+                body: json
               });
-              if (!r.ok) throw new Error('Update failed: ' + r.status);
+              if (!r.ok) throw new Error('Update failed');
             } else {
               // CREATE new file
               const meta = { name: GDRIVE_FILE_NAME, parents: [GDRIVE_FOLDER_ID] };
-              const form = new FormData();
-              form.append('metadata', new Blob([JSON.stringify(meta)], {type:'application/json'}));
-              form.append('file', new Blob([json], {type:'application/json'}));
-              const r = await fetch(
-                'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-                { method:'POST', headers:{ Authorization:`Bearer ${gAccessToken}` }, body:form }
-              );
-              if (!r.ok) throw new Error('Create failed: ' + r.status);
+              const multipart = 
+                '--boundary\r\n' +
+                'Content-Type: application/json\r\n\r\n' +
+                JSON.stringify(meta) + '\r\n' +
+                '--boundary\r\n' +
+                'Content-Type: application/json\r\n\r\n' +
+                json + '\r\n' +
+                '--boundary--';
+              
+              const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                method: 'POST',
+                headers: { 
+                  'Authorization': `Bearer ${gAccessToken}`,
+                  'Content-Type': 'multipart/related; boundary=boundary'
+                },
+                body: multipart
+              });
+              if (!r.ok) throw new Error('Create failed');
               const created = await r.json();
               fileId = created.id;
+              localStorage.setItem('gdrive_file_id', fileId);
             }
             
             gFileId = fileId;
-            localStorage.setItem('gdrive_file_id', gFileId);
             gLastSync = Date.now();
             localStorage.setItem('gdrive_last_sync', String(gLastSync));
-            app.sendTg('☁️ Backup naar Google Drive gestuurd! → https://drive.google.com/drive/folders/1flE6MFq5be0xCPpPJbyozIVTIZOhzu0X');
-            alert('✅ Backup gestuurd naar Google Drive!');
+            app.sendTg('☁️ Backup gestuurd!');
+            alert('✅ Backup gestuurd!');
           } catch(e) {
-            console.error('Drive sync error:', e);
+            console.error('Sync error:', e);
             alert('❌ Error: ' + e.message);
           } finally {
             gSyncing = false;
