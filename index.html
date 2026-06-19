@@ -37,12 +37,12 @@
         const GDRIVE_FILE_NAME = 'healthapp-backup.json';
 
         let gTokenClient = null;
-        let gAccessToken = localStorage.getItem('gdrive_token') || null;
-        let gTokenExpiry = parseInt(localStorage.getItem('gdrive_token_expiry') || '0');
-        let gFileId = localStorage.getItem('gdrive_file_id') || null;
-        let gUserName = localStorage.getItem('gdrive_user_name') || null;
+        let gAccessToken = null; // ALTIJD null bij start - localStorage negeren!
+        let gTokenExpiry = 0;
+        let gFileId = null;
+        let gUserName = null;
         let gSyncing = false;
-        let gLastSync = parseInt(localStorage.getItem('gdrive_last_sync') || '0');
+        let gLastSync = 0;
 
         function isGTokenValid() {
           if (!gAccessToken || gAccessToken === 'null' || gAccessToken === '') return false;
