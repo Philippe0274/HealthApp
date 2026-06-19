@@ -45,6 +45,25 @@ jobs:
           
           # Check based on hour
           case $HOUR in
+            14)
+              echo "Checking: TEST MOMENT (14:00)"
+              # Test all three times
+              SYS=$(echo "$BACKUP" | grep -o '"ochtend":{[^}]*"sys":[0-9]*' | grep -o '[0-9]*$')
+              DIA=$(echo "$BACKUP" | grep -o '"ochtend":{[^}]*"dia":[0-9]*' | grep -o '[0-9]*$')
+              HR=$(echo "$BACKUP" | grep -o '"ochtend":{[^}]*"hr":[0-9]*' | grep -o '[0-9]*$')
+              
+              MISSING=""
+              [ -z "$SYS" ] && MISSING="Systolisch, "
+              [ -z "$DIA" ] && MISSING="${MISSING}Diastolisch, "
+              [ -z "$HR" ] && MISSING="${MISSING}Hartslag"
+              MISSING="${MISSING%, }"
+              
+              if [ ! -z "$MISSING" ]; then
+                send_telegram "❌ TEST ALERT!%0AOntbreekt: ${MISSING}"
+              else
+                echo "✅ TEST - Alles OK"
+              fi
+              ;;
             08)
               echo "Checking: Ochtend bloedwaarden"
               # Extract ochtend values
