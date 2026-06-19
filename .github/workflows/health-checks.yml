@@ -1,61 +1,147 @@
-name: Daily Health Checks
+name: Smart Daily Health Checks
 
 on:
   schedule:
-    - cron: '0 8 * * *'
-    - cron: '0 9 * * *'
-    - cron: '0 11 * * *'
-    - cron: '0 17 * * *'
-    - cron: '0 19 * * *'
+    - cron: '0 8 * * *'   # 08:00 - Ochtend bloedwaarden
+    - cron: '0 10 * * *'  # 10:00 - Medicatie
+    - cron: '0 13 * * *'  # 13:00 - Middag bloedwaarden
+    - cron: '0 22 * * *'  # 22:00 - Avond bloedwaarden
   workflow_dispatch:
 
 jobs:
-  send-med-check:
+  check-and-alert:
     runs-on: ubuntu-latest
-    if: github.event.schedule == '0 8 * * *' || github.event_name == 'workflow_dispatch'
     steps:
-      - name: Send Medicatie Check
-        run: |
-          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
-            -d "chat_id=8526489078" \
-            -d "text=💊 MEDICATIE INNAME TIJD%0A⏰ Neem je medicatie nu in!"
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-  send-ochtend-check:
-    runs-on: ubuntu-latest
-    if: github.event.schedule == '0 9 * * *' || github.event_name == 'workflow_dispatch'
-    steps:
-      - name: Send Ochtend Check
-        run: |
-          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
-            -d "chat_id=8526489078" \
-            -d "text=🌅 OCHTEND BLOEDWAARDEN%0A📊 Meet nu je bloeddruk!"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-  send-middag-check:
-    runs-on: ubuntu-latest
-    if: github.event.schedule == '0 11 * * *' || github.event_name == 'workflow_dispatch'
-    steps:
-      - name: Send Middag Check
+      - name: Download backup and check
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: 8526489078
+          DRIVE_FILE_ID: 1ycJ-3xac6yxBbDEl3rLen8VLrRYHYi4W
         run: |
-          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
-            -d "chat_id=8526489078" \
-            -d "text=🌤️ MIDDAG BLOEDWAARDEN%0A📊 Meet nu je bloeddruk!"
-
-  send-avond-check:
-    runs-on: ubuntu-latest
-    if: github.event.schedule == '0 17 * * *' || github.event_name == 'workflow_dispatch'
-    steps:
-      - name: Send Avond Check
-        run: |
-          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
-            -d "chat_id=8526489078" \
-            -d "text=🌙 AVOND BLOEDWAARDEN%0A📊 Meet nu je bloeddruk!"
-
-  send-rapport:
-    runs-on: ubuntu-latest
-    if: github.event.schedule == '0 19 * * *' || github.event_name == 'workflow_dispatch'
-    steps:
-      - name: Send Rapport
-        run: |
-          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
-            -d "chat_id=8526489078" \
-            -d "text=📊 DAGELIJKS RAPPORT%0A📈 Check je rapportage in app!"
+          python3 << 'EOF'
+          import json
+          import urllib.request
+          from datetime import datetime
+          import os
+          
+          # Download file from Google Drive
+          file_id = os.environ['DRIVE_FILE_ID']
+          url = f'https://drive.google.com/uc?export=download&id={file_id}'
+          
+          try:
+              with urllib.request.urlopen(url) as response:
+                  data = json.loads(response.read().decode())
+          except Exception as e:
+              print(f"Error downloading: {e}")
+              exit(1)
+          
+          # Get today's date
+          today = datetime.now().strftime('%Y-%m-%d')
+          
+          # Get current hour to determine check type
+          hour = datetime.now().hour
+          
+          messages = []
+          
+          # 08:00 - Check OCHTEND bloedwaarden
+          if hour == 8:
+              measures = data.get('measures', {}).get(today, {})
+              ochtend = measures.get('ochtend', {})
+              
+              missing = []
+              if not ochtend.get('sys'):
+                  missing.append('Systolisch')
+              if not ochtend.get('dia'):
+                  missing.append('Diastolisch')
+              if not ochtend.get('hr'):
+                  missing.append('Hartslag')
+              
+              if missing:
+                  msg = f"❌ OCHTEND BLOEDWAARDEN MISSEN!\n"
+                  msg += f"Ontbreekt: {', '.join(missing)}"
+                  messages.append(msg)
+          
+          # 10:00 - Check MEDICATIE
+          elif hour == 10:
+              intakes = data.get('intakes', {})
+              missing_meds = []
+              
+              # Check Belsar
+              belsar_intakes = intakes.get('belsar', {}).get(today, {})
+              if not belsar_intakes.get('ochtend'):
+                  missing_meds.append('Belsar')
+              
+              # Check Pantomed
+              pantomed_intakes = intakes.get('pantomed', {}).get(today, {})
+              if not pantomed_intakes.get('ochtend'):
+                  missing_meds.append('Pantomed')
+              
+              if missing_meds:
+                  msg = f"❌ MEDICATIE NIET INGENOMEN!\n"
+                  msg += f"Ontbreekt: {', '.join(missing_meds)}"
+                  messages.append(msg)
+          
+          # 13:00 - Check MIDDAG bloedwaarden
+          elif hour == 13:
+              measures = data.get('measures', {}).get(today, {})
+              middag = measures.get('middag', {})
+              
+              missing = []
+              if not middag.get('sys'):
+                  missing.append('Systolisch')
+              if not middag.get('dia'):
+                  missing.append('Diastolisch')
+              if not middag.get('hr'):
+                  missing.append('Hartslag')
+              
+              if missing:
+                  msg = f"❌ MIDDAG BLOEDWAARDEN MISSEN!\n"
+                  msg += f"Ontbreekt: {', '.join(missing)}"
+                  messages.append(msg)
+          
+          # 22:00 - Check AVOND bloedwaarden
+          elif hour == 22:
+              measures = data.get('measures', {}).get(today, {})
+              avond = measures.get('avond', {})
+              
+              missing = []
+              if not avond.get('sys'):
+                  missing.append('Systolisch')
+              if not avond.get('dia'):
+                  missing.append('Diastolisch')
+              if not avond.get('hr'):
+                  missing.append('Hartslag')
+              
+              if missing:
+                  msg = f"❌ AVOND BLOEDWAARDEN MISSEN!\n"
+                  msg += f"Ontbreekt: {', '.join(missing)}"
+                  messages.append(msg)
+          
+          # Send Telegram ONLY if messages exist
+          if messages:
+              import subprocess
+              token = os.environ['TELEGRAM_TOKEN']
+              chat_id = os.environ['CHAT_ID']
+              
+              for message in messages:
+                  cmd = [
+                      'curl', '-X', 'POST',
+                      f'https://api.telegram.org/bot{token}/sendMessage',
+                      '-d', f'chat_id={chat_id}',
+                      '-d', f'text={message}'
+                  ]
+                  subprocess.run(cmd)
+              
+              print(f"✅ Sent {len(messages)} alert(s)")
+          else:
+              print("✅ Alles OK - geen bericht gestuurd")
+          
+          EOF
