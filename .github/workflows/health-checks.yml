@@ -85,14 +85,42 @@ jobs:
             
             13)
               echo "Checking: Middag bloedwaarden"
-              # Similar to ochtend
-              echo "⏳ Check middag (placeholder)"
+              # Extract middag values
+              SYS=$(echo "$BACKUP" | grep -o '"middag":{[^}]*"sys":[0-9]*' | grep -o '[0-9]*$')
+              DIA=$(echo "$BACKUP" | grep -o '"middag":{[^}]*"dia":[0-9]*' | grep -o '[0-9]*$')
+              HR=$(echo "$BACKUP" | grep -o '"middag":{[^}]*"hr":[0-9]*' | grep -o '[0-9]*$')
+              
+              MISSING=""
+              [ -z "$SYS" ] && MISSING="Systolisch, "
+              [ -z "$DIA" ] && MISSING="${MISSING}Diastolisch, "
+              [ -z "$HR" ] && MISSING="${MISSING}Hartslag"
+              MISSING="${MISSING%, }"
+              
+              if [ ! -z "$MISSING" ]; then
+                send_telegram "❌ MIDDAG BLOEDWAARDEN MISSEN!%0AOntbreekt: ${MISSING}"
+              else
+                echo "✅ Alles OK"
+              fi
               ;;
             
             22)
               echo "Checking: Avond bloedwaarden"
-              # Similar to ochtend
-              echo "⏳ Check avond (placeholder)"
+              # Extract avond values
+              SYS=$(echo "$BACKUP" | grep -o '"avond":{[^}]*"sys":[0-9]*' | grep -o '[0-9]*$')
+              DIA=$(echo "$BACKUP" | grep -o '"avond":{[^}]*"dia":[0-9]*' | grep -o '[0-9]*$')
+              HR=$(echo "$BACKUP" | grep -o '"avond":{[^}]*"hr":[0-9]*' | grep -o '[0-9]*$')
+              
+              MISSING=""
+              [ -z "$SYS" ] && MISSING="Systolisch, "
+              [ -z "$DIA" ] && MISSING="${MISSING}Diastolisch, "
+              [ -z "$HR" ] && MISSING="${MISSING}Hartslag"
+              MISSING="${MISSING%, }"
+              
+              if [ ! -z "$MISSING" ]; then
+                send_telegram "❌ AVOND BLOEDWAARDEN MISSEN!%0AOntbreekt: ${MISSING}"
+              else
+                echo "✅ Alles OK"
+              fi
               ;;
             
             *)
