@@ -128,6 +128,7 @@
               intakes: app.data.intakes,
               measures: app.data.measures,
               rapportages: app.data.rapportages || {},
+              patient: app.data.patient || null,
               settings: app.settings,
               timestamp: new Date().toISOString()
             };
@@ -209,6 +210,7 @@
             app.data.intakes = backup.intakes || {};
             app.data.measures = backup.measures || {};
             app.data.rapportages = backup.rapportages || {};
+            app.data.patient = backup.patient || null;
             app.settings = backup.settings || app.settings;
             app.save(); // CORRECT methode!
             
@@ -459,6 +461,7 @@
                     intakes: this.data.intakes,
                     measures: this.data.measures,
                     rapportages: this.data.rapportages || {},
+                    patient: this.data.patient || null,
                     settings: this.settings
                 };
                 const blob = new Blob([JSON.stringify(backup)], {type: 'application/json'});
@@ -476,6 +479,52 @@
                 
                 const msg = '📊 DAGELIJKS RAPPORT - ' + rapport.date + '\n\n🌅 Ochtend: ' + rapport.measurements.ochtend + '\n🌤️ Middag: ' + rapport.measurements.middag + '\n🌙 Avond: ' + rapport.measurements.avond + '\n\nGemiddelden: ' + rapport.averages.sys + '/' + rapport.averages.dia + ' (HR:' + rapport.averages.hr + ')\n\n' + rapport.status.esc + '\n' + rapport.status.thuis + '\n\n' + rapport.message;
                 this.sendTg(msg);
+            }
+
+            generateSmartAdvice() {
+                const p = this.data.patient;
+                if (!p) return null;
+                
+                const mobility = (p.mobilityStatus || '').toLowerCase();
+                const medical = (p.medicalHistory || '').toLowerCase();
+                const allergies = (p.allergies || '').toLowerCase();
+                
+                let advice = {
+                    mobility: '',
+                    medical: '',
+                    nutrition: '',
+                    notRecommended: []
+                };
+                
+                // MOBILITEIT ADVIES
+                if (mobility.includes('kruk') || mobility.includes('rolstoel')) {
+                    advice.mobility = '<li>Zittende armsterkte oefeningen (15 min/dag)</li><li>Flexibiliteitswerk voor schouders & nek</li><li>Rolstoel techniek & omgevingsadaptatie</li>';
+                    advice.notRecommended.push('Wandelen/hardlopen (aanpassingen aan mobiliteit nodig)');
+                } else {
+                    advice.mobility = '<li>Regelmatige wandelingen (30 min/dag)</li><li>Lichte cardio activiteiten</li><li>Stretching & flexibiliteit</li>';
+                }
+                
+                // MEDISCHE ADVIEZEN
+                if (medical.includes('diabetes')) {
+                    advice.medical += '<div style="margin-bottom:8px;"><strong>Diabetes:</strong> Bloedsuiker goed monitoren, gezonde voeding, regelmatige medicatie</div>';
+                }
+                if (medical.includes('hart')) {
+                    advice.medical += '<div><strong>Hart:</strong> Regelmatige controles, voorkeur voor lichte activiteiten, rust momenten</div>';
+                }
+                if (!advice.medical) {
+                    advice.medical = '<div>Volg medicatie schema nauwkeurig op.</div>';
+                }
+                
+                // VOEDING & ALLERGIËN
+                if (allergies) {
+                    advice.nutrition = '<div><strong>Allergie: ' + p.allergies + '</strong> - Vermijd deze stoffen</div><li>Gezonde voeding</li><li>Voldoende water</li>';
+                } else {
+                    advice.nutrition = '<li>Gezonde voeding</li><li>Voldoende water</li>';
+                }
+                
+                advice.notRecommended.push('Medicijnen met penicilline');
+                
+                return advice;
             }
 
             generateReport() {
@@ -688,6 +737,33 @@
         <div class="section">
             <div class="section-title">⚠️ Aanbevelingen & Advies</div>
             
+            ${this.data.patient ? (() => {
+                const advice = this.generateSmartAdvice();
+                let smartHtml = '';
+                
+                if (advice.mobility) {
+                    smartHtml += '<div style="background:#f0fdf4;padding:12px;border-radius:8px;border-left:4px solid #10b981;margin-bottom:12px;"><h4 style="margin:0 0 8px 0;font-size:12px;color:#15803d;">🚶 MOBILITEIT</h4><ul style="margin:6px 0;padding-left:18px;font-size:12px;color:#166534;line-height:1.6;">' + advice.mobility + '</ul></div>';
+                }
+                
+                if (advice.medical) {
+                    smartHtml += '<div style="background:#ede9fe;padding:12px;border-radius:8px;border-left:4px solid #a855f7;margin-bottom:12px;"><h4 style="margin:0 0 8px 0;font-size:12px;color:#6b21a8;">🏥 MEDISCHE AANDACHT</h4><div style="font-size:12px;color:#6b21a8;line-height:1.6;">' + advice.medical + '</div></div>';
+                }
+                
+                if (advice.nutrition) {
+                    smartHtml += '<div style="background:#fef3c7;padding:12px;border-radius:8px;border-left:4px solid #f59e0b;margin-bottom:12px;"><h4 style="margin:0 0 8px 0;font-size:12px;color:#92400e;">🍽️ VOEDING</h4><ul style="margin:6px 0;padding-left:18px;font-size:12px;color:#b45309;line-height:1.6;">' + advice.nutrition + '</ul></div>';
+                }
+                
+                if (advice.notRecommended.length > 0) {
+                    smartHtml += '<div style="background:#f5f5f5;padding:12px;border-radius:8px;border-left:4px solid #6b7280;margin-bottom:12px;"><h4 style="margin:0 0 8px 0;font-size:12px;color:#4b5563;">❌ NIET AANBEVOLEN</h4><ul style="margin:6px 0;padding-left:18px;font-size:12px;color:#4b5563;line-height:1.6;">';
+                    advice.notRecommended.forEach(item => {
+                        smartHtml += '<li>' + item + '</li>';
+                    });
+                    smartHtml += '</ul></div>';
+                }
+                
+                return smartHtml;
+            })() : ''}
+            
             <div style="background:#fef2f2;padding:12px;border-radius:8px;border-left:4px solid #dc2626;margin-bottom:12px;">
                 <h4 style="margin:0 0 8px 0;font-size:12px;color:#991b1b;">🍷 ALCOHOL BEPERKING:</h4>
                 <p style="margin:0;font-size:12px;color:#7f1d1d;line-height:1.5;">
@@ -695,25 +771,9 @@
                 </p>
             </div>
 
-            <div style="background:#f0fdf4;padding:12px;border-radius:8px;border-left:4px solid #10b981;margin-bottom:12px;">
-                <h4 style="margin:0 0 8px 0;font-size:12px;color:#15803d;">✅ VOEDING:</h4>
-                <ul style="margin:6px 0;padding-left:18px;font-size:12px;color:#166534;line-height:1.6;">
-                    <li>Beperk zout (max 5g per dag)</li>
-                    <li>Drink genoeg water (1.5-2L per dag)</li>
-                    <li>Vermijd cafeïne-overmatige inname</li>
-                    <li>Eet groenten & magere eiwitten</li>
-                </ul>
-            </div>
-
-            <div style="background:#f3e8ff;padding:12px;border-radius:8px;border-left:4px solid #7c3aed;margin-bottom:12px;">
-                <h4 style="margin:0 0 8px 0;font-size:12px;color:#5b21b6;">🧘 STRESS & RUST:</h4>
-                <ul style="margin:6px 0;padding-left:18px;font-size:12px;color:#581c87;line-height:1.6;">
-                    <li>Rusttijd: 3x per dag (10 minuten)</li>
-                    <li>Diepademhalings-oefeningen</li>
-                    <li>Regelmatige slaap (7-8 uur)</li>
-                    <li>Vermijd plotse stress</li>
-                </ul>
-            </div>
+            ${!this.data.patient ? '<div style="background:#f0fdf4;padding:12px;border-radius:8px;border-left:4px solid #10b981;margin-bottom:12px;"><h4 style="margin:0 0 8px 0;font-size:12px;color:#15803d;">✅ VOEDING:</h4><ul style="margin:6px 0;padding-left:18px;font-size:12px;color:#166534;line-height:1.6;"><li>Beperk zout (max 5g per dag)</li><li>Drink genoeg water (1.5-2L per dag)</li><li>Vermijd cafeïne-overmatige inname</li><li>Eet groenten & magere eiwitten</li></ul></div>' : ''}
+            
+            ${!this.data.patient ? '<div style="background:#f3e8ff;padding:12px;border-radius:8px;border-left:4px solid #7c3aed;margin-bottom:12px;"><h4 style="margin:0 0 8px 0;font-size:12px;color:#5b21b6;">🧘 STRESS & RUST:</h4><ul style="margin:6px 0;padding-left:18px;font-size:12px;color:#581c87;line-height:1.6;"><li>Rusttijd: 3x per dag (10 minuten)</li><li>Diepademhalings-oefeningen</li><li>Regelmatige slaap (7-8 uur)</li><li>Vermijd plotse stress</li></ul></div>' : ''}
 
             <div style="background:#fef3c7;padding:12px;border-radius:8px;border-left:4px solid #f59e0b;">
                 <h4 style="margin:0 0 8px 0;font-size:12px;color:#92400e;">📞 NEEM CONTACT OP MET ARTS:</h4>
