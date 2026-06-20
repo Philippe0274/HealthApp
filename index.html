@@ -237,13 +237,15 @@
                         meds: [{ id: '1', name: 'Belsar', dosage: '20mg', pills: 49, color: '#ff0000', icon: '💊' }],
                         intakes: {},
                         measures: {},
-                        rapportages: {}
+                        rapportages: {},
+                        patient: null
                     };
                 } catch(e) {
                     this.data = {
                         meds: [{ id: '1', name: 'Belsar', dosage: '20mg', pills: 49, color: '#ff0000', icon: '💊' }],
                         intakes: {},
-                        measures: {}
+                        measures: {},
+                        patient: null
                     };
                 }
                 this.telegram = {token:'8525699360:AAGr4wYh4mj-7R2nJ0C7N5Qo3wKZtV7kzkw',chatId:'8526489078'};
@@ -830,8 +832,51 @@
                 if (this.view === 'cal') {
                     document.getElementById('app').innerHTML = this.drawCal();
                     this.bindCal();
+                } else if (this.view === 'emails') {
+                    document.getElementById('app').innerHTML = drawEmailScreen();
                 } else {
                     document.getElementById('app').innerHTML = this.drawDay();
+                }
+            }
+            
+            removeEmail(idx) {
+                let emails = JSON.parse(localStorage.getItem('alertEmails') || '["philippe.demeersman1970@gmail.com","jflores2000@gmail.com"]');
+                emails.splice(idx, 1);
+                localStorage.setItem('alertEmails', JSON.stringify(emails));
+                this.show();
+            }
+            
+            addEmailPrompt() {
+                let newEmail = prompt('Voer email adres in:', '');
+                if (newEmail && newEmail.includes('@')) {
+                    let emails = JSON.parse(localStorage.getItem('alertEmails') || '["philippe.demeersman1970@gmail.com","jflores2000@gmail.com"]');
+                    if (!emails.includes(newEmail)) {
+                        emails.push(newEmail);
+                        localStorage.setItem('alertEmails', JSON.stringify(emails));
+                        this.show();
+                    } else {
+                        alert('Email bestaat al!');
+                    }
+                }
+            }
+            
+            savePatient(firstName, lastName, birthDate, photoBase64) {
+                this.data.patient = {
+                    firstName: firstName,
+                    lastName: lastName,
+                    birthDate: birthDate,
+                    photo: photoBase64,
+                    timestamp: new Date().toISOString()
+                };
+                this.save();
+                this.show();
+            }
+            
+            removePatient() {
+                if (confirm('Patient gegevens wissen?')) {
+                    this.data.patient = null;
+                    this.save();
+                    this.show();
                 }
             }
 
@@ -891,6 +936,21 @@
                 
                 html += '</div>';
                 html += '</div>';
+
+                // PATIENT SECTION - Vóór kalender
+                if (!this.data.patient) {
+                    html += '<button onclick="showPatientForm()" style="background:#3b82f6;border:none;color:white;width:100%;padding:12px;border-radius:8px;font-weight:500;cursor:pointer;margin-bottom:12px;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;"><span style="font-size:18px;">👤</span> Patient toevoegen</button>';
+                } else {
+                    html += '<div style="background:white;border-radius:8px;padding:12px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);border:1px solid #e5e7eb;display:flex;align-items:center;gap:12px;">';
+                    if (this.data.patient.photo) {
+                        html += '<img src="' + this.data.patient.photo + '" style="width:60px;height:60px;border-radius:8px;object-fit:cover;flex-shrink:0;">';
+                    } else {
+                        html += '<div style="width:60px;height:60px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:24px;">👤</div>';
+                    }
+                    html += '<div style="flex:1;"><p style="margin:0;font-size:13px;color:#1f2937;font-weight:600;">' + this.data.patient.firstName + '</p><small style="font-size:11px;color:#6b7280;">' + this.data.patient.lastName + ' • ' + this.data.patient.birthDate + '</small></div>';
+                    html += '<button onclick="app.removePatient()" style="background:transparent;border:none;color:#ef4444;cursor:pointer;padding:4px;border-radius:4px;font-size:18px;">🗑️</button>';
+                    html += '</div>';
+                }
 
                 if (this.showSet) {
                     html += '<div style="background:white;border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';
@@ -986,6 +1046,7 @@
                 html += '<button style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;width:28px;height:28px;color:white;font-size:12px;cursor:pointer;flex-shrink:0;" onclick="app.view=\'cal\';app.show();">◀</button>';
                 html += '<h1 style="font-size:13px;font-weight:700;margin:0;flex:1;">' + dayName + ' ' + d + ' ' + mName + '</h1>';
                 html += '</div>';
+
 
                 // MEDICATIES - Compact
                 for (let med of this.data.meds) {
@@ -1092,6 +1153,11 @@
             }
         }
         
+        function showEmailManager() {
+            app.view = 'emails';
+            app.show();
+        }
+        
         function showDoctorPopup() {
             const now = new Date();
             const day = now.getDay();
@@ -1144,13 +1210,82 @@
             if (isOpen) {
                 popupHtml += '<button onclick="window.location.href=\'tel:0226912 54\'" style="background:#3b82f6;border:none;color:white;padding:10px;border-radius:6px;font-weight:500;cursor:pointer;font-size:13px;transition:all 0.2s;">📞 Bellen</button>';
             } else {
-                popupHtml += '<button onclick="window.location.href=\'tel:1733\'" style="background:#ef4444;border:none;color:white;padding:10px;border-radius:6px;font-weight:500;cursor:pointer;font-size:13px;transition:all 0.2s;">🚑 Wachtpost</button>';
+                popupHtml += '<button onclick="window.location.href=\'tel:0225462 62\'" style="background:#ef4444;border:none;color:white;padding:10px;border-radius:6px;font-weight:500;cursor:pointer;font-size:13px;transition:all 0.2s;">🚑 Wachtpost</button>';
             }
             popupHtml += '<button onclick="this.closest(\'div[style*=z-index]\').remove()" style="background:transparent;border:0.5px solid #e5e7eb;color:#1f2937;padding:10px;border-radius:6px;font-weight:500;cursor:pointer;font-size:13px;transition:all 0.2s;">Sluiten</button>';
             popupHtml += '</div>';
             popupHtml += '</div></div>';
             
             document.body.insertAdjacentHTML('beforeend', popupHtml);
+        }
+        
+        function drawEmailScreen() {
+            let emails = JSON.parse(localStorage.getItem('alertEmails') || '["philippe.demeersman1970@gmail.com","jflores2000@gmail.com"]');
+            let html = '<div style="min-height:100vh;background:#f9fafb;">';
+            html += '<div style="background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);color:white;padding:16px;display:flex;align-items:center;gap:12px;">';
+            html += '<button onclick="app.view=\'cal\';app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;">←</button>';
+            html += '<span style="font-weight:500;font-size:16px;">📧 Emails</span>';
+            html += '</div>';
+            html += '<div style="padding:16px;">';
+            
+            emails.forEach((e, i) => {
+                html += '<div style="background:white;border:0.5px solid #e5e7eb;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
+                html += '<span style="font-size:13px;color:#1f2937;word-break:break-all;">'+e+'</span>';
+                html += '<button onclick="app.removeEmail('+i+')" style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:20px;padding:4px;flex-shrink:0;">🗑️</button>';
+                html += '</div>';
+            });
+            
+            html += '<button onclick="app.addEmailPrompt()" style="background:#10b981;border:none;color:white;width:100%;padding:12px;border-radius:8px;font-weight:500;cursor:pointer;font-size:14px;margin-top:12px;display:flex;align-items:center;justify-content:center;gap:8px;"><span style="font-size:18px;">+</span> Email toevoegen</button>';
+            html += '</div></div>';
+            return html;
+        }
+        
+        function showPatientForm() {
+            document.body.insertAdjacentHTML('beforeend', drawPatientForm());
+            setupPatientForm();
+        }
+        
+        function drawPatientForm() {
+            return '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:12px;" id="patient-modal" onclick="if(event.target.id===\'patient-modal\') this.remove();"><div style="background:white;border-radius:12px;padding:24px;width:100%;max-width:320px;"><h2 style="margin:0 0 20px 0;font-size:18px;color:#1f2937;font-weight:600;">👤 Patient Toevoegen</h2><form id="patient-form"><div style="margin-bottom:16px;"><label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Voornaam *</label><input type="text" id="patient-first" placeholder="Philippe" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;" required></div><div style="margin-bottom:16px;"><label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Achternaam *</label><input type="text" id="patient-last" placeholder="De Meersman" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;" required></div><div style="margin-bottom:16px;"><label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Geboortedatum *</label><input type="date" id="patient-birth" value="1970-05-27" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;" required></div><div style="margin-bottom:16px;"><label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:8px;">📷 Foto (optioneel)</label><div id="upload-area" style="border:2px dashed #d1d5db;border-radius:8px;padding:20px;text-align:center;cursor:pointer;background:#f9fafb;"><div style="font-size:32px;margin-bottom:8px;">📸</div><p style="font-size:13px;color:#6b7280;margin:0;">Klik om foto te uploaden</p></div><input type="file" id="patient-photo" accept="image/*" style="display:none;"><div id="preview-container" style="display:none;text-align:center;margin-top:8px;"><img id="photo-preview" style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-bottom:8px;"><button type="button" id="remove-photo" style="background:#ef4444;color:white;border:none;padding:6px 12px;border-radius:4px;font-size:11px;cursor:pointer;">Foto verwijderen</button></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px;"><button type="button" style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;padding:11px 16px;border-radius:6px;font-weight:500;cursor:pointer;font-size:14px;" onclick="document.getElementById(\'patient-modal\').remove();">Annuleren</button><button type="submit" style="background:#3b82f6;color:white;border:none;padding:11px 16px;border-radius:6px;font-weight:500;cursor:pointer;font-size:14px;">Opslaan</button></div></form></div></div>';
+        }
+        
+        function setupPatientForm() {
+            const uploadArea = document.getElementById('upload-area');
+            const fileInput = document.getElementById('patient-photo');
+            const previewContainer = document.getElementById('preview-container');
+            const photoPreview = document.getElementById('photo-preview');
+            const removePhotoBtn = document.getElementById('remove-photo');
+            const form = document.getElementById('patient-form');
+            
+            uploadArea.addEventListener('click', () => fileInput.click());
+            
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        photoPreview.src = event.target.result;
+                        previewContainer.style.display = 'block';
+                    };
+                    reader.readAsDataURL(e.target.files[0]);
+                }
+            });
+            
+            removePhotoBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                fileInput.value = '';
+                previewContainer.style.display = 'none';
+            });
+            
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const firstName = document.getElementById('patient-first').value;
+                const lastName = document.getElementById('patient-last').value;
+                const birthDate = document.getElementById('patient-birth').value;
+                const photoBase64 = photoPreview.src || null;
+                
+                app.savePatient(firstName, lastName, birthDate, photoBase64);
+                document.getElementById('patient-modal').remove();
+            });
         }
         
         const app = new App();
