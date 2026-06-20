@@ -263,6 +263,13 @@
                     medicatieCheck: '10:00',
                     rapportCheck: '21:00'
                 }));
+                // Laad huisarts gegevens uit localStorage, of gebruik default
+                this.doctor = JSON.parse(localStorage.getItem('doctor') || JSON.stringify({
+                    name: 'Dr. Verbesselt Koen',
+                    address: 'Wolvertemsesteenweg 115 - 1850 Grimbergen',
+                    phone: '02 269 12 54',
+                    hours: { ma_do: '07:00-19:30', vr: '07:00-18:30' }
+                }));
                 this.show();
             }
 
@@ -569,6 +576,54 @@
                 setTimeout(() => { this.show(); }, 100);
             }
 
+            saveDoctor() {
+                const name = document.getElementById('doctorNameInput').value;
+                const address = document.getElementById('doctorAddressInput').value;
+                const phone = document.getElementById('doctorPhoneInput').value;
+                
+                if (!name || !address || !phone) {
+                    alert('⚠️ Vul alle huisarts gegevens in!');
+                    return;
+                }
+                
+                this.doctor = { name, address, phone, hours: this.doctor.hours };
+                localStorage.setItem('doctor', JSON.stringify(this.doctor));
+                this.sendTg('✅ Huisarts gegevens bijgewerkt:\n' + name + '\n' + address + '\n' + phone);
+                document.getElementById('doctor-modal').remove();
+                this.show();
+            }
+
+            showEditDoctorForm() {
+                const d = this.doctor;
+                document.body.insertAdjacentHTML('beforeend', `
+                    <div id="doctor-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target.id==='doctor-modal') document.getElementById('doctor-modal').remove();">
+                        <div style="background:white;border-radius:12px;padding:24px;width:95%;max-width:320px;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                            <h2 style="margin:0 0 20px 0;font-size:18px;color:#1f2937;font-weight:600;">✏️ Huisarts wijzigen</h2>
+                            
+                            <div style="margin-bottom:16px;">
+                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Naam</label>
+                                <input type="text" id="doctorNameInput" value="${d.name}" placeholder="Dr. Naam" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
+                            </div>
+                            
+                            <div style="margin-bottom:16px;">
+                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Adres</label>
+                                <input type="text" id="doctorAddressInput" value="${d.address}" placeholder="Straat 123 - 1234 Stad" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
+                            </div>
+                            
+                            <div style="margin-bottom:20px;">
+                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Telefoon</label>
+                                <input type="tel" id="doctorPhoneInput" value="${d.phone}" placeholder="02 123 45 67" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
+                            </div>
+                            
+                            <div style="display:flex;gap:12px;">
+                                <button onclick="app.saveDoctor()" style="background:#10b981;color:white;border:none;flex:1;padding:12px;border-radius:8px;font-weight:500;cursor:pointer;">💾 OPSLAAN</button>
+                                <button onclick="document.getElementById('doctor-modal').remove()" style="background:#e5e7eb;color:#1f2937;border:none;flex:1;padding:12px;border-radius:8px;font-weight:500;cursor:pointer;">SLUITEN</button>
+                            </div>
+                        </div>
+                    </div>
+                `);
+            }
+
             openTg() {
                 const token = prompt('🔑 Bot Token:', this.telegram.token || '');
                 if (!token) return;
@@ -586,6 +641,7 @@
                 const trends = this.generateTrendsHtml();
                 const chartData = this.generateChartsData();
                 const advice = this.generateSmartAdvice();
+                const doctor = this.doctor;
                 const html = `
 <!DOCTYPE html>
 <html lang="nl">
@@ -630,7 +686,7 @@
 
         ${this.data.patient ? `<div style="background:#f0fdf4;padding:12px;border-radius:8px;border-left:4px solid #10b981;margin-bottom:20px;"><div style="display:flex;gap:15px;"><div>${this.data.patient.photo ? `<img src="${this.data.patient.photo}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;">` : `<div style="width:60px;height:60px;border-radius:8px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:24px;">👤</div>`}</div><div style="flex:1;"><h3 style="margin:0;font-size:16px;color:#15803d;font-weight:700;">${this.data.patient.firstName} ${this.data.patient.lastName}</h3><p style="margin:4px 0;font-size:12px;color:#166534;">📅 Geboortedatum: ${this.data.patient.birthDate ? new Date(this.data.patient.birthDate).toLocaleDateString('nl-NL', {year:'numeric',month:'long',day:'numeric'}) : 'Niet ingevuld'}</p>${this.data.patient.allergies ? '<p style="margin:4px 0;font-size:12px;color:#dc2626;font-weight:500;">⚠️ Allergiën: ' + this.data.patient.allergies + '</p>' : ''}${this.data.patient.medicalHistory ? '<p style="margin:4px 0;font-size:12px;color:#166534;">🏥 Medische história: ' + this.data.patient.medicalHistory + '</p>' : ''}${this.data.patient.mobilityStatus ? '<p style="margin:4px 0;font-size:12px;color:#166534;">🚶 Mobiliteit: ' + this.data.patient.mobilityStatus + '</p>' : ''}</div></div></div>` : ''}
 
-        ${this.data.patient && this.data.patient.doctorName ? `<div style="background:#fef3c7;padding:12px;border-radius:8px;border-left:4px solid #f59e0b;margin-bottom:20px;"><h4 style="margin:0 0 8px 0;font-size:12px;color:#92400e;font-weight:700;">👨‍⚕️ HUISARTS</h4><div style="font-size:12px;color:#b45309;line-height:1.6;"><p style="margin:0;"><strong>${this.data.patient.doctorName}</strong></p>${this.data.patient.doctorAddress ? '<p style="margin:4px 0 0 0;">📍 ' + this.data.patient.doctorAddress + '</p>' : ''}${this.data.patient.doctorPhone ? '<p style="margin:4px 0 0 0;">📞 ' + this.data.patient.doctorPhone + '</p>' : ''}</div></div>` : ''}
+        <div style="background:#fef3c7;padding:12px;border-radius:8px;border-left:4px solid #f59e0b;margin-bottom:20px;"><h4 style="margin:0 0 8px 0;font-size:12px;color:#92400e;font-weight:700;">👨‍⚕️ HUISARTS</h4><div style="font-size:12px;color:#b45309;line-height:1.6;"><p style="margin:0;"><strong>${doctor.name}</strong></p><p style="margin:4px 0 0 0;">📍 ${doctor.address}</p><p style="margin:4px 0 0 0;">📞 ${doctor.phone}</p></div></div>
 
         <div class="section">
             <div class="section-title">📊 Samenvatting - Gezondheidsanalyse</div>
@@ -1523,7 +1579,8 @@
                 
                 // ROW 4: BackupRestore, Arts (NEW), Telefoon (NEW)
                 html += '<button onclick="driveRestore()" style="background:' + (isGTokenValid() ? '#8b5cf6' : '#9ca3af') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;" ' + (isGTokenValid() ? '' : 'disabled') + '>⬇️</button>';
-                html += '<button onclick="showDoctorPopup()">👨‍⚕️</button>';
+                html += '<button onclick="showDoctorPopup()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;">👨‍⚕️</button>';
+                html += '<button onclick="app.showEditDoctorForm()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;" title="Arts wijzigen">✏️</button>';
                 html += '<button onclick="window.location.href=\'tel:0226912 54\'" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;">📞</button>';
                 
                 // ROW 5: Emails (NEW) + spacer
