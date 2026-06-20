@@ -585,6 +585,7 @@
                 const analysis = this.analyzeReportData();
                 const trends = this.generateTrendsHtml();
                 const chartData = this.generateChartsData();
+                const advice = this.generateSmartAdvice();
                 const html = `
 <!DOCTYPE html>
 <html lang="nl">
@@ -796,6 +797,68 @@
             </div>
         </div>
 
+        ${advice ? `
+        <div class="section">
+            <div class="section-title">💡 Intelligente Persoonlijke Aanbevelingen</div>
+            
+            ${advice.waarschuwingen.length > 0 ? `
+            <div style="background:#fecaca;padding:12px;border-radius:8px;border-left:4px solid #dc2626;margin-bottom:12px;">
+                ${advice.waarschuwingen.map(w => `
+                <div style="margin-bottom:6px;">
+                    <p style="margin:0;font-size:12px;color:#991b1b;font-weight:700;line-height:1.5;">
+                        ${w.icon} ${w.text}
+                    </p>
+                </div>
+                `).join('')}
+            </div>
+            ` : ''}
+            
+            ${advice.mobiliteit.length > 0 ? `
+            <div style="background:#f0fdf4;padding:12px;border-radius:8px;border-left:4px solid #10b981;margin-bottom:12px;">
+                <h4 style="margin:0 0 8px 0;font-size:12px;color:#15803d;font-weight:700;">🚶 Mobiliteit & Beweging:</h4>
+                ${advice.mobiliteit.map(a => `
+                <p style="margin:6px 0;font-size:12px;color:#166534;line-height:1.5;">
+                    ${a.icon} ${a.text}
+                </p>
+                `).join('')}
+            </div>
+            ` : ''}
+            
+            ${advice.medisch.length > 0 ? `
+            <div style="background:#f3f4f6;padding:12px;border-radius:8px;border-left:4px solid #6b7280;margin-bottom:12px;">
+                <h4 style="margin:0 0 8px 0;font-size:12px;color:#374151;font-weight:700;">🏥 Medische Aandacht:</h4>
+                ${advice.medisch.map(a => `
+                <p style="margin:6px 0;font-size:12px;color:#4b5563;line-height:1.5;">
+                    ${a.icon} ${a.text}
+                </p>
+                `).join('')}
+            </div>
+            ` : ''}
+            
+            ${advice.voeding.length > 0 ? `
+            <div style="background:#fef3c7;padding:12px;border-radius:8px;border-left:4px solid #f59e0b;margin-bottom:12px;">
+                <h4 style="margin:0 0 8px 0;font-size:12px;color:#92400e;font-weight:700;">🍽️ Voeding & Drinken:</h4>
+                ${advice.voeding.map(a => `
+                <p style="margin:6px 0;font-size:12px;color:#b45309;line-height:1.5;">
+                    ${a.icon} ${a.text}
+                </p>
+                `).join('')}
+            </div>
+            ` : ''}
+            
+            ${advice.nietAanbevolen.length > 0 ? `
+            <div style="background:#fef2f2;padding:12px;border-radius:8px;border-left:4px solid #dc2626;margin-bottom:12px;">
+                <h4 style="margin:0 0 8px 0;font-size:12px;color:#991b1b;font-weight:700;">❌ Vermijden:</h4>
+                ${advice.nietAanbevolen.map(a => `
+                <p style="margin:6px 0;font-size:12px;color:#7f1d1d;line-height:1.5;">
+                    ${a.icon} ${a.text}
+                </p>
+                `).join('')}
+            </div>
+            ` : ''}
+        </div>
+        ` : ''}
+
         <div style="text-align:center;margin-top:30px;padding-top:20px;border-top:1px solid #e5e7eb;font-size:11px;color:#6b7280;">
             <p>Gegenereerd: ${new Date().toLocaleDateString('nl-NL', {year:'numeric',month:'long',day:'numeric'})}</p>
         </div>
@@ -970,6 +1033,137 @@
                     trendStatusSys: trendStatusSys,
                     trendStatusDia: trendStatusDia
                 };
+            }
+
+            generateSmartAdvice() {
+                const analysis = this.analyzeReportData();
+                if (!analysis) return null;
+                
+                const patient = this.data.patient;
+                const advice = {
+                    mobiliteit: [],
+                    medisch: [],
+                    voeding: [],
+                    nietAanbevolen: [],
+                    waarschuwingen: []
+                };
+                
+                // 🚶 MOBILITEIT - SUPER BELANGRIJK VOOR PHILIPPE!
+                if (patient && patient.mobilityStatus) {
+                    const mobility = patient.mobilityStatus.toLowerCase();
+                    if (mobility.includes('rolstoel') || mobility.includes('kruk')) {
+                        advice.mobiliteit.push({
+                            icon: '♿',
+                            text: 'Blijf actief in uw mogelijkheden - lichte armstrekken, rolstoelaerobics, of aangepaste fysiotherapie.',
+                            priority: 'high'
+                        });
+                        advice.nietAanbevolen.push({
+                            icon: '❌',
+                            text: 'GEEN wandelen aanbevolen - aangepaste beweging is beter!',
+                            priority: 'critical'
+                        });
+                    } else {
+                        advice.mobiliteit.push({
+                            icon: '🚶',
+                            text: 'Minimaal 30 minuten gematigde beweging per dag (wandelen, fietsen, zwemmen).',
+                            priority: 'high'
+                        });
+                    }
+                } else {
+                    advice.mobiliteit.push({
+                        icon: '🚶',
+                        text: 'Minimaal 30 minuten gematigde beweging per dag.',
+                        priority: 'high'
+                    });
+                }
+                
+                // 🏥 MEDISCH ADVIES OP BASIS VAN HISTÓRIA
+                if (patient && patient.medicalHistory) {
+                    const history = patient.medicalHistory.toLowerCase();
+                    if (history.includes('diabetes')) {
+                        advice.medisch.push({
+                            icon: '🩺',
+                            text: 'Diabetes: Monitor bloedsuiker regelmatig. Coördineer medicatie met arts.',
+                            priority: 'critical'
+                        });
+                    }
+                    if (history.includes('hart') || history.includes('cardio')) {
+                        advice.medisch.push({
+                            icon: '❤️',
+                            text: 'Hartaandoening: Vermijd stres, hou regelmatig contact met cardioloog.',
+                            priority: 'critical'
+                        });
+                    }
+                    if (history.includes('nieren') || history.includes('nier')) {
+                        advice.medisch.push({
+                            icon: '🩺',
+                            text: 'Nierprobleem: Beperk zoutinname en controleer vochtverlies.',
+                            priority: 'high'
+                        });
+                    }
+                }
+                
+                // ⚠️ ALLERGIËN WAARSCHUWING
+                if (patient && patient.allergies) {
+                    advice.waarschuwingen.push({
+                        icon: '⚠️',
+                        text: `ALLERGIËN: ${patient.allergies} - Vermijd deze stoffen en informeer altijd uw arts/apotheker!`,
+                        priority: 'critical',
+                        color: '#fecaca'
+                    });
+                }
+                
+                // 🍽️ VOEDINGSADVIES OP BASIS VAN ANALYSE
+                if (analysis.sys.avg >= 140 || analysis.dia.avg >= 90) {
+                    advice.voeding.push({
+                        icon: '🧂',
+                        text: 'Hoge bloeddruk gedetecteerd! Beperk zout tot max 5g/dag.',
+                        priority: 'critical'
+                    });
+                }
+                
+                if (analysis.sys.avg >= 120 && analysis.sys.avg < 140) {
+                    advice.voeding.push({
+                        icon: '🥗',
+                        text: 'Matige bloeddruk: Verhoog groenten & magere eiwitten, vermijd vette voeding.',
+                        priority: 'high'
+                    });
+                }
+                
+                advice.voeding.push({
+                    icon: '💧',
+                    text: 'Drink 1.5-2L water per dag - essentieel voor bloeddruk regulatie.',
+                    priority: 'high'
+                });
+                
+                if (!patient || !patient.medicalHistory || !patient.medicalHistory.toLowerCase().includes('diabetes')) {
+                    advice.voeding.push({
+                        icon: '🍌',
+                        text: 'Eet kalium-rijke voeding (banaan, spinazie, avocado) - goed voor hart.',
+                        priority: 'medium'
+                    });
+                }
+                
+                // ❌ NIET AANBEVOLEN
+                advice.nietAanbevolen.push({
+                    icon: '🍷',
+                    text: 'Geen alcohol of maximaal 1 glas per dag - verhoogt bloeddruk.',
+                    priority: 'high'
+                });
+                
+                advice.nietAanbevolen.push({
+                    icon: '☕',
+                    text: 'Beperkt cafeïne (max 2 kopjes koffie/thee per dag).',
+                    priority: 'medium'
+                });
+                
+                advice.nietAanbevolen.push({
+                    icon: '🚬',
+                    text: 'Geen roken - verhoogt risico op hartziekten aanzienlijk.',
+                    priority: 'critical'
+                });
+                
+                return advice;
             }
 
             generateChartsData() {
