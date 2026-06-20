@@ -1221,7 +1221,7 @@
         function showPatientForm() {
             document.body.insertAdjacentHTML('beforeend', `
                 <div id="patient-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target.id==='patient-modal') document.getElementById('patient-modal').remove();">
-                    <div style="background:white;border-radius:12px;padding:24px;width:95%;max-width:320px;">
+                    <div style="background:white;border-radius:12px;padding:24px;width:95%;max-width:320px;max-height:85vh;overflow-y:auto;">
                         <h2 style="margin:0 0 20px 0;font-size:18px;color:#1f2937;font-weight:600;">👤 Patient Toevoegen</h2>
                         <div style="margin-bottom:16px;">
                             <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Voornaam *</label>
@@ -1322,7 +1322,7 @@
             
             document.body.insertAdjacentHTML('beforeend', `
                 <div id="patient-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target.id==='patient-modal') document.getElementById('patient-modal').remove();">
-                    <div style="background:white;border-radius:12px;padding:24px;width:95%;max-width:320px;">
+                    <div style="background:white;border-radius:12px;padding:24px;width:95%;max-width:320px;max-height:85vh;overflow-y:auto;">
                         <h2 style="margin:0 0 20px 0;font-size:18px;color:#1f2937;font-weight:600;">✏️ Patient wijzigen</h2>
                         <div style="margin-bottom:16px;">
                             <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Voornaam</label>
