@@ -838,6 +838,7 @@
             }
 
             savePatient(firstName, lastName, birthDate, photoBase64) {
+                const isNew = !this.data.patient;
                 this.data.patient = {
                     firstName: firstName,
                     lastName: lastName,
@@ -845,13 +846,27 @@
                     photo: photoBase64
                 };
                 this.save();
+                
+                // Telegram melding
+                const formattedDate = formatDate(birthDate);
+                if (isNew) {
+                    this.sendTg(`👤 <b>NIEUWE PATIENT</b>\\n├─ ${firstName} ${lastName}\\n├─ Geboortedatum: ${formattedDate}\\n└─ ✅ Toegevoegd`);
+                } else {
+                    this.sendTg(`✏️ <b>PATIENT BIJGEWERKT</b>\\n├─ ${firstName} ${lastName}\\n├─ Geboortedatum: ${formattedDate}\\n└─ ✅ Opgeslagen`);
+                }
+                
                 this.show();
             }
 
             removePatient() {
                 if (confirm('Patient gegevens wissen?')) {
+                    const patientName = this.data.patient ? this.data.patient.firstName + ' ' + this.data.patient.lastName : 'Onbekend';
                     this.data.patient = null;
                     this.save();
+                    
+                    // Telegram melding
+                    this.sendTg(`🗑️ <b>PATIENT VERWIJDERD</b>\\n├─ ${patientName}\\n└─ ❌ Gewist`);
+                    
                     this.show();
                 }
             }
