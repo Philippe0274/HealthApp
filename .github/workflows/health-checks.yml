@@ -32,8 +32,8 @@ jobs:
           const CHAT_ID = process.env.CHAT_ID;
           
           try {
-            // Download file from Google Drive using curl (handles redirects better)
-            const downloadUrl = `https://drive.google.com/uc?export=download&id=${DRIVE_FILE_ID}`;
+            // Download file from Google Drive using export=download (no auth needed)
+            const downloadUrl = `https://drive.google.com/uc?export=download&confirm=no&id=${DRIVE_FILE_ID}`;
             const fileContent = execSync(`curl -L "${downloadUrl}" 2>/dev/null`).toString();
             
             // Validate the download
@@ -57,19 +57,6 @@ jobs:
             console.log(`Checking date: ${today}, Hour: ${hour}`);
             
             let alerts = [];
-            
-            // Test hour (for testing)
-            if (hour === 15) {
-              console.log('TEST MOMENT (15:00)');
-              const ochtend = backup.measures?.[today]?.ochtend || {};
-              let missing = [];
-              if (!ochtend.sys) missing.push('Systolisch');
-              if (!ochtend.dia) missing.push('Diastolisch');
-              if (!ochtend.hr) missing.push('Hartslag');
-              if (missing.length > 0) {
-                alerts.push(`❌ TEST ALERT!%0AOntbreekt: ${missing.join(', ')}`);
-              }
-            }
             
             // 08:00 - Ochtend bloedwaarden
             if (hour === 8) {
