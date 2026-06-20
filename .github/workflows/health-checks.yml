@@ -75,10 +75,16 @@ jobs:
             if (hour === 10) {
               console.log('Checking: Medicatie');
               const intakes = backup.intakes || {};
+              const meds = backup.data?.meds || []; // Lees medicaties uit app!
               let missing = [];
               
-              if (!intakes.belsar?.[today]?.ochtend) missing.push('Belsar');
-              if (!intakes.pantomed?.[today]?.ochtend) missing.push('Pantomed');
+              // Check ELKE medicatie die in de app staat
+              for (let med of meds) {
+                const medName = med.name.toLowerCase();
+                if (!intakes[medName]?.[today]?.ochtend) {
+                  missing.push(med.name);
+                }
+              }
               
               if (missing.length > 0) {
                 alerts.push(`❌ MEDICATIE NIET INGENOMEN!%0AOntbreekt: ${missing.join(', ')}`);
