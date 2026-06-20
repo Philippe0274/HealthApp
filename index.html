@@ -837,13 +837,16 @@
                 }
             }
 
-            savePatient(firstName, lastName, birthDate, photoBase64) {
+            savePatient(firstName, lastName, birthDate, photoBase64, allergies, medicalHistory, mobilityStatus) {
                 const isNew = !this.data.patient;
                 this.data.patient = {
                     firstName: firstName,
                     lastName: lastName,
                     birthDate: birthDate,
-                    photo: photoBase64
+                    photo: photoBase64,
+                    allergies: allergies || '',
+                    medicalHistory: medicalHistory || '',
+                    mobilityStatus: mobilityStatus || ''
                 };
                 this.save();
                 
@@ -1237,6 +1240,18 @@
                             <input type="file" id="patient-photo" accept="image/*" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
                             <img id="photo-preview" style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-top:8px;display:none;">
                         </div>
+                        <div style="margin-bottom:16px;">
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🚫 Allergiën</label>
+                            <textarea id="patient-allergies" placeholder="bijv. Penicilline, Noten..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;font-family:inherit;min-height:60px;resize:vertical;"></textarea>
+                        </div>
+                        <div style="margin-bottom:16px;">
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🏥 Gekende medische historie</label>
+                            <textarea id="patient-medical-history" placeholder="bijv. Diabetes, Hypertensie, Hartaandoening..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;font-family:inherit;min-height:60px;resize:vertical;"></textarea>
+                        </div>
+                        <div style="margin-bottom:16px;">
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🚶 Mobiliteitstoestand</label>
+                            <textarea id="patient-mobility-status" placeholder="bijv. Krukken/Rolstoel, Loopt met hulpmiddel..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;font-family:inherit;min-height:60px;resize:vertical;"></textarea>
+                        </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px;">
                             <button style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;padding:11px 16px;border-radius:6px;font-weight:500;cursor:pointer;font-size:14px;" onclick="document.getElementById('patient-modal').remove();">Annuleren</button>
                             <button style="background:#3b82f6;color:white;border:none;padding:11px 16px;border-radius:6px;font-weight:500;cursor:pointer;font-size:14px;" onclick="savePatientData();">Opslaan</button>
@@ -1336,6 +1351,18 @@
                             </div>
                             <input type="file" id="patient-photo" accept="image/*" style="display:none;">
                         </div>
+                        <div style="margin-bottom:16px;">
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🚫 Allergiën</label>
+                            <textarea id="patient-allergies" placeholder="bijv. Penicilline, Noten..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;font-family:inherit;min-height:60px;resize:vertical;">${p.allergies || ''}</textarea>
+                        </div>
+                        <div style="margin-bottom:16px;">
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🏥 Gekende medische historie</label>
+                            <textarea id="patient-medical-history" placeholder="bijv. Diabetes, Hypertensie, Hartaandoening..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;font-family:inherit;min-height:60px;resize:vertical;">${p.medicalHistory || ''}</textarea>
+                        </div>
+                        <div style="margin-bottom:16px;">
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🚶 Mobiliteitstoestand</label>
+                            <textarea id="patient-mobility-status" placeholder="bijv. Krukken/Rolstoel, Loopt met hulpmiddel..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;font-family:inherit;min-height:60px;resize:vertical;">${p.mobilityStatus || ''}</textarea>
+                        </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px;">
                             <button style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;padding:11px 16px;border-radius:6px;font-weight:500;cursor:pointer;font-size:14px;" onclick="document.getElementById('patient-modal').remove();">Annuleren</button>
                             <button style="background:#3b82f6;color:white;border:none;padding:11px 16px;border-radius:6px;font-weight:500;cursor:pointer;font-size:14px;" onclick="savePatientData();">Opslaan</button>
@@ -1387,6 +1414,9 @@
             const firstName = document.getElementById('patient-first').value;
             const lastName = document.getElementById('patient-last').value;
             const birthDate = document.getElementById('patient-birth').value;
+            const allergies = document.getElementById('patient-allergies').value;
+            const medicalHistory = document.getElementById('patient-medical-history').value;
+            const mobilityStatus = document.getElementById('patient-mobility-status').value;
             const preview = document.getElementById('photo-preview');
             
             // Check of foto geldig is (data URL en zichtbaar)
@@ -1402,14 +1432,14 @@
                 if (photoBase64) {
                     compressImage(photoBase64, (compressed) => {
                         if (app && app.savePatient) {
-                            app.savePatient(firstName, lastName, birthDate, compressed);
+                            app.savePatient(firstName, lastName, birthDate, compressed, allergies, medicalHistory, mobilityStatus);
                             const modal = document.getElementById('patient-modal');
                             if (modal) modal.remove();
                         }
                     });
                 } else {
                     if (app && app.savePatient) {
-                        app.savePatient(firstName, lastName, birthDate, null);
+                        app.savePatient(firstName, lastName, birthDate, null, allergies, medicalHistory, mobilityStatus);
                         const modal = document.getElementById('patient-modal');
                         if (modal) modal.remove();
                     }
