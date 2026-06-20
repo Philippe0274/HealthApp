@@ -28,6 +28,31 @@
         const MEDS_COLORS = ['#ff0000', '#0066ff', '#00cc00', '#ff6600', '#ff00ff'];
         const MEDS_ICONS = ['💊', '💉', '🩺', '🏥', '🔬'];
 
+        // HUISARTS GEGEVENS
+        const DOCTOR_DATA = {
+          name: 'Dr. Verbesselt Koen',
+          address: 'Wolvertemsesteenweg 115 - 1850 Grimbergen',
+          phone: '02 269 12 54',
+          hours: { ma_do: '07:00 - 19:30', vr: '07:00 - 18:30' }
+        };
+
+        // BLOEDDRUK VALIDATIE
+        function getBloodPressureStatus(sys, dia) {
+          if (sys <= 119 && dia <= 79) return { status: '🟢 OPTIMAAL', color: '#10b981' };
+          if (sys <= 129 && dia <= 84) return { status: '🟢 NORMAAL', color: '#10b981' };
+          if (sys <= 139 || dia <= 89) return { status: '🟡 HOOG-NORMAAL', color: '#f59e0b' };
+          if (sys <= 159 || dia <= 99) return { status: '🟠 GRAAD 1', color: '#f97316' };
+          if (sys <= 179 || dia <= 109) return { status: '🔴 GRAAD 2', color: '#ef4444' };
+          return { status: '🔴 GRAAD 3 KRITIEK', color: '#dc2626' };
+        }
+
+        function getHeartRateStatus(hr) {
+          if (hr >= 55 && hr <= 70) return { status: '🟢 OPTIMAAL', color: '#10b981' };
+          if (hr > 70 && hr <= 100) return { status: '🟢 NORMAAL', color: '#10b981' };
+          if (hr > 100 && hr <= 120) return { status: '🟡 VERHOOGD', color: '#f59e0b' };
+          return { status: '🔴 KRITIEK', color: '#dc2626' };
+        }
+
         // ══════════════════════════════════════════════════════════
         // GOOGLE DRIVE - GLOBALE VARIABLES & FUNCTIES
         // ══════════════════════════════════════════════════════════
@@ -254,7 +279,9 @@
                     middagDeadline: '13:00',
                     avondDeadline: '19:00',
                     medicatieCheck: '10:00',
-                    rapportCheck: '21:00'
+                    rapportCheck: '21:00',
+                    patientName: 'Philippe De Meersman',
+                    alertEmails: ['philippe.demeersman1970@gmail.com', 'jflores2000@gmail.com']
                 }));
                 this.show();
             }
@@ -269,12 +296,17 @@
             }
 
             getPills(id) {
-                let count = 0;
-                for (let day in this.data.intakes) {
-                    if (this.data.intakes[day][id]) count++;
-                }
                 const med = this.data.meds.find(m => m.id === id);
-                return med ? med.pills - count : 0;
+                if (!med) return 0;
+                let count = 0;
+                if (this.data.intakes[med.name]) {
+                    for (let date in this.data.intakes[med.name]) {
+                        for (let moment in this.data.intakes[med.name][date]) {
+                            if (this.data.intakes[med.name][date][moment]) count++;
+                        }
+                    }
+                }
+                return med.pills - count;
             }
 
             addMed() {
@@ -321,17 +353,24 @@
             }
 
             setIntake(id, time) {
-                if (!this.data.intakes[this.date]) this.data.intakes[this.date] = {};
                 const med = this.data.meds.find(m => m.id === id);
+                let moment = 'ochtend';
+                const hour = new Date().getHours();
+                if (hour >= 12 && hour < 18) moment = 'middag';
+                else if (hour >= 18) moment = 'avond';
+                
+                if (!this.data.intakes[med.name]) this.data.intakes[med.name] = {};
+                if (!this.data.intakes[med.name][this.date]) this.data.intakes[med.name][this.date] = {};
+                
                 if (time) {
-                    this.data.intakes[this.date][id] = time;
-                    this.sendTg(`✅ <b>${med.icon} ${med.name}</b> INGENOMEN!\n├─ ⏰ ${time}\n├─ 📊 ${this.getPills(id)}/${med.pills}\n└─ ✅`);
+                    this.data.intakes[med.name][this.date][moment] = time;
+                    this.sendTg(`✅ <b>${med.icon} ${med.name}</b> INGENOMEN!\n├─ Moment: ${moment}\n├─ ⏰ ${time}\n├─ 📊 ${this.getPills(id)}/${med.pills}\n└─ ✅`);
                     if (this.getPills(id) < 5) {
-                        this.sendTg(`⚠️ <b>${med.name}</b> - WAARSCHUWING!\n├─ ${this.getPills(id)} pillen\n└─ 🚨 BESTELLEN!`);
+                        this.sendTg(`⚠️ <b>${med.name}</b> - WAARSCHUWING!\n├─ ${this.getPills(id)} pillen over\n└─ 🚨 BESTELLEN!`);
                     }
                 } else {
-                    delete this.data.intakes[this.date][id];
-                    this.sendTg(`❌ <b>${med.icon} ${med.name}</b> VERWIJDERD\n├─ Inname uit ${this.date}\n└─ 📊 ${this.getPills(id)}/${med.pills}`);
+                    delete this.data.intakes[med.name][this.date][moment];
+                    this.sendTg(`❌ <b>${med.icon} ${med.name}</b> VERWIJDERD\n├─ Moment: ${moment}\n├─ Uit ${this.date}\n└─ 📊 ${this.getPills(id)}/${med.pills}`);
                 }
                 this.save();
                 this.show();
@@ -374,9 +413,37 @@
                 
                 if (!sys || !dia || !hr) { alert('Vul Sys/Dia/HR in!'); return; }
                 
+                const sysVal = parseInt(sys);
+                const diaVal = parseInt(dia);
+                const hrVal = parseInt(hr);
+                
+                const sysStatus = getBloodPressureStatus(sysVal, diaVal);
+                const diaStatus = getBloodPressureStatus(sysVal, diaVal);
+                const hrStatus = getHeartRateStatus(hrVal);
+                
+                setTimeout(() => {
+                    document.getElementById('sys-' + moment).style.backgroundColor = sysStatus.color;
+                    document.getElementById('sys-' + moment).style.color = 'white';
+                    document.getElementById('dia-' + moment).style.backgroundColor = diaStatus.color;
+                    document.getElementById('dia-' + moment).style.color = 'white';
+                    document.getElementById('hr-' + moment).style.backgroundColor = hrStatus.color;
+                    document.getElementById('hr-' + moment).style.color = 'white';
+                }, 100);
+                
+                const isBadValue = sysStatus.color !== '#10b981' || diaStatus.color !== '#10b981' || hrStatus.color !== '#10b981';
+                
+                if (isBadValue) {
+                    const confirmMsg = `⚠️ WAARSCHUWING - SLECHTE WAARDEN\n\nSys: ${sysVal} mmHg → ${sysStatus.status}\nDia: ${diaVal} mmHg → ${diaStatus.status}\nHR: ${hrVal} bpm → ${hrStatus.status}\n\n📧 Alert rapport wordt gegenereerd!\n\nBevestigen?`;
+                    if (!confirm(confirmMsg)) {
+                        document.getElementById('sys-' + moment).value = '';
+                        document.getElementById('dia-' + moment).value = '';
+                        document.getElementById('hr-' + moment).value = '';
+                        return;
+                    }
+                }
+                
                 if (!this.data.measures[this.date]) this.data.measures[this.date] = {};
                 const old = this.data.measures[this.date][moment];
-                const sysVal = parseInt(sys), diaVal = parseInt(dia), hrVal = parseInt(hr);
                 const timeVal = document.getElementById('time-' + moment)?.value || '';
                 
                 this.data.measures[this.date][moment] = { sys: sysVal, dia: diaVal, hr: hrVal, time: timeVal };
@@ -385,9 +452,9 @@
                 const timeDisplay = timeVal || (moment === 'ochtend' ? '08:00' : moment === 'middag' ? '13:00' : '20:00');
                 
                 if (old && old.sys) {
-                    this.sendTg(`📊 <b>❤️ ${moment.toUpperCase()} BLOEDWAARDEN AANGEPAST</b>\n├─ ${icon} Nieuw: ${sysVal}/${diaVal} HR:${hrVal}\n├─ Oud: ${old.sys}/${old.dia} HR:${old.hr}\n├─ ⏰ ${timeDisplay}\n└─ ✅`);
+                    this.sendTg(`📊 <b>❤️ ${moment.toUpperCase()} BLOEDWAARDEN AANGEPAST</b>\n├─ ${icon} Nieuw: ${sysVal}/${diaVal} HR:${hrVal}\n├─ Status: ${sysStatus.status}\n├─ ⏰ ${timeDisplay}\n└─ ✅`);
                 } else {
-                    this.sendTg(`📊 <b>❤️ ${moment.toUpperCase()} BLOEDWAARDEN INGEGEVEN</b>\n├─ ${icon} ${sysVal}/${diaVal} HR:${hrVal}\n├─ ⏰ ${timeDisplay}\n└─ ✅`);
+                    this.sendTg(`📊 <b>❤️ ${moment.toUpperCase()} BLOEDWAARDEN INGEGEVEN</b>\n├─ ${icon} ${sysVal}/${diaVal} HR:${hrVal}\n├─ Status: ${sysStatus.status}\n├─ ⏰ ${timeDisplay}\n└─ ✅`);
                 }
                 this.save();
                 this.show();
@@ -827,6 +894,10 @@
                 if (this.view === 'cal') {
                     document.getElementById('app').innerHTML = this.drawCal();
                     this.bindCal();
+                } else if (this.view === 'doctor') {
+                    document.getElementById('app').innerHTML = this.drawDoctor();
+                } else if (this.view === 'emails') {
+                    document.getElementById('app').innerHTML = this.drawEmails();
                 } else {
                     document.getElementById('app').innerHTML = this.drawDay();
                 }
@@ -859,26 +930,27 @@
                 html += '<div style="min-width:0;"><h1 style="font-size:13px;font-weight:700;margin:0;">Bloeddruk/Medicatie</h1><p style="font-size:9px;opacity:0.9;margin:2px 0 0 0;">Opvolgingstool (' + this.data.meds.length + ' meds)</p></div>';
                 html += '</div>';
                 
-                // RIGHT: Icons in 3 columns
-                html += '<div style="display:grid;grid-template-columns:repeat(3, 40px);gap:6px;flex-shrink:0;">';
+                // RIGHT: Icons in 4 columns
+                html += '<div style="display:grid;grid-template-columns:repeat(4, 40px);gap:6px;flex-shrink:0;">';
                 
                 // Column 1
                 html += '<button onclick="app.openTg()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./telegram.png" style="width:24px;height:24px;"></button>';
                 html += '<button onclick="app.showSet=!app.showSet;app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./drugs.png" style="width:24px;height:24px;"></button>';
-                html += '<button onclick="app.showSettings()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./24-hours.png" style="width:24px;height:24px;"></button>';
+                html += '<button onclick="app.view=\'doctor\';app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;">👨‍⚕️</button>';
+                html += '<button onclick="window.location.href=\'tel:0226912 54\'" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;">📞</button>';
                 
                 // Column 2
+                html += '<button onclick="app.view=\'emails\';app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;">📧</button>';
+                html += '<button onclick="app.showSettings()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./24-hours.png" style="width:24px;height:24px;"></button>';
                 html += '<button onclick="app.downloadBackup()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./recovery.png" style="width:24px;height:24px;"></button>';
                 html += '<button onclick="app.openReport()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./folder.png" style="width:24px;height:24px;"></button>';
-                html += '<div></div>';
                 
                 // Column 3
                 html += '<button onclick="app.uploadBackup()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./database-management.png" style="width:24px;height:24px;"></button>';
                 html += '<button onclick="app.month=new Date();app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./event.png" style="width:24px;height:24px;"></button>';
-                html += '<button onclick="handleSyncAction()" style="background:' + (isGTokenValid() ? '#10b981' : '#6b7280') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.3s;" title="' + (isGTokenValid() ? 'Google verbonden - Klik om uit te loggen' : 'Klik om in te loggen') + '">☁️</button>';
-                html += '<button onclick="driveSync()" style="background:' + (isGTokenValid() ? '#3b82f6' : '#9ca3af') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all 0.3s;" title="Upload naar Google Drive" ' + (isGTokenValid() ? '' : 'disabled') + '>⬆️</button>';
-                html += '<button onclick="driveRestore()" style="background:' + (isGTokenValid() ? '#8b5cf6' : '#9ca3af') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all 0.3s;" title="Restore van Google Drive" ' + (isGTokenValid() ? '' : 'disabled') + '>⬇️</button>';
-                html += '<div></div>';
+                html += '<button onclick="handleSyncAction()" style="background:' + (isGTokenValid() ? '#10b981' : '#6b7280') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.3s;">☁️</button>';
+                html += '<button onclick="driveSync()" style="background:' + (isGTokenValid() ? '#3b82f6' : '#9ca3af') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all 0.3s;" ' + (isGTokenValid() ? '' : 'disabled') + '>⬆️</button>';
+                html += '<button onclick="driveRestore()" style="background:' + (isGTokenValid() ? '#8b5cf6' : '#9ca3af') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all 0.3s;" ' + (isGTokenValid() ? '' : 'disabled') + '>⬇️</button>';
                 
                 html += '</div>';
                 html += '</div>';
@@ -1044,12 +1116,71 @@
                 return html;
             }
 
+            drawDoctor() {
+                let html = '<div style="min-height:100vh;background:#f9fafb;padding:12px;">';
+                html += '<button onclick="app.view=\'cal\';app.show()" style="background:#ef4444;color:white;border:none;border-radius:6px;padding:8px 12px;margin-bottom:12px;cursor:pointer;">← Terug</button>';
+                html += '<div style="background:white;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';
+                html += '<h2 style="font-size:18px;font-weight:700;margin-bottom:16px;">👨‍⚕️ Huisarts Gegevens</h2>';
+                html += '<div style="border-left:4px solid #3b82f6;padding-left:12px;margin-bottom:16px;">';
+                html += '<div style="font-weight:700;font-size:16px;margin-bottom:8px;">' + DOCTOR_DATA.name + '</div>';
+                html += '<div style="font-size:13px;color:#4b5563;margin-bottom:6px;">📍 ' + DOCTOR_DATA.address + '</div>';
+                html += '<div style="font-size:13px;color:#4b5563;margin-bottom:6px;">☎️ <a href="tel:' + DOCTOR_DATA.phone.replace(/\s/g, '') + '" style="color:#3b82f6;text-decoration:none;">' + DOCTOR_DATA.phone + '</a></div>';
+                html += '<div style="font-size:13px;color:#4b5563;">⏰ ma-do: ' + DOCTOR_DATA.hours.ma_do + ' | vr: ' + DOCTOR_DATA.hours.vr + '</div>';
+                html += '</div>';
+                html += '<button onclick="window.location.href=\'tel:' + DOCTOR_DATA.phone.replace(/\s/g, '') + '\'" style="background:#10b981;color:white;border:none;border-radius:6px;padding:10px 16px;width:100%;font-weight:700;cursor:pointer;">📞 Bel arts</button>';
+                html += '</div></div>';
+                return html;
+            }
+
+            drawEmails() {
+                let html = '<div style="min-height:100vh;background:#f9fafb;padding:12px;">';
+                html += '<button onclick="app.view=\'cal\';app.show()" style="background:#ef4444;color:white;border:none;border-radius:6px;padding:8px 12px;margin-bottom:12px;cursor:pointer;">← Terug</button>';
+                html += '<div style="background:white;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';
+                html += '<h2 style="font-size:18px;font-weight:700;margin-bottom:16px;">📧 Alert Email Adressen</h2>';
+                html += '<div style="margin-bottom:16px;">';
+                for (let i = 0; i < this.settings.alertEmails.length; i++) {
+                    html += '<div style="background:#f3f4f6;border-radius:8px;padding:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
+                    html += '<span style="font-size:13px;">' + this.settings.alertEmails[i] + '</span>';
+                    html += '<button onclick="app.removeEmail(' + i + ')" style="background:#ef4444;color:white;border:none;border-radius:4px;padding:4px 8px;font-size:12px;cursor:pointer;">✕</button>';
+                    html += '</div>';
+                }
+                html += '</div>';
+                html += '<input id="newEmailInput" type="email" placeholder="Nieuw email adres" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;margin-bottom:8px;">';
+                html += '<button onclick="app.addEmail()" style="background:#3b82f6;color:white;border:none;border-radius:6px;padding:8px 12px;width:100%;cursor:pointer;font-weight:700;">+ Toevoegen</button>';
+                html += '</div></div>';
+                return html;
+            }
+
+            removeEmail(index) {
+                this.settings.alertEmails.splice(index, 1);
+                this.saveSettings();
+                this.view = 'emails';
+                this.show();
+            }
+
+            addEmail() {
+                const input = document.getElementById('newEmailInput');
+                if (!input.value || !input.value.includes('@')) {
+                    alert('Voer een geldig email adres in!');
+                    return;
+                }
+                this.settings.alertEmails.push(input.value);
+                this.saveSettings();
+                this.view = 'emails';
+                this.show();
+            }
+
+            saveSettings() {
+                localStorage.setItem('settings', JSON.stringify(this.settings));
+            }
+
             bindCal() {
                 // Calendar click binding already in HTML onclick
             }
         }
 
         const app = new App();
+        app.show(); // CRITICAL!
         
         // Initialize Google Drive
         (async () => {
