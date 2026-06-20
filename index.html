@@ -882,7 +882,7 @@
                 
                 // ROW 4: BackupRestore, Arts (NEW), Telefoon (NEW)
                 html += '<button onclick="driveRestore()" style="background:' + (isGTokenValid() ? '#8b5cf6' : '#9ca3af') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;" ' + (isGTokenValid() ? '' : 'disabled') + '>⬇️</button>';
-                html += '<button onclick="alert(\'ARTS INFO:\\n\\nDr. Verbesselt Koen\\nWolvertemsesteenweg 115\\n1850 Grimbergen\\n\\nTel: 02 269 12 54\\n\\nma-do: 07:00-19:30\\nvr: 07:00-18:30\')" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;">👨‍⚕️</button>';
+                html += '<button onclick="showDoctorPopup()">👨‍⚕️</button>';
                 html += '<button onclick="window.location.href=\'tel:0226912 54\'" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;">📞</button>';
                 
                 // ROW 5: Emails (NEW) + spacer
@@ -1090,6 +1090,66 @@
                     showEmailManager();
                 }
             }
+        }
+        
+        function showDoctorPopup() {
+            const now = new Date();
+            const day = now.getDay();
+            const hour = now.getHours();
+            const min = now.getMinutes();
+            const timeInMin = hour * 60 + min;
+            
+            let isOpen = false;
+            if (day >= 1 && day <= 4) {
+                if (timeInMin >= 7*60 && timeInMin <= 19*60+30) isOpen = true;
+            } else if (day === 5) {
+                if (timeInMin >= 7*60 && timeInMin <= 18*60+30) isOpen = true;
+            }
+            
+            let popupHtml = '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:12px;" onclick="if(event.target===this) this.remove();">';
+            popupHtml += '<div style="background:white;border-radius:12px;border:0.5px solid #e5e7eb;width:100%;max-width:320px;padding:24px;box-shadow:0 4px 20px rgba(0,0,0,0.2);">';
+            popupHtml += '<div style="text-align:center;margin-bottom:12px;">';
+            popupHtml += '<div style="font-size:48px;margin-bottom:8px;">👨‍⚕️</div>';
+            popupHtml += '<h2 style="font-size:18px;font-weight:500;margin:0;color:#1f2937;">Dr. Verbesselt Koen</h2>';
+            popupHtml += '<div style="font-size:12px;color:'+(isOpen?'#10b981':'#ef4444')+';margin-top:6px;font-weight:500;letter-spacing:0.5px;">'+(isOpen?'🟢 GEOPEND':'🔴 GESLOTEN')+'</div>';
+            popupHtml += '</div>';
+            
+            if (!isOpen) {
+                popupHtml += '<div style="background:#fef2f2;border-left:4px solid #ef4444;padding:12px;border-radius:6px;margin:16px 0;">';
+                popupHtml += '<div style="font-size:12px;color:#991f1f;font-weight:500;">⚠️ Buiten openingsuren</div>';
+                popupHtml += '<div style="font-size:11px;color:#7f1d1d;margin-top:4px;line-height:1.4;">Wachtdienst Midden-Brabant is actief</div>';
+                popupHtml += '</div>';
+            }
+            
+            popupHtml += '<div style="border-top:0.5px solid #e5e7eb;padding-top:16px;margin-bottom:16px;">';
+            popupHtml += '<div style="margin-bottom:14px;">';
+            popupHtml += '<div style="display:flex;align-items:flex-start;gap:12px;">';
+            popupHtml += '<span style="font-size:16px;margin-top:2px;">📍</span>';
+            popupHtml += '<div style="font-size:13px;color:#1f2937;line-height:1.6;">Wolvertemsesteenweg 115<br>1850 Grimbergen</div>';
+            popupHtml += '</div></div>';
+            popupHtml += '<div style="margin-bottom:14px;">';
+            popupHtml += '<div style="display:flex;align-items:center;gap:12px;">';
+            popupHtml += '<span style="font-size:16px;">📞</span>';
+            popupHtml += '<span style="font-size:13px;color:#1f2937;">02 269 12 54</span>';
+            popupHtml += '</div></div>';
+            popupHtml += '<div>';
+            popupHtml += '<div style="display:flex;align-items:flex-start;gap:12px;">';
+            popupHtml += '<span style="font-size:16px;margin-top:2px;">⏰</span>';
+            popupHtml += '<div style="font-size:13px;color:#1f2937;line-height:1.6;">ma-do: 07:00 - 19:30<br>vr: 07:00 - 18:30</div>';
+            popupHtml += '</div></div>';
+            popupHtml += '</div>';
+            
+            popupHtml += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+            if (isOpen) {
+                popupHtml += '<button onclick="window.location.href=\'tel:0226912 54\'" style="background:#3b82f6;border:none;color:white;padding:10px;border-radius:6px;font-weight:500;cursor:pointer;font-size:13px;transition:all 0.2s;">📞 Bellen</button>';
+            } else {
+                popupHtml += '<button onclick="window.location.href=\'tel:1733\'" style="background:#ef4444;border:none;color:white;padding:10px;border-radius:6px;font-weight:500;cursor:pointer;font-size:13px;transition:all 0.2s;">🚑 Wachtpost</button>';
+            }
+            popupHtml += '<button onclick="this.closest(\'div[style*=z-index]\').remove()" style="background:transparent;border:0.5px solid #e5e7eb;color:#1f2937;padding:10px;border-radius:6px;font-weight:500;cursor:pointer;font-size:13px;transition:all 0.2s;">Sluiten</button>';
+            popupHtml += '</div>';
+            popupHtml += '</div></div>';
+            
+            document.body.insertAdjacentHTML('beforeend', popupHtml);
         }
         
         const app = new App();
