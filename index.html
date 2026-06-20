@@ -862,26 +862,32 @@
                 html += '<div style="min-width:0;"><h1 style="font-size:13px;font-weight:700;margin:0;">Bloeddruk/Medicatie</h1><p style="font-size:9px;opacity:0.9;margin:2px 0 0 0;">Opvolgingstool (' + this.data.meds.length + ' meds)</p></div>';
                 html += '</div>';
                 
-                // RIGHT: Icons in 3 columns
+                // RIGHT: 13 buttons (3 per rij)
                 html += '<div style="display:grid;grid-template-columns:repeat(3, 40px);gap:6px;flex-shrink:0;">';
                 
-                // Column 1
+                // ROW 1: Telegram, Pillen, Uur
                 html += '<button onclick="app.openTg()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./telegram.png" style="width:24px;height:24px;"></button>';
                 html += '<button onclick="app.showSet=!app.showSet;app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./drugs.png" style="width:24px;height:24px;"></button>';
                 html += '<button onclick="app.showSettings()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./24-hours.png" style="width:24px;height:24px;"></button>';
                 
-                // Column 2
+                // ROW 2: BackupDownload, Rapport, BackupUpload
                 html += '<button onclick="app.downloadBackup()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./recovery.png" style="width:24px;height:24px;"></button>';
                 html += '<button onclick="app.openReport()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./folder.png" style="width:24px;height:24px;"></button>';
-                html += '<div></div>';
-                
-                // Column 3
                 html += '<button onclick="app.uploadBackup()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./database-management.png" style="width:24px;height:24px;"></button>';
-                html += '<button onclick="app.month=new Date();app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./event.png" style="width:24px;height:24px;"></button>';
-                html += '<button onclick="handleSyncAction()" style="background:' + (isGTokenValid() ? '#10b981' : '#6b7280') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.3s;" title="' + (isGTokenValid() ? 'Google verbonden - Klik om uit te loggen' : 'Klik om in te loggen') + '">☁️</button>';
-                html += '<button onclick="driveSync()" style="background:' + (isGTokenValid() ? '#3b82f6' : '#9ca3af') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all 0.3s;" title="Upload naar Google Drive" ' + (isGTokenValid() ? '' : 'disabled') + '>⬆️</button>';
-                html += '<button onclick="driveRestore()" style="background:' + (isGTokenValid() ? '#8b5cf6' : '#9ca3af') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all 0.3s;" title="Restore van Google Drive" ' + (isGTokenValid() ? '' : 'disabled') + '>⬇️</button>';
-                html += '<div></div>';
+                
+                // ROW 3: Kalender (FIXED!), LoginGoogle, BackupSend
+                html += '<button onclick="app.view=\'cal\';app.month=new Date();app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./event.png" style="width:24px;height:24px;"></button>';
+                html += '<button onclick="handleSyncAction()" style="background:' + (isGTokenValid() ? '#10b981' : '#6b7280') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;">☁️</button>';
+                html += '<button onclick="driveSync()" style="background:' + (isGTokenValid() ? '#3b82f6' : '#9ca3af') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;" ' + (isGTokenValid() ? '' : 'disabled') + '>⬆️</button>';
+                
+                // ROW 4: BackupRestore, Arts (NEW), Telefoon (NEW)
+                html += '<button onclick="driveRestore()" style="background:' + (isGTokenValid() ? '#8b5cf6' : '#9ca3af') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;" ' + (isGTokenValid() ? '' : 'disabled') + '>⬇️</button>';
+                html += '<button onclick="alert(\'ARTS INFO:\\n\\nDr. Verbesselt Koen\\nWolvertemsesteenweg 115\\n1850 Grimbergen\\n\\nTel: 02 269 12 54\\n\\nma-do: 07:00-19:30\\nvr: 07:00-18:30\')" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;">👨‍⚕️</button>';
+                html += '<button onclick="window.location.href=\'tel:0226912 54\'" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;">📞</button>';
+                
+                // ROW 5: Emails (NEW) + spacer
+                html += '<button onclick="showEmailManager()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;">📧</button>';
+                html += '<div></div><div></div>';
                 
                 html += '</div>';
                 html += '</div>';
@@ -1052,6 +1058,40 @@
             }
         }
 
+        function showEmailManager() {
+            let msg = 'EMAIL ALERTS:\n\n';
+            let emails = JSON.parse(localStorage.getItem('alertEmails') || '["philippe.demeersman1970@gmail.com","jflores2000@gmail.com"]');
+            
+            msg += 'Huidige emails:\n';
+            emails.forEach((e, i) => { msg += (i+1) + '. ' + e + '\n'; });
+            
+            msg += '\n--- OPTIES ---\n';
+            msg += '[+] Toevoegen - typ email\n';
+            msg += '[#] Verwijderen - typ nummer\n';
+            msg += '[X] Annuleren\n';
+            
+            let action = prompt(msg, '');
+            if (!action) return;
+            
+            if (action.startsWith('+')) {
+                let newEmail = prompt('Nieuw email adres:', '');
+                if (newEmail && newEmail.includes('@')) {
+                    emails.push(newEmail);
+                    localStorage.setItem('alertEmails', JSON.stringify(emails));
+                    alert('✅ Email toegevoegd!');
+                    showEmailManager();
+                }
+            } else if (!isNaN(action)) {
+                let idx = parseInt(action) - 1;
+                if (idx >= 0 && idx < emails.length) {
+                    emails.splice(idx, 1);
+                    localStorage.setItem('alertEmails', JSON.stringify(emails));
+                    alert('✅ Email verwijderd!');
+                    showEmailManager();
+                }
+            }
+        }
+        
         const app = new App();
         app.show();
         
