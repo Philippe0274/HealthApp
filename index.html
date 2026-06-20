@@ -584,6 +584,7 @@
                 const stats = this.generateReportStats();
                 const analysis = this.analyzeReportData();
                 const trends = this.generateTrendsHtml();
+                const chartData = this.generateChartsData();
                 const html = `
 <!DOCTYPE html>
 <html lang="nl">
@@ -613,6 +614,7 @@
         .button:hover { background: #991b1b; }
         @media print { .button { display: none; } body { padding: 0; } }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"><\/script>
 </head>
 <body>
     <button class="button" onclick="window.print();">🖨️ Print / PDF</button>
@@ -688,6 +690,21 @@
         <div class="section">
             <div class="section-title">📈 Trends Analyse ${trends ? `(${trends.dateRange} - ${trends.dayCount} dagen)` : ''}</div>
             ${trends ? `
+            ${chartData ? `
+            <div style="margin-bottom:25px;background:#f9fafb;padding:15px;border-radius:8px;">
+                <h4 style="margin:0 0 12px 0;font-size:13px;color:#1f2937;">📊 Bovendruk Grafiek:</h4>
+                <canvas id="sysTrendChart" style="max-height:250px;"></canvas>
+            </div>
+            <div style="margin-bottom:25px;background:#f9fafb;padding:15px;border-radius:8px;">
+                <h4 style="margin:0 0 12px 0;font-size:13px;color:#1f2937;">📊 Onderdruk Grafiek:</h4>
+                <canvas id="diaTrendChart" style="max-height:250px;"></canvas>
+            </div>
+            <div style="margin-bottom:25px;background:#f9fafb;padding:15px;border-radius:8px;">
+                <h4 style="margin:0 0 12px 0;font-size:13px;color:#1f2937;">❤️ Hartslag Grafiek:</h4>
+                <canvas id="hrTrendChart" style="max-height:250px;"></canvas>
+            </div>
+            ` : ''}
+            
             <div style="margin-bottom:15px;">
                 <h4 style="margin:0 0 8px 0;font-size:13px;color:#1f2937;">Bovendruk (Systolisch):</h4>
                 <div style="background:#fef3c7;padding:10px;border-radius:6px;border-left:4px solid #f59e0b;font-size:12px;font-family:monospace;line-height:1.6;">
@@ -783,6 +800,99 @@
             <p>Gegenereerd: ${new Date().toLocaleDateString('nl-NL', {year:'numeric',month:'long',day:'numeric'})}</p>
         </div>
     </div>
+    <script>
+        window.addEventListener('load', function() {
+            ${chartData ? `
+            try {
+                const labels = ${chartData.labels};
+                const sysData = ${chartData.sysData};
+                const diaData = ${chartData.diaData};
+                const hrData = ${chartData.hrData};
+                
+                const chartOptions = {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { 
+                        legend: { display: true, position: 'top' },
+                        title: { display: false }
+                    },
+                    scales: { 
+                        y: { beginAtZero: false },
+                        x: { }
+                    }
+                };
+                
+                // Systolisch Chart
+                const sysTrendCtx = document.getElementById('sysTrendChart');
+                if (sysTrendCtx) {
+                    new Chart(sysTrendCtx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Systolisch (mmHg)',
+                                data: sysData,
+                                borderColor: '#f59e0b',
+                                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                                tension: 0.4,
+                                fill: true,
+                                pointRadius: 4,
+                                pointBackgroundColor: '#f59e0b'
+                            }]
+                        },
+                        options: { ...chartOptions, scales: { y: { beginAtZero: false, min: 80, max: 160 }, x: {} } }
+                    });
+                }
+                
+                // Diastolisch Chart
+                const diaTrendCtx = document.getElementById('diaTrendChart');
+                if (diaTrendCtx) {
+                    new Chart(diaTrendCtx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Diastolisch (mmHg)',
+                                data: diaData,
+                                borderColor: '#10b981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                tension: 0.4,
+                                fill: true,
+                                pointRadius: 4,
+                                pointBackgroundColor: '#10b981'
+                            }]
+                        },
+                        options: { ...chartOptions, scales: { y: { beginAtZero: false, min: 50, max: 120 }, x: {} } }
+                    });
+                }
+                
+                // Hartslag Chart
+                const hrTrendCtx = document.getElementById('hrTrendChart');
+                if (hrTrendCtx) {
+                    new Chart(hrTrendCtx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Hartslag (bpm)',
+                                data: hrData,
+                                borderColor: '#ef4444',
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                tension: 0.4,
+                                fill: true,
+                                pointRadius: 4,
+                                pointBackgroundColor: '#ef4444'
+                            }]
+                        },
+                        options: { ...chartOptions, scales: { y: { beginAtZero: false, min: 40, max: 130 }, x: {} } }
+                    });
+                }
+            } catch(e) {
+                console.error('Chart error:', e);
+            }
+            ` : ''}
+        });
+    <\/script>
 </body>
 </html>`;
                 const win = window.open('', '', 'width=900,height=1200');
@@ -860,6 +970,35 @@
                     trendStatusSys: trendStatusSys,
                     trendStatusDia: trendStatusDia
                 };
+            }
+
+            generateChartsData() {
+                let dailyData = {};
+                for (let date in this.data.measures) {
+                    const day = this.data.measures[date];
+                    let daySys = [], dayDia = [], dayHr = [];
+                    ['ochtend', 'middag', 'avond'].forEach(moment => {
+                        if (day[moment] && day[moment].sys) {
+                            daySys.push(day[moment].sys);
+                            dayDia.push(day[moment].dia);
+                            dayHr.push(day[moment].hr);
+                        }
+                    });
+                    if (daySys.length > 0) {
+                        dailyData[date] = {
+                            sys: Math.round(daySys.reduce((a,b)=>a+b)/daySys.length),
+                            dia: Math.round(dayDia.reduce((a,b)=>a+b)/dayDia.length),
+                            hr: Math.round(dayHr.reduce((a,b)=>a+b)/dayHr.length)
+                        };
+                    }
+                }
+                const sortedDates = Object.keys(dailyData).sort();
+                if (sortedDates.length === 0) return null;
+                const labels = sortedDates.map(d => { const [y,m,dd] = d.split('-'); return `${dd}/${m}`; });
+                const sysData = sortedDates.map(d => dailyData[d].sys);
+                const diaData = sortedDates.map(d => dailyData[d].dia);
+                const hrData = sortedDates.map(d => dailyData[d].hr);
+                return { labels: JSON.stringify(labels), sysData: JSON.stringify(sysData), diaData: JSON.stringify(diaData), hrData: JSON.stringify(hrData) };
             }
 
             generateTrendsHtml() {
