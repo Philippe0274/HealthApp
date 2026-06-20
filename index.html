@@ -953,6 +953,7 @@
                     }
                     html += '<div style="flex:1;"><p style="margin:0;font-size:13px;color:#1f2937;font-weight:600;">' + p.firstName + '</p><small style="font-size:11px;color:#6b7280;">' + p.lastName + ' • ' + formatDate(p.birthDate) + '</small></div>';
                     html += '<div style="display:flex;gap:6px;flex-shrink:0;">';
+                    html += '<button onclick="showPatientInfoPopup()" style="background:transparent;border:none;color:#6366f1;cursor:pointer;padding:4px;border-radius:4px;font-size:18px;" title="Toon patient info">👁️</button>';
                     html += '<button onclick="showPatientEditForm()" style="background:transparent;border:none;color:#3b82f6;cursor:pointer;padding:4px;border-radius:4px;font-size:18px;">✏️</button>';
                     html += '<button onclick="app.safeRemovePatient()" style="background:transparent;border:none;color:#ef4444;cursor:pointer;padding:4px;border-radius:4px;font-size:18px;">🗑️</button>';
                     html += '</div></div>';
@@ -1314,6 +1315,42 @@
                 callback(compressed);
             };
             img.src = base64;
+        }
+        
+        function showPatientInfoPopup() {
+            const p = app.data.patient;
+            if (!p) return;
+            
+            const birthYear = parseInt(p.birthDate.split('-')[0]);
+            const age = new Date().getFullYear() - birthYear;
+            
+            document.body.insertAdjacentHTML('beforeend', `
+                <div id="patient-info-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:12px;" onclick="if(event.target.id==='patient-info-modal') document.getElementById('patient-info-modal').remove();">
+                    <div style="background:white;border-radius:12px;padding:24px;width:100%;max-width:340px;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                            <h2 style="margin:0;font-size:18px;font-weight:600;color:#1f2937;">👤 Patient Info</h2>
+                            <button style="background:transparent;border:none;color:#6b7280;font-size:20px;cursor:pointer;padding:0;" onclick="document.getElementById('patient-info-modal').remove();">✕</button>
+                        </div>
+                        
+                        <div style="display:flex;gap:16px;margin-bottom:24px;padding-bottom:24px;border-bottom:0.5px solid #e5e7eb;">
+                            ${p.photo ? '<img src="' + p.photo + '" style="width:80px;height:80px;border-radius:8px;object-fit:cover;flex-shrink:0;">' : '<div style="width:80px;height:80px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:36px;">👤</div>'}
+                            <div style="flex:1;">
+                                <p style="margin:0 0 4px 0;font-size:16px;font-weight:600;color:#1f2937;">${p.firstName} ${p.lastName}</p>
+                                <p style="margin:0;font-size:13px;color:#6b7280;">Geboortedatum: ${formatDate(p.birthDate)}</p>
+                                <p style="margin:4px 0 0 0;font-size:12px;color:#6b7280;">Leeftijd: ${age} jaar</p>
+                            </div>
+                        </div>
+                        
+                        ${p.allergies ? '<div style="margin-bottom:16px;"><p style="margin:0 0 8px 0;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;">🚫 Allergiën</p><p style="margin:0;font-size:14px;color:#1f2937;line-height:1.5;white-space:pre-wrap;">' + p.allergies + '</p></div>' : ''}
+                        
+                        ${p.medicalHistory ? '<div style="margin-bottom:16px;"><p style="margin:0 0 8px 0;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;">🏥 Medische Historie</p><p style="margin:0;font-size:14px;color:#1f2937;line-height:1.5;white-space:pre-wrap;">' + p.medicalHistory + '</p></div>' : ''}
+                        
+                        ${p.mobilityStatus ? '<div style="margin-bottom:24px;"><p style="margin:0 0 8px 0;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;">🚶 Mobiliteitstoestand</p><p style="margin:0;font-size:14px;color:#1f2937;line-height:1.5;white-space:pre-wrap;"><span style="background:#fef3c7;color:#92400e;padding:4px 12px;border-radius:4px;font-weight:500;display:inline-block;">' + p.mobilityStatus + '</span></p></div>' : ''}
+                        
+                        <button onclick="document.getElementById('patient-info-modal').remove()" style="background:#3b82f6;color:white;border:none;width:100%;padding:12px;border-radius:8px;font-weight:500;cursor:pointer;font-size:14px;">Sluiten</button>
+                    </div>
+                </div>
+            `);
         }
         
         function showPatientEditForm() {
