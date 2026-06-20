@@ -481,6 +481,96 @@
                 this.sendTg(msg);
             }
 
+            analyzeReportData() {
+                let sysValues = [], diaValues = [], hrValues = [];
+                
+                // VERZAMEL ALLE INGEGEVEN METINGEN
+                for (let date in this.data.measures) {
+                    const day = this.data.measures[date];
+                    ['ochtend', 'middag', 'avond'].forEach(moment => {
+                        if (day[moment] && day[moment].sys) {
+                            sysValues.push(day[moment].sys);
+                            diaValues.push(day[moment].dia);
+                            hrValues.push(day[moment].hr);
+                        }
+                    });
+                }
+                
+                if (sysValues.length === 0) return null;
+                
+                // BEREKEN STATISTIEKEN
+                const calcStats = (values) => {
+                    const min = Math.min(...values);
+                    const max = Math.max(...values);
+                    const avg = Math.round(values.reduce((a,b)=>a+b)/values.length);
+                    const variation = max - min;
+                    const sorted = [...values].sort((a,b)=>a-b);
+                    const trend = sorted[sorted.length-1] - sorted[0];
+                    return { min, max, avg, variation, trend };
+                };
+                
+                const sys = calcStats(sysValues);
+                const dia = calcStats(diaValues);
+                const hr = calcStats(hrValues);
+                
+                // BEPAAL STATUS PER WAARDE
+                const getStatus = (avg, type) => {
+                    if (type === 'sys') {
+                        if (avg < 120) return { status: '🟢 GOED', color: 'success' };
+                        if (avg < 140) return { status: '🟡 MATIG', color: 'warning' };
+                        return { status: '🔴 SLECHT', color: 'danger' };
+                    }
+                    if (type === 'dia') {
+                        if (avg < 80) return { status: '🟢 GOED', color: 'success' };
+                        if (avg < 90) return { status: '🟡 MATIG', color: 'warning' };
+                        return { status: '🔴 SLECHT', color: 'danger' };
+                    }
+                    if (type === 'hr') {
+                        if (avg >= 60 && avg <= 100) return { status: '🟢 GOED', color: 'success' };
+                        if ((avg >= 50 && avg < 60) || (avg > 100 && avg <= 110)) return { status: '🟡 MATIG', color: 'warning' };
+                        return { status: '🔴 SLECHT', color: 'danger' };
+                    }
+                };
+                
+                // BEPAAL TREND (stabiliteit)
+                const getTrendStatus = (variation, type) => {
+                    if (type === 'sys') {
+                        if (variation > 15) return '🔴 INSTABIEL';
+                        if (variation > 8) return '🟡 MATIG';
+                        return '🟢 STABIEL';
+                    }
+                    if (type === 'dia') {
+                        if (variation > 10) return '🔴 INSTABIEL';
+                        if (variation > 5) return '🟡 MATIG';
+                        return '🟢 STABIEL';
+                    }
+                    if (type === 'hr') {
+                        if (variation > 20) return '🔴 INSTABIEL';
+                        if (variation > 10) return '🟡 MATIG';
+                        return '🟢 STABIEL';
+                    }
+                };
+                
+                return {
+                    sys: {
+                        ...sys,
+                        ...getStatus(sys.avg, 'sys'),
+                        trendStatus: getTrendStatus(sys.variation, 'sys')
+                    },
+                    dia: {
+                        ...dia,
+                        ...getStatus(dia.avg, 'dia'),
+                        trendStatus: getTrendStatus(dia.variation, 'dia')
+                    },
+                    hr: {
+                        ...hr,
+                        ...getStatus(hr.avg, 'hr'),
+                        trendStatus: getTrendStatus(hr.variation, 'hr')
+                    },
+                    measurementCount: sysValues.length
+                };
+            }
+
             generateSmartAdvice() {
                 const p = this.data.patient;
                 if (!p) return null;
@@ -628,6 +718,7 @@
             openReport() {
                 this.sendTg('📋 RAPPORT GEGENEREERD');
                 const stats = this.generateReportStats();
+                const analysis = this.analyzeReportData();
                 const html = `
 <!DOCTYPE html>
 <html lang="nl">
@@ -661,6 +752,21 @@
 <body>
     <button class="button" onclick="window.print();">🖨️ Print / PDF</button>
     <div class="report">
+        ${this.data.patient ? `
+        <div style="background:#f0fdf4;padding:12px;border-radius:8px;border-left:4px solid #10b981;margin-bottom:20px;">
+            <div style="display:flex;gap:15px;">
+                ${this.data.patient.photo ? `<img src="${this.data.patient.photo}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;">` : `<div style="width:60px;height:60px;border-radius:8px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;">👤</div>`}
+                <div>
+                    <h3 style="margin:0;font-size:16px;color:#15803d;font-weight:700;">${this.data.patient.firstName || ''} ${this.data.patient.lastName || ''}</h3>
+                    <p style="margin:4px 0;font-size:12px;color:#166534;">📅 Geboortedatum: ${this.data.patient.birthDate ? new Date(this.data.patient.birthDate).toLocaleDateString('nl-NL', {year:'numeric',month:'long',day:'numeric'}) : 'Niet ingevuld'}</p>
+                    ${this.data.patient.allergies ? `<p style="margin:4px 0;font-size:12px;color:#dc2626;font-weight:500;">⚠️ Allergiën: ${this.data.patient.allergies}</p>` : ''}
+                    ${this.data.patient.medicalHistory ? `<p style="margin:4px 0;font-size:12px;color:#166534;">🏥 Medische história: ${this.data.patient.medicalHistory}</p>` : ''}
+                    ${this.data.patient.mobilityStatus ? `<p style="margin:4px 0;font-size:12px;color:#166534;">🚶 Mobiliteit: ${this.data.patient.mobilityStatus}</p>` : ''}
+                </div>
+            </div>
+        </div>
+        ` : ''}
+        
         <div class="header">
             <img src="./logo.png" class="logo">
             <div class="header-text">
@@ -670,25 +776,48 @@
         </div>
 
         <div class="section">
-            <div class="section-title">📊 Samenvatting</div>
-            <div class="stat-grid">
-                <div class="stat-card">
-                    <div class="stat-label">Gem. Systolisch</div>
-                    <div class="stat-value">${stats.avgSys} mmHg</div>
+            <div class="section-title">📊 Samenvatting - Gezondheidsanalyse</div>
+            ${analysis ? `
+            <div style="background:#f3f4f6;padding:12px;border-radius:8px;border-left:4px solid #f59e0b;margin-bottom:12px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <span style="font-size:12px;font-weight:700;color:#92400e;">📈 Bovendruk (Systolisch)</span>
+                    <span style="font-size:13px;font-weight:700;color:#dc2626;">${analysis.sys.status}</span>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-label">Gem. Diastolisch</div>
-                    <div class="stat-value">${stats.avgDia} mmHg</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Gem. Hartslag</div>
-                    <div class="stat-value">${stats.avgHr} bpm</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Metingen</div>
-                    <div class="stat-value">${stats.totalMeasures}</div>
+                <div style="font-size:12px;color:#6b7280;line-height:1.5;">
+                    <strong>Bereik:</strong> ${analysis.sys.min}-${analysis.sys.max} mmHg (variatie ±${analysis.sys.variation})<br>
+                    <strong>Gemiddelde:</strong> ${analysis.sys.avg} mmHg<br>
+                    <strong>Trend:</strong> ${analysis.sys.trendStatus}
                 </div>
             </div>
+            
+            <div style="background:#f3f4f6;padding:12px;border-radius:8px;border-left:4px solid #10b981;margin-bottom:12px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <span style="font-size:12px;font-weight:700;color:#166534;">📉 Onderdruk (Diastolisch)</span>
+                    <span style="font-size:13px;font-weight:700;color:#15803d;">${analysis.dia.status}</span>
+                </div>
+                <div style="font-size:12px;color:#6b7280;line-height:1.5;">
+                    <strong>Bereik:</strong> ${analysis.dia.min}-${analysis.dia.max} mmHg (variatie ±${analysis.dia.variation})<br>
+                    <strong>Gemiddelde:</strong> ${analysis.dia.avg} mmHg<br>
+                    <strong>Trend:</strong> ${analysis.dia.trendStatus}
+                </div>
+            </div>
+            
+            <div style="background:#f3f4f6;padding:12px;border-radius:8px;border-left:4px solid #10b981;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <span style="font-size:12px;font-weight:700;color:#166534;">❤️ Hartslag</span>
+                    <span style="font-size:13px;font-weight:700;color:#15803d;">${analysis.hr.status}</span>
+                </div>
+                <div style="font-size:12px;color:#6b7280;line-height:1.5;">
+                    <strong>Bereik:</strong> ${analysis.hr.min}-${analysis.hr.max} bpm (variatie ±${analysis.hr.variation})<br>
+                    <strong>Gemiddelde:</strong> ${analysis.hr.avg} bpm<br>
+                    <strong>Trend:</strong> ${analysis.hr.trendStatus}
+                </div>
+            </div>
+            ` : `
+            <div style="background:#fef2f2;padding:12px;border-radius:8px;border-left:4px solid #dc2626;">
+                <p style="margin:0;font-size:12px;color:#991b1b;">⚠️ Nog geen metingen ingegeven</p>
+            </div>
+            `}
         </div>
 
         <div class="section">
