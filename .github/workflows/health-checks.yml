@@ -21,7 +21,7 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: 8526489078
-          DRIVE_FILE_ID: 1Br8VYBCzjhx_u2HQgPizI9zPgtrFo4lu
+          DRIVE_FILE_ID: 1W1Hfm2x0Ybr4GVsUfXKPHepQ8bKBxDHW
         run: |
           node << 'NODEJS_EOF'
           const fs = require('fs');
