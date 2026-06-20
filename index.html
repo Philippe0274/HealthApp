@@ -933,7 +933,7 @@
                     } else {
                         html += '<div style="width:60px;height:60px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:24px;">👤</div>';
                     }
-                    html += '<div style="flex:1;"><p style="margin:0;font-size:13px;color:#1f2937;font-weight:600;">' + p.firstName + '</p><small style="font-size:11px;color:#6b7280;">' + p.lastName + ' • ' + p.birthDate + '</small></div>';
+                    html += '<div style="flex:1;"><p style="margin:0;font-size:13px;color:#1f2937;font-weight:600;">' + p.firstName + '</p><small style="font-size:11px;color:#6b7280;">' + p.lastName + ' • ' + formatDate(p.birthDate) + '</small></div>';
                     html += '<div style="display:flex;gap:6px;flex-shrink:0;">';
                     html += '<button onclick="showPatientEditForm()" style="background:transparent;border:none;color:#3b82f6;cursor:pointer;padding:4px;border-radius:4px;font-size:18px;">✏️</button>';
                     html += '<button onclick="app.safeRemovePatient()" style="background:transparent;border:none;color:#ef4444;cursor:pointer;padding:4px;border-radius:4px;font-size:18px;">🗑️</button>';
@@ -1241,6 +1241,13 @@
                     reader.readAsDataURL(e.target.files[0]);
                 }
             });
+        }
+        
+        function formatDate(dateStr) {
+            if (!dateStr || dateStr.length < 10) return dateStr;
+            // Zet jjjj-mm-dd om naar dd-mm-jjjj
+            const [year, month, day] = dateStr.split('-');
+            return day + '-' + month + '-' + year;
         }
         
         function compressImage(base64, callback) {
