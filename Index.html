@@ -1333,6 +1333,15 @@ function berekenKosten(data) {
   const budget = parseBedragNum(kb.budget);
   const zaalhuur = parseBedragNum(kb.zaalhuur);
 
+  // Verzamel alle winkelIds uit materialen die in winkelbestellingen voorkomen
+  const winkelIdsInBestellingen = new Set();
+  Object.keys(data.winkelbestellingen || {}).forEach(matId => {
+    const mat = (data.materiaal || []).find(m => m.id === matId);
+    if (mat && mat.winkelId) {
+      winkelIdsInBestellingen.add(mat.winkelId);
+    }
+  });
+
   // Winkeltotalen: som van kasticketbedragen per winkel.
   // Kastickets die "uit de kas" zijn betaald, gaan NIET in het budget —
   // die verschijnen apart in het kasoverzicht.
@@ -1345,7 +1354,7 @@ function berekenKosten(data) {
     const bedrag = parseBedragNum(kt.bedrag);
     if (bedrag === 0) return;
     const winkelId = key.split("|")[0];
-    const inWinkelBestellingen = Object.values(data.winkelbestellingen || {}).some(wb => wb.winkelId === winkelId);
+    const inWinkelBestellingen = winkelIdsInBestellingen.has(winkelId);
     if (!inWinkelBestellingen) return;
     const w = (data.winkels || []).find(x => x.id === winkelId);
     const naam = w ? w.naam : "—";
