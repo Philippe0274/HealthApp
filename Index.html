@@ -1333,7 +1333,8 @@ function berekenKosten(data) {
   const budget = parseBedragNum(kb.budget);
   const zaalhuur = parseBedragNum(kb.zaalhuur);
 
-  // Verzamel alle winkelIds uit materialen die in winkelbestellingen voorkomen
+  // ★ FIX: Verzamel alle winkelIds uit materialen die in winkelbestellingen voorkomen
+  // Dit zorgt ervoor dat ALLEEN echte winkelbestellingen in het budget tellen
   const winkelIdsInBestellingen = new Set();
   Object.keys(data.winkelbestellingen || {}).forEach(matId => {
     const mat = (data.materiaal || []).find(m => m.id === matId);
@@ -1354,8 +1355,9 @@ function berekenKosten(data) {
     const bedrag = parseBedragNum(kt.bedrag);
     if (bedrag === 0) return;
     const winkelId = key.split("|")[0];
+    // ★ FIX: Controleer of deze winkelId in winkelbestellingen voorkomt
     const inWinkelBestellingen = winkelIdsInBestellingen.has(winkelId);
-    if (!inWinkelBestellingen) return;
+    if (!inWinkelBestellingen) return; // SKIP kastickets die niet in winkelbestellingen staan
     const w = (data.winkels || []).find(x => x.id === winkelId);
     const naam = w ? w.naam : "—";
     if (kt.uitKas) {
@@ -8175,8 +8177,11 @@ function WinkelbestellingenTab({
   const [metFotos, setMetFotos] = React.useState(true);
   const [bezig, setBezig] = React.useState(false);
 
-  // Alleen materiaal met oorsprong Winkel_Magasin
-  const items = (data.materiaal || []).filter(m => m.oorsprong === WINKEL_OORSPRONG);
+  // Alleen materiaal met oorsprong Winkel_Magasin EN een geldige winkelId
+  // ★ FIX: Extra filter om zeker te stellen dat alleen echte winkelbestellingen tonen
+  const items = (data.materiaal || []).filter(m => 
+    m.oorsprong === WINKEL_OORSPRONG && m.winkelId && m.winkelId.trim() !== ""
+  );
   const sortedVrij = [...data.vrijwilligers].sort((a, b) => {
     const an = (a.naam || "").toLowerCase(),
       bn = (b.naam || "").toLowerCase();
