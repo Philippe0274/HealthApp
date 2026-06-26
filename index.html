@@ -959,6 +959,116 @@
                 const chartData = this.generateChartsData();
                 const advice = this.generateSmartAdvice();
                 const doctor = this.doctor;
+
+                // v3.1 - Moderne eerste rapportpagina, zonder bestaande patiëntinformatie te verliezen
+                const patient = this.data.patient || null;
+                const formatReportDate = (dateStr) => {
+                    if (!dateStr) return 'Niet ingevuld';
+                    try { return new Date(dateStr).toLocaleDateString('nl-NL', {year:'numeric', month:'long', day:'numeric'}); }
+                    catch(e) { return dateStr; }
+                };
+                const calcAge = (birthDate) => {
+                    if (!birthDate) return 'Niet ingevuld';
+                    const b = new Date(birthDate);
+                    if (isNaN(b.getTime())) return 'Niet ingevuld';
+                    const t = new Date();
+                    let age = t.getFullYear() - b.getFullYear();
+                    const m = t.getMonth() - b.getMonth();
+                    if (m < 0 || (m === 0 && t.getDate() < b.getDate())) age--;
+                    return age + ' jaar';
+                };
+                const reportDates = (stats.sortedDates || []).filter(Boolean).sort();
+                const reportStart = reportDates.length ? reportDates[0] : this.today();
+                const reportEnd = reportDates.length ? reportDates[reportDates.length - 1] : this.today();
+                const daysFollowed = reportDates.length ? Math.max(1, Math.round((new Date(reportEnd) - new Date(reportStart)) / 86400000) + 1) : 0;
+                const dailyMedsForRate = (this.data.meds || []).filter(m => m.type !== 'sporadic');
+                let expectedDailyIntakes = dailyMedsForRate.length * Math.max(daysFollowed, 1);
+                let takenDailyIntakes = 0;
+                reportDates.forEach(day => {
+                    dailyMedsForRate.forEach(m => {
+                        if (this.data.intakes && this.data.intakes[day] && this.data.intakes[day][m.id]) takenDailyIntakes++;
+                    });
+                });
+                const therapyRate = expectedDailyIntakes > 0 ? Math.round((takenDailyIntakes / expectedDailyIntakes) * 100) : 0;
+                const therapyLabel = expectedDailyIntakes > 0 ? (therapyRate + '%') : 'N.v.t.';
+                const therapyBarWidth = Math.max(0, Math.min(100, therapyRate));
+                const bpStatusObj = getBloodPressureStatus(stats.avgSys || 0, stats.avgDia || 0);
+                const hrStatusObj = getHeartRateStatus(stats.avgHr || 0);
+                const generalStatusText = (stats.avgSys && stats.avgDia)
+                    ? ((stats.avgSys < 135 && stats.avgDia < 85 && (expectedDailyIntakes === 0 || therapyRate >= 90)) ? '🟢 ALGEMENE STATUS GOED' : (stats.avgSys >= 160 || stats.avgDia >= 100 ? '🔴 AANDACHT NODIG' : '🟡 OPVOLGEN'))
+                    : '⚪ ONVOLDOENDE GEGEVENS';
+                const trendText = (stats.varSys !== undefined && isFinite(stats.varSys)) ? stats.trendStatusSys : '⚪ Geen trend';
+                const patientCardHtml = patient ? `
+        <div class="medical-card patient-card">
+            <div class="patient-photo-wrap">
+                ${patient.photo ? `<img src="${patient.photo}" class="patient-photo">` : `<div class="patient-photo placeholder">👤</div>`}
+            </div>
+            <div class="patient-main">
+                <div class="card-eyebrow">👤 PATIËNT</div>
+                <h2>${patient.firstName || ''} ${patient.lastName || ''}</h2>
+                <div class="info-grid">
+                    <div><span>📅 Geboortedatum</span><strong>${formatReportDate(patient.birthDate)}</strong></div>
+                    <div><span>🎂 Leeftijd</span><strong>${calcAge(patient.birthDate)}</strong></div>
+                    ${patient.allergies ? `<div class="full warning"><span>⚠️ Allergieën</span><strong>${patient.allergies}</strong></div>` : ''}
+                    ${patient.medicalHistory ? `<div class="full"><span>🏥 Medische voorgeschiedenis</span><strong>${patient.medicalHistory}</strong></div>` : ''}
+                    ${patient.mobilityStatus ? `<div class="full"><span>🚶 Mobiliteit</span><strong>${patient.mobilityStatus}</strong></div>` : ''}
+                </div>
+            </div>
+        </div>` : `
+        <div class="medical-card patient-card empty-patient">
+            <div class="patient-photo placeholder">👤</div>
+            <div class="patient-main">
+                <div class="card-eyebrow">👤 PATIËNT</div>
+                <h2>Geen patiëntgegevens ingevuld</h2>
+                <p class="muted">De patiëntkaart blijft beschikbaar zodra de gegevens in de app zijn ingevuld.</p>
+            </div>
+        </div>`;
+                const doctorCardHtml = `
+        <div class="medical-card doctor-card">
+            <div>
+                <div class="card-eyebrow">👨‍⚕️ HUISARTS</div>
+                <h3>${doctor.name}</h3>
+                <p>📍 ${doctor.address}</p>
+                <p>📞 ${doctor.phone}</p>
+            </div>
+        </div>`;
+                const dashboardHtml = `
+        <div class="dashboard-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon">❤️</div>
+                <div class="kpi-value">${stats.avgSys || 0}/${stats.avgDia || 0}</div>
+                <div class="kpi-label">Gemiddelde bloeddruk</div>
+                <div class="kpi-status" style="color:${bpStatusObj.color};">${bpStatusObj.status} Status</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">🫀</div>
+                <div class="kpi-value">${stats.avgHr || 0} bpm</div>
+                <div class="kpi-label">Gemiddelde hartslag</div>
+                <div class="kpi-status" style="color:${hrStatusObj.color};">${hrStatusObj.status} Hartslag</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">💊</div>
+                <div class="kpi-value">${therapyLabel}</div>
+                <div class="kpi-label">Therapietrouw dagelijkse medicatie</div>
+                <div class="progress"><div class="progress-fill" style="width:${therapyBarWidth}%;"></div></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">📊</div>
+                <div class="kpi-value">${stats.totalMeasures || 0}</div>
+                <div class="kpi-label">Bloeddrukmetingen</div>
+                <div class="kpi-status">📅 ${daysFollowed || 0} dagen opvolging</div>
+            </div>
+        </div>`;
+                const statusCardHtml = `
+        <div class="medical-card status-card">
+            <div class="status-title">${generalStatusText}</div>
+            <div class="status-grid">
+                <div><span>❤️ Bloeddruk</span><strong>${bpStatusObj.status} ${stats.avgSys || 0}/${stats.avgDia || 0}</strong></div>
+                <div><span>💊 Medicatie</span><strong>${expectedDailyIntakes > 0 ? (therapyRate >= 90 ? '🟢 Goed opgevolgd' : '🟡 Controleer gemiste innames') : '⚪ Geen dagelijkse medicatie'}</strong></div>
+                <div><span>📈 Trend</span><strong>${trendText}</strong></div>
+                <div><span>⚠️ Actie nodig</span><strong>${(stats.avgSys >= 160 || stats.avgDia >= 100) ? 'Arts contacteren bij aanhoudende waarden' : 'Geen acute actie in dit rapport'}</strong></div>
+            </div>
+        </div>`;
                 const html = `
 <!DOCTYPE html>
 <html lang="nl">
@@ -966,14 +1076,47 @@
     <meta charset="UTF-8">
     <title>📋 Arts Rapport</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; background: #f9fafb; margin: 0; }
-        .report { background: white; padding: 30px; max-width: 800px; margin: 0 auto; box-shadow: 0 1px 10px rgba(0,0,0,0.1); }
-        .header { display: flex; gap: 15px; align-items: center; border-bottom: 3px solid #dc2626; padding-bottom: 20px; margin-bottom: 20px; }
-        .logo { width: 60px; height: 60px; border-radius: 10px; }
-        .header-text h1 { margin: 0; font-size: 24px; color: #1f2937; }
-        .header-text p { margin: 4px 0 0; font-size: 12px; color: #6b7280; }
+        :root { --red:#dc2626; --dark:#111827; --muted:#6b7280; --soft:#f9fafb; --line:#e5e7eb; --green:#10b981; --amber:#f59e0b; --blue:#2563eb; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; padding: 18px; background: #eef2f7; margin: 0; color: var(--dark); }
+        .button { background: var(--red); color: white; border: none; padding: 11px 18px; border-radius: 10px; font-size: 13px; cursor: pointer; margin: 0 auto 14px auto; display: block; font-weight: 700; }
+        .report { background: white; padding: 26px; max-width: 860px; margin: 0 auto; border-radius: 18px; box-shadow: 0 12px 35px rgba(15,23,42,0.12); }
+        .hero { background: linear-gradient(135deg,#dc2626,#991b1b); color: white; border-radius: 18px; padding: 22px; margin-bottom: 18px; display:flex; align-items:center; justify-content:space-between; gap:18px; }
+        .hero-left { display:flex; gap:14px; align-items:center; }
+        .logo { width: 58px; height: 58px; border-radius: 14px; background:white; padding:4px; object-fit:cover; }
+        .hero h1 { margin: 0; font-size: 25px; letter-spacing:-0.02em; }
+        .hero p { margin: 4px 0 0; font-size: 13px; opacity: .9; }
+        .period-pill { background: rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.26); padding: 10px 12px; border-radius: 14px; font-size: 12px; line-height:1.45; min-width: 205px; }
+        .medical-card { background:#fff; border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:16px; box-shadow:0 4px 14px rgba(15,23,42,.06); }
+        .patient-card { display:grid; grid-template-columns: 120px 1fr; gap:18px; align-items:start; background: linear-gradient(180deg,#f0fdf4,#ffffff); border-left:5px solid var(--green); }
+        .patient-photo-wrap { width: 120px; }
+        .patient-photo { width: 120px; height: 120px; border-radius: 18px; object-fit: cover; border:3px solid white; box-shadow:0 6px 18px rgba(15,23,42,.15); display:flex; align-items:center; justify-content:center; background:#e0e7ff; font-size:44px; }
+        .patient-photo.placeholder { color:#475569; }
+        .patient-main h2 { margin:4px 0 12px 0; font-size:22px; color:#14532d; }
+        .card-eyebrow { font-size:11px; font-weight:800; color:#64748b; letter-spacing:.08em; text-transform:uppercase; }
+        .info-grid { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+        .info-grid div { background:rgba(255,255,255,.72); border:1px solid #dbeafe; border-radius:12px; padding:10px; }
+        .info-grid .full { grid-column:1 / -1; }
+        .info-grid .warning { background:#fff7ed; border-color:#fed7aa; }
+        .info-grid span, .status-grid span { display:block; font-size:11px; color:var(--muted); font-weight:700; margin-bottom:4px; }
+        .info-grid strong, .status-grid strong { font-size:13px; color:#1f2937; white-space:pre-wrap; }
+        .doctor-card { background: linear-gradient(180deg,#fffbeb,#ffffff); border-left:5px solid var(--amber); }
+        .doctor-card h3 { margin:4px 0 8px 0; color:#92400e; font-size:17px; }
+        .doctor-card p { margin:5px 0; color:#78350f; font-size:13px; }
+        .dashboard-grid { display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin: 18px 0; }
+        .kpi-card { border:1px solid var(--line); border-radius:16px; padding:16px 12px; background:#fff; box-shadow:0 4px 14px rgba(15,23,42,.06); min-height:138px; display:flex; flex-direction:column; justify-content:space-between; }
+        .kpi-icon { font-size:24px; }
+        .kpi-value { font-size:24px; font-weight:900; color:#111827; letter-spacing:-0.03em; margin-top:6px; }
+        .kpi-label { font-size:12px; color:var(--muted); font-weight:700; line-height:1.25; margin-top:2px; }
+        .kpi-status { font-size:12px; font-weight:800; margin-top:8px; }
+        .progress { width:100%; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden; margin-top:10px; }
+        .progress-fill { height:100%; background: linear-gradient(90deg,#22c55e,#16a34a); border-radius:999px; }
+        .status-card { background: linear-gradient(180deg,#eff6ff,#ffffff); border-left:5px solid var(--blue); }
+        .status-title { font-size:17px; font-weight:900; margin-bottom:12px; color:#1e3a8a; }
+        .status-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .status-grid div { background:white; border:1px solid #dbeafe; border-radius:12px; padding:10px; }
         .section { margin-bottom: 25px; }
-        .section-title { font-size: 15px; font-weight: 700; color: #dc2626; border-bottom: 2px solid #fee2e2; padding-bottom: 6px; margin-bottom: 12px; }
+        .section-title { font-size: 15px; font-weight: 800; color: var(--red); border-bottom: 2px solid #fee2e2; padding-bottom: 6px; margin-bottom: 12px; }
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
         .stat-card { background: #fef3c7; padding: 12px; border-radius: 8px; border-left: 4px solid #f59e0b; }
         .stat-label { font-size: 11px; color: #92400e; font-weight: 700; }
@@ -984,26 +1127,54 @@
         .meds-list { background: #f0fdf4; padding: 12px; border-radius: 8px; border-left: 4px solid #10b981; }
         .med-item { padding: 6px 0; border-bottom: 1px solid #dcfce7; }
         .med-item:last-child { border-bottom: none; }
-        .button { background: #dc2626; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 13px; cursor: pointer; margin-bottom: 15px; }
-        .button:hover { background: #991b1b; }
-        @media print { .button { display: none; } body { padding: 0; } }
+        .muted { color:var(--muted); font-size:13px; margin:4px 0 0; }
+        @media (max-width: 720px) {
+            body { padding: 8px; background:white; }
+            .report { padding: 12px; border-radius: 0; box-shadow:none; }
+            .hero { display:block; padding:16px; border-radius:14px; }
+            .hero-left { align-items:flex-start; }
+            .period-pill { margin-top:14px; min-width:0; width:100%; }
+            .patient-card { grid-template-columns: 1fr; }
+            .patient-photo-wrap, .patient-photo { width: 96px; height:96px; }
+            .info-grid, .status-grid { grid-template-columns:1fr; }
+            .dashboard-grid { grid-template-columns:1fr 1fr; gap:10px; }
+            .kpi-card { min-height:120px; }
+        }
+        @media (max-width: 430px) { .dashboard-grid { grid-template-columns:1fr; } .hero h1 { font-size:21px; } }
+        @media print {
+            body { padding:0; background:white; }
+            .button { display:none; }
+            .report { box-shadow:none; border-radius:0; max-width:none; padding:18mm; }
+            .medical-card, .kpi-card { box-shadow:none; break-inside:avoid; }
+            .hero { break-inside:avoid; }
+            .dashboard-grid { break-inside:avoid; }
+            canvas { max-height:220px !important; }
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"><\/script>
 </head>
 <body>
     <button class="button" onclick="window.print();">🖨️ Print / PDF</button>
     <div class="report">
-        <div class="header">
-            <img src="./logo.png" class="logo">
-            <div class="header-text">
-                <h1>Bloeddruk & Medicatie Rapport</h1>
-                <p>Health Tracker - Medisch opvolgingsdocument</p>
+        <div class="hero">
+            <div class="hero-left">
+                <img src="./logo.png" class="logo">
+                <div>
+                    <h1>❤️ Health Tracker Rapport</h1>
+                    <p>Medisch opvolgingsdocument voor arts of specialist</p>
+                </div>
+            </div>
+            <div class="period-pill">
+                <strong>📅 Rapportperiode</strong><br>
+                ${formatReportDate(reportStart)} → ${formatReportDate(reportEnd)}<br>
+                ${daysFollowed || 0} dagen opvolging
             </div>
         </div>
 
-        ${this.data.patient ? `<div style="background:#f0fdf4;padding:12px;border-radius:8px;border-left:4px solid #10b981;margin-bottom:20px;"><div style="display:flex;gap:15px;"><div>${this.data.patient.photo ? `<img src="${this.data.patient.photo}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;">` : `<div style="width:60px;height:60px;border-radius:8px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:24px;">👤</div>`}</div><div style="flex:1;"><h3 style="margin:0;font-size:16px;color:#15803d;font-weight:700;">${this.data.patient.firstName} ${this.data.patient.lastName}</h3><p style="margin:4px 0;font-size:12px;color:#166534;">📅 Geboortedatum: ${this.data.patient.birthDate ? new Date(this.data.patient.birthDate).toLocaleDateString('nl-NL', {year:'numeric',month:'long',day:'numeric'}) : 'Niet ingevuld'}</p>${this.data.patient.allergies ? '<p style="margin:4px 0;font-size:12px;color:#dc2626;font-weight:500;">⚠️ Allergiën: ' + this.data.patient.allergies + '</p>' : ''}${this.data.patient.medicalHistory ? '<p style="margin:4px 0;font-size:12px;color:#166534;">🏥 Medische história: ' + this.data.patient.medicalHistory + '</p>' : ''}${this.data.patient.mobilityStatus ? '<p style="margin:4px 0;font-size:12px;color:#166534;">🚶 Mobiliteit: ' + this.data.patient.mobilityStatus + '</p>' : ''}</div></div></div>` : ''}
-
-        <div style="background:#fef3c7;padding:12px;border-radius:8px;border-left:4px solid #f59e0b;margin-bottom:20px;"><h4 style="margin:0 0 8px 0;font-size:12px;color:#92400e;font-weight:700;">👨‍⚕️ HUISARTS</h4><div style="font-size:12px;color:#b45309;line-height:1.6;"><p style="margin:0;"><strong>${doctor.name}</strong></p><p style="margin:4px 0 0 0;">📍 ${doctor.address}</p><p style="margin:4px 0 0 0;">📞 ${doctor.phone}</p></div></div>
+        ${patientCardHtml}
+        ${doctorCardHtml}
+        ${dashboardHtml}
+        ${statusCardHtml}
 
         <div class="section">
             <div class="section-title">📊 Samenvatting - Gezondheidsanalyse</div>
