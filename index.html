@@ -1693,11 +1693,13 @@
                 if (this.view === 'cal') {
                     document.getElementById('app').innerHTML = this.drawCal();
                     this.bindCal();
-                    setTimeout(() => this.colorAllInputs(), 20);
                 } else {
                     document.getElementById('app').innerHTML = this.drawDay();
-                    setTimeout(() => this.colorAllInputs(), 20);
                 }
+                // 🎨 EXPLICIT KLEUREN - GUARANTEED
+                setTimeout(() => {
+                    this.colorAllInputs();
+                }, 10);
             }
 
             savePatient(firstName, lastName, birthDate, photoBase64, allergies, medicalHistory, mobilityStatus) {
@@ -1984,26 +1986,14 @@
 
                 html += '</div>';
                 
-                // Kleur ALLES - zeker stellen dat ALLE inputs gekleurd worden
-                if (this.data.measures && this.data.measures[this.date]) {
-                    setTimeout(() => {
-                        ['ochtend', 'middag', 'avond'].forEach(moment => {
-                            const sysEl = document.getElementById('sys-' + moment);
-                            const diaEl = document.getElementById('dia-' + moment);
-                            const hrEl = document.getElementById('hr-' + moment);
-                            // Als ANY van de 3 een waarde heeft, kleur alles
-                            if ((sysEl && sysEl.value) || (diaEl && diaEl.value) || (hrEl && hrEl.value)) {
-                                this.updateInputColor(moment);
-                            }
-                        });
-                    }, 10);
-                }
-                
                 return html;
             }
 
             bindCal() {
-                // Calendar click binding already in HTML onclick
+                // DIREKTÉ: Kleur alles meteen na rendering
+                setTimeout(() => {
+                    this.colorAllInputs();
+                }, 5);
             }
         }
 
