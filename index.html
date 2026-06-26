@@ -405,6 +405,7 @@
                 }
                 this.save();
                 this.show();
+                setTimeout(() => this.updateInputColor(moment), 50);
             }
 
             deleteValuesOnly(moment) {
@@ -1924,6 +1925,17 @@
                 }
 
                 html += '</div>';
+                
+                // Kleur ALLE moments die waarden hebben (ongeacht welke dag)
+                setTimeout(() => {
+                    ['ochtend', 'middag', 'avond'].forEach(moment => {
+                        const sysEl = document.getElementById('sys-' + moment);
+                        if (sysEl && sysEl.value) {
+                            this.updateInputColor(moment);
+                        }
+                    });
+                }, 50);
+                
                 return html;
             }
 
