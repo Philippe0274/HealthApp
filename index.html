@@ -1069,6 +1069,187 @@
                 <div><span>⚠️ Actie nodig</span><strong>${(stats.avgSys >= 160 || stats.avgDia >= 100) ? 'Arts contacteren bij aanhoudende waarden' : 'Geen acute actie in dit rapport'}</strong></div>
             </div>
         </div>`;
+                // v3.2 - Professioneel medicatieoverzicht voor artsenrapport (geen voorraad tonen)
+                const allMedsForReport = this.data.meds || [];
+                const dailyMedsForReport = allMedsForReport.filter(m => m.type !== 'sporadic');
+                const sporadicMedsForReport = allMedsForReport.filter(m => m.type === 'sporadic');
+
+                const formatShortReportDate = (dateStr) => {
+                    if (!dateStr) return 'Niet geregistreerd';
+                    try {
+                        const [y, m, d] = dateStr.split('-');
+                        return `${d}/${m}/${y}`;
+                    } catch(e) { return dateStr; }
+                };
+
+                const getMedIntakeDates = (medId) => {
+                    return Object.keys(this.data.intakes || {})
+                        .filter(day => this.data.intakes[day] && this.data.intakes[day][medId])
+                        .sort();
+                };
+
+                const getLastMedIntake = (medId) => {
+                    const dates = getMedIntakeDates(medId);
+                    if (!dates.length) return { date: null, time: null };
+                    const date = dates[dates.length - 1];
+                    return { date, time: this.data.intakes[date][medId] };
+                };
+
+                const countMedIntakes = (medId) => getMedIntakeDates(medId).length;
+
+                const getDailyAdherence = (med) => {
+                    const dates = reportDates.length ? reportDates : Object.keys(this.data.measures || {}).sort();
+                    if (!dates.length) return { rate: 0, taken: 0, expected: 0, firstDate: null, label: 'N.v.t.' };
+                    const intakeDates = getMedIntakeDates(med.id);
+                    const firstDate = intakeDates.length ? intakeDates[0] : dates[0];
+                    const relevantDates = dates.filter(d => d >= firstDate);
+                    const expected = Math.max(1, relevantDates.length);
+                    const taken = relevantDates.filter(d => this.data.intakes && this.data.intakes[d] && this.data.intakes[d][med.id]).length;
+                    const rate = Math.round((taken / expected) * 100);
+                    return { rate, taken, expected, firstDate, label: rate + '%' };
+                };
+
+                const getAdherenceClass = (rate) => {
+                    if (rate >= 95) return 'good';
+                    if (rate >= 80) return 'warn';
+                    return 'bad';
+                };
+
+                const getMedStatus = (med) => {
+                    const last = getLastMedIntake(med.id);
+                    if (med.type === 'sporadic') {
+                        const total = countMedIntakes(med.id);
+                        if (!total) return '⚪ Geen gebruik geregistreerd';
+                        return '🔵 Zo nodig gebruikt';
+                    }
+                    if (!last.date) return '🔴 Nog geen inname';
+                    const diffDays = Math.round((new Date(this.today()) - new Date(last.date)) / 86400000);
+                    if (diffDays <= 1) return '🟢 Actueel';
+                    if (diffDays <= 2) return '🟡 Controleer';
+                    return '🔴 Mogelijk gemist';
+                };
+
+                const getBpAverageForDates = (dates) => {
+                    const values = [];
+                    dates.forEach(date => {
+                        const day = this.data.measures && this.data.measures[date];
+                        if (!day) return;
+                        ['ochtend','middag','avond'].forEach(moment => {
+                            if (day[moment] && day[moment].sys && day[moment].dia) {
+                                values.push({ sys: parseInt(day[moment].sys), dia: parseInt(day[moment].dia) });
+                            }
+                        });
+                    });
+                    if (!values.length) return null;
+                    return {
+                        sys: Math.round(values.reduce((s, v) => s + v.sys, 0) / values.length),
+                        dia: Math.round(values.reduce((s, v) => s + v.dia, 0) / values.length),
+                        count: values.length
+                    };
+                };
+
+                const getBpEffectHtml = (med) => {
+                    const intakeDates = getMedIntakeDates(med.id);
+                    const startDate = intakeDates.length ? intakeDates[0] : (reportDates[0] || null);
+                    if (!startDate || reportDates.length < 8) {
+                        return `<div class="med-effect muted">📈 Effect op bloeddruk: onvoldoende gegevens</div>`;
+                    }
+                    const start = new Date(startDate);
+                    const firstWeekDates = reportDates.filter(d => {
+                        const x = new Date(d);
+                        return x >= start && x <= new Date(start.getTime() + 6 * 86400000);
+                    });
+                    const lastWeekDates = reportDates.slice(-7);
+                    const firstAvg = getBpAverageForDates(firstWeekDates);
+                    const lastAvg = getBpAverageForDates(lastWeekDates);
+                    if (!firstAvg || !lastAvg || firstAvg.count < 2 || lastAvg.count < 2) {
+                        return `<div class="med-effect muted">📈 Effect op bloeddruk: onvoldoende metingen</div>`;
+                    }
+                    const sysDiff = lastAvg.sys - firstAvg.sys;
+                    const diaDiff = lastAvg.dia - firstAvg.dia;
+                    const arrow = (sysDiff < 0 || diaDiff < 0) ? '↘️' : (sysDiff > 0 || diaDiff > 0 ? '↗️' : '➡️');
+                    const diffText = `${sysDiff > 0 ? '+' : ''}${sysDiff} / ${diaDiff > 0 ? '+' : ''}${diaDiff}`;
+                    return `
+                        <div class="med-effect">
+                            <div class="effect-title">📈 Bloeddruktrend in rapportperiode</div>
+                            <div class="effect-row"><span>Startweek</span><strong>${firstAvg.sys}/${firstAvg.dia}</strong></div>
+                            <div class="effect-row"><span>Laatste week</span><strong>${lastAvg.sys}/${lastAvg.dia}</strong></div>
+                            <div class="effect-row"><span>Verschil</span><strong>${arrow} ${diffText} mmHg</strong></div>
+                        </div>`;
+                };
+
+                const renderDailyMedCard = (med) => {
+                    const adh = getDailyAdherence(med);
+                    const cls = getAdherenceClass(adh.rate);
+                    const last = getLastMedIntake(med.id);
+                    const status = getMedStatus(med);
+                    return `
+                        <div class="med-report-card daily">
+                            <div class="med-card-top">
+                                <div>
+                                    <div class="med-type-badge daily">🟢 DAGELIJKS</div>
+                                    <h3>${med.icon || '💊'} ${med.name}</h3>
+                                    <p class="med-dose">${med.dosage || ''}</p>
+                                </div>
+                                <div class="med-status">${status}</div>
+                            </div>
+                            <div class="therapy-line">
+                                <div class="therapy-head"><span>Therapietrouw</span><strong>${adh.label}</strong></div>
+                                <div class="therapy-bar"><div class="therapy-fill ${cls}" style="width:${Math.max(0, Math.min(100, adh.rate))}%;"></div></div>
+                                <div class="therapy-detail">${adh.taken}/${adh.expected} geregistreerde dagen</div>
+                            </div>
+                            <div class="med-meta-grid">
+                                <div><span>Laatste inname</span><strong>${last.date ? `${formatShortReportDate(last.date)} ${last.time || ''}` : 'Niet geregistreerd'}</strong></div>
+                                <div><span>Sinds</span><strong>${adh.firstDate ? formatShortReportDate(adh.firstDate) : 'Niet geregistreerd'}</strong></div>
+                            </div>
+                            ${getBpEffectHtml(med)}
+                        </div>`;
+                };
+
+                const renderSporadicMedCard = (med) => {
+                    const last = getLastMedIntake(med.id);
+                    const totalIntakes = countMedIntakes(med.id);
+                    const perIntake = parseInt(med.pillsPerIntake) || 1;
+                    return `
+                        <div class="med-report-card sporadic">
+                            <div class="med-card-top">
+                                <div>
+                                    <div class="med-type-badge sporadic">🔵 SPORADISCH</div>
+                                    <h3>${med.icon || '💊'} ${med.name}</h3>
+                                    <p class="med-dose">${med.dosage || ''}</p>
+                                </div>
+                                <div class="med-status">${getMedStatus(med)}</div>
+                            </div>
+                            <div class="sporadic-summary-grid">
+                                <div><span>Standaard</span><strong>${perIntake} ${perIntake === 1 ? 'pil' : 'pillen'} / inname</strong></div>
+                                <div><span>Aantal innames</span><strong>${totalIntakes}</strong></div>
+                                <div><span>Laatste gebruik</span><strong>${last.date ? `${formatShortReportDate(last.date)} ${last.time || ''}` : 'Niet geregistreerd'}</strong></div>
+                            </div>
+                        </div>`;
+                };
+
+                const dailyCardsHtml = dailyMedsForReport.length
+                    ? dailyMedsForReport.map(renderDailyMedCard).join('')
+                    : '<div class="empty-med-message">Geen dagelijkse medicatie geregistreerd.</div>';
+                const sporadicCardsHtml = sporadicMedsForReport.length
+                    ? sporadicMedsForReport.map(renderSporadicMedCard).join('')
+                    : '<div class="empty-med-message">Geen sporadische medicatie geregistreerd.</div>';
+                const totalSporadicIntakes = sporadicMedsForReport.reduce((sum, med) => sum + countMedIntakes(med.id), 0);
+                const medDashboardHtml = `
+        <div class="section med-report-section">
+            <div class="section-title">💊 Actieve medicatie - medisch overzicht</div>
+            <div class="med-report-intro">
+                <div><strong>${dailyMedsForReport.length}</strong><span>dagelijkse medicatie</span></div>
+                <div><strong>${sporadicMedsForReport.length}</strong><span>sporadische medicatie</span></div>
+                <div><strong>${takenDailyIntakes}</strong><span>dagelijkse innames</span></div>
+                <div><strong>${totalSporadicIntakes}</strong><span>sporadische innames</span></div>
+            </div>
+            <div class="med-subtitle">🟢 Dagelijkse medicatie</div>
+            <div class="med-report-grid">${dailyCardsHtml}</div>
+            <div class="med-subtitle">🔵 Sporadische medicatie</div>
+            <div class="med-report-grid">${sporadicCardsHtml}</div>
+        </div>`;
+
                 const html = `
 <!DOCTYPE html>
 <html lang="nl">
@@ -1115,6 +1296,44 @@
         .status-title { font-size:17px; font-weight:900; margin-bottom:12px; color:#1e3a8a; }
         .status-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
         .status-grid div { background:white; border:1px solid #dbeafe; border-radius:12px; padding:10px; }
+        .med-report-section { page-break-inside: avoid; }
+        .med-report-intro { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin: 0 0 16px 0; }
+        .med-report-intro div { background:#f8fafc; border:1px solid var(--line); border-radius:14px; padding:12px; text-align:center; }
+        .med-report-intro strong { display:block; font-size:22px; color:#111827; }
+        .med-report-intro span { display:block; font-size:11px; color:var(--muted); font-weight:700; margin-top:4px; }
+        .med-subtitle { font-size:14px; font-weight:900; color:#334155; margin:18px 0 10px 0; text-transform:uppercase; letter-spacing:.02em; }
+        .med-report-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom: 12px; }
+        .med-report-card { border:1px solid var(--line); border-radius:18px; padding:16px; background:#fff; box-shadow:0 4px 14px rgba(15,23,42,.06); page-break-inside: avoid; }
+        .med-report-card.daily { border-left:5px solid var(--green); background:linear-gradient(180deg,#f0fdf4,#ffffff); }
+        .med-report-card.sporadic { border-left:5px solid var(--blue); background:linear-gradient(180deg,#eff6ff,#ffffff); }
+        .med-card-top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; margin-bottom:12px; }
+        .med-card-top h3 { margin:6px 0 3px 0; font-size:17px; color:#111827; }
+        .med-dose { margin:0; color:#64748b; font-size:13px; font-weight:700; }
+        .med-type-badge { display:inline-block; padding:5px 8px; border-radius:999px; font-size:10px; font-weight:900; letter-spacing:.06em; }
+        .med-type-badge.daily { background:#dcfce7; color:#166534; }
+        .med-type-badge.sporadic { background:#dbeafe; color:#1e40af; }
+        .med-status { font-size:12px; font-weight:900; color:#334155; background:white; border:1px solid var(--line); border-radius:999px; padding:6px 9px; white-space:nowrap; }
+        .therapy-line { background:white; border:1px solid #dcfce7; border-radius:14px; padding:12px; margin:12px 0; }
+        .therapy-head { display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#64748b; font-weight:800; }
+        .therapy-head strong { color:#111827; font-size:16px; }
+        .therapy-bar { width:100%; height:14px; background:#e5e7eb; border-radius:999px; overflow:hidden; margin:9px 0 6px 0; }
+        .therapy-fill { height:100%; border-radius:999px; }
+        .therapy-fill.good { background:linear-gradient(90deg,#22c55e,#16a34a); }
+        .therapy-fill.warn { background:linear-gradient(90deg,#f59e0b,#d97706); }
+        .therapy-fill.bad { background:linear-gradient(90deg,#ef4444,#dc2626); }
+        .therapy-detail { font-size:11px; color:#64748b; font-weight:700; }
+        .med-meta-grid, .sporadic-summary-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .sporadic-summary-grid { grid-template-columns:1fr; }
+        .med-meta-grid div, .sporadic-summary-grid div, .med-effect { background:white; border:1px solid var(--line); border-radius:12px; padding:10px; }
+        .med-meta-grid span, .sporadic-summary-grid span { display:block; color:#64748b; font-size:11px; font-weight:800; margin-bottom:4px; }
+        .med-meta-grid strong, .sporadic-summary-grid strong { color:#111827; font-size:13px; }
+        .med-effect { margin-top:10px; }
+        .effect-title { color:#334155; font-size:12px; font-weight:900; margin-bottom:8px; }
+        .effect-row { display:flex; justify-content:space-between; font-size:12px; padding:3px 0; }
+        .effect-row span { color:#64748b; font-weight:700; }
+        .effect-row strong { color:#111827; }
+        .empty-med-message { background:#f8fafc; border:1px dashed #cbd5e1; color:#64748b; border-radius:14px; padding:14px; font-size:13px; font-weight:700; }
+
         .section { margin-bottom: 25px; }
         .section-title { font-size: 15px; font-weight: 800; color: var(--red); border-bottom: 2px solid #fee2e2; padding-bottom: 6px; margin-bottom: 12px; }
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
@@ -1139,6 +1358,11 @@
             .info-grid, .status-grid { grid-template-columns:1fr; }
             .dashboard-grid { grid-template-columns:1fr 1fr; gap:10px; }
             .kpi-card { min-height:120px; }
+            .med-report-intro { grid-template-columns:1fr 1fr; }
+            .med-report-grid { grid-template-columns:1fr; }
+            .med-card-top { display:block; }
+            .med-status { display:inline-block; margin-top:8px; }
+            .med-meta-grid { grid-template-columns:1fr; }
         }
         @media (max-width: 430px) { .dashboard-grid { grid-template-columns:1fr; } .hero h1 { font-size:21px; } }
         @media print {
@@ -1175,6 +1399,7 @@
         ${doctorCardHtml}
         ${dashboardHtml}
         ${statusCardHtml}
+        ${medDashboardHtml}
 
         <div class="section">
             <div class="section-title">📊 Samenvatting - Gezondheidsanalyse</div>
@@ -1560,7 +1785,7 @@
                     const taken = med.pills - pills;
                     const rate = med.pills > 0 ? Math.round((taken / med.pills) * 100) : 0;
                     const typeInfo = med.type === 'sporadic' ? ` - 🔵 sporadisch (${parseInt(med.pillsPerIntake) || 1} per inname)` : ' - 🟢 dagelijks';
-                    medicationsHtml += `<div class="med-item">${med.icon} <b>${med.name}</b> (${med.dosage})${typeInfo} - ${rate}% • ${pills} pillen over</div>`;
+                    medicationsHtml += `<div class="med-item">${med.icon} <b>${med.name}</b> (${med.dosage})${typeInfo}</div>`;
                 });
 
                 return {
