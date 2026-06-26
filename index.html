@@ -1148,6 +1148,56 @@
                     };
                 };
 
+
+                // v3.3 - Mini-grafieken per medicatie in het artsenrapport
+                const medChartConfigs = [];
+                const safeChartId = (prefix, medId) => {
+                    return (prefix + '_' + String(medId || '').replace(/[^a-zA-Z0-9_]/g, '_') + '_' + Math.random().toString(36).slice(2, 7));
+                };
+                const getDailyBpForDate = (date) => {
+                    const day = this.data.measures && this.data.measures[date];
+                    if (!day) return null;
+                    const values = [];
+                    ['ochtend','middag','avond'].forEach(moment => {
+                        if (day[moment] && day[moment].sys && day[moment].dia) {
+                            values.push({ sys: parseInt(day[moment].sys), dia: parseInt(day[moment].dia) });
+                        }
+                    });
+                    if (!values.length) return null;
+                    return {
+                        sys: Math.round(values.reduce((s, v) => s + v.sys, 0) / values.length),
+                        dia: Math.round(values.reduce((s, v) => s + v.dia, 0) / values.length)
+                    };
+                };
+                const getMedBpPoints = (med) => {
+                    const intakeDates = getMedIntakeDates(med.id);
+                    const startDate = intakeDates.length ? intakeDates[0] : (reportDates[0] || null);
+                    if (!startDate) return [];
+                    const points = reportDates
+                        .filter(d => d >= startDate)
+                        .map(d => {
+                            const avg = getDailyBpForDate(d);
+                            if (!avg) return null;
+                            const [y, m, day] = d.split('-');
+                            return { label: `${day}/${m}`, sys: avg.sys, dia: avg.dia };
+                        })
+                        .filter(Boolean);
+                    return points.slice(-21);
+                };
+                const getSporadicUsagePoints = (med) => {
+                    const counts = {};
+                    getMedIntakeDates(med.id).forEach(date => {
+                        counts[date] = (counts[date] || 0) + 1;
+                    });
+                    return Object.keys(counts).sort().slice(-12).map(date => {
+                        const [y, m, d] = date.split('-');
+                        return { label: `${d}/${m}`, count: counts[date] };
+                    });
+                };
+                const registerMedChart = (config) => {
+                    medChartConfigs.push(config);
+                };
+
                 const getBpEffectHtml = (med) => {
                     const intakeDates = getMedIntakeDates(med.id);
                     const startDate = intakeDates.length ? intakeDates[0] : (reportDates[0] || null);
@@ -1183,6 +1233,22 @@
                     const cls = getAdherenceClass(adh.rate);
                     const last = getLastMedIntake(med.id);
                     const status = getMedStatus(med);
+                    const bpPoints = getMedBpPoints(med);
+                    let miniChartHtml = '';
+                    if (bpPoints.length >= 3) {
+                        const chartId = safeChartId('dailyMedBpChart', med.id);
+                        registerMedChart({
+                            id: chartId,
+                            type: 'dailyBp',
+                            labels: bpPoints.map(p => p.label),
+                            sys: bpPoints.map(p => p.sys),
+                            dia: bpPoints.map(p => p.dia),
+                            name: med.name
+                        });
+                        miniChartHtml = `<div class="med-mini-chart"><div class="mini-chart-title">❤️ Bloeddruktrend sinds eerste registratie</div><canvas id="${chartId}" height="95"></canvas></div>`;
+                    } else {
+                        miniChartHtml = `<div class="med-mini-chart empty">📈 Nog te weinig meetpunten voor medicatiegrafiek</div>`;
+                    }
                     return `
                         <div class="med-report-card daily">
                             <div class="med-card-top">
@@ -1202,6 +1268,7 @@
                                 <div><span>Laatste inname</span><strong>${last.date ? `${formatShortReportDate(last.date)} ${last.time || ''}` : 'Niet geregistreerd'}</strong></div>
                                 <div><span>Sinds</span><strong>${adh.firstDate ? formatShortReportDate(adh.firstDate) : 'Niet geregistreerd'}</strong></div>
                             </div>
+                            ${miniChartHtml}
                             ${getBpEffectHtml(med)}
                         </div>`;
                 };
@@ -1210,6 +1277,21 @@
                     const last = getLastMedIntake(med.id);
                     const totalIntakes = countMedIntakes(med.id);
                     const perIntake = parseInt(med.pillsPerIntake) || 1;
+                    const usagePoints = getSporadicUsagePoints(med);
+                    let usageChartHtml = '';
+                    if (usagePoints.length >= 1) {
+                        const chartId = safeChartId('sporadicMedUseChart', med.id);
+                        registerMedChart({
+                            id: chartId,
+                            type: 'sporadicUse',
+                            labels: usagePoints.map(p => p.label),
+                            counts: usagePoints.map(p => p.count),
+                            name: med.name
+                        });
+                        usageChartHtml = `<div class="med-mini-chart"><div class="mini-chart-title">🔵 Gebruiksmomenten</div><canvas id="${chartId}" height="95"></canvas></div>`;
+                    } else {
+                        usageChartHtml = `<div class="med-mini-chart empty">📊 Nog geen gebruiksgrafiek beschikbaar</div>`;
+                    }
                     return `
                         <div class="med-report-card sporadic">
                             <div class="med-card-top">
@@ -1225,6 +1307,7 @@
                                 <div><span>Aantal innames</span><strong>${totalIntakes}</strong></div>
                                 <div><span>Laatste gebruik</span><strong>${last.date ? `${formatShortReportDate(last.date)} ${last.time || ''}` : 'Niet geregistreerd'}</strong></div>
                             </div>
+                            ${usageChartHtml}
                         </div>`;
                 };
 
@@ -1237,7 +1320,7 @@
                 const totalSporadicIntakes = sporadicMedsForReport.reduce((sum, med) => sum + countMedIntakes(med.id), 0);
                 const medDashboardHtml = `
         <div class="section med-report-section">
-            <div class="section-title">💊 Actieve medicatie - medisch overzicht</div>
+            <div class="section-title">💊 Actieve medicatie - medisch overzicht + grafieken</div>
             <div class="med-report-intro">
                 <div><strong>${dailyMedsForReport.length}</strong><span>dagelijkse medicatie</span></div>
                 <div><strong>${sporadicMedsForReport.length}</strong><span>sporadische medicatie</span></div>
@@ -1333,6 +1416,10 @@
         .effect-row span { color:#64748b; font-weight:700; }
         .effect-row strong { color:#111827; }
         .empty-med-message { background:#f8fafc; border:1px dashed #cbd5e1; color:#64748b; border-radius:14px; padding:14px; font-size:13px; font-weight:700; }
+        .med-mini-chart { margin-top:10px; background:white; border:1px solid var(--line); border-radius:12px; padding:10px; }
+        .med-mini-chart.empty { color:#64748b; font-size:12px; font-weight:700; background:#f8fafc; border-style:dashed; }
+        .mini-chart-title { color:#334155; font-size:12px; font-weight:900; margin-bottom:8px; }
+        .med-mini-chart canvas { width:100% !important; max-height:115px !important; }
 
         .section { margin-bottom: 25px; }
         .section-title { font-size: 15px; font-weight: 800; color: var(--red); border-bottom: 2px solid #fee2e2; padding-bottom: 6px; margin-bottom: 12px; }
@@ -1725,6 +1812,89 @@
                 console.error('Chart error:', e);
             }
             ` : ''}
+
+            // v3.3 - Render mini-grafieken op medicatiekaarten
+            try {
+                const medCharts = ${JSON.stringify(medChartConfigs)};
+                medCharts.forEach(cfg => {
+                    const ctx = document.getElementById(cfg.id);
+                    if (!ctx || typeof Chart === 'undefined') return;
+
+                    if (cfg.type === 'dailyBp') {
+                        new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: cfg.labels,
+                                datasets: [
+                                    {
+                                        label: 'Systolisch',
+                                        data: cfg.sys,
+                                        borderColor: '#dc2626',
+                                        backgroundColor: 'rgba(220, 38, 38, 0.08)',
+                                        tension: 0.35,
+                                        fill: false,
+                                        pointRadius: 2,
+                                        pointHoverRadius: 4
+                                    },
+                                    {
+                                        label: 'Diastolisch',
+                                        data: cfg.dia,
+                                        borderColor: '#2563eb',
+                                        backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                                        tension: 0.35,
+                                        fill: false,
+                                        pointRadius: 2,
+                                        pointHoverRadius: 4
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
+                                    tooltip: { enabled: true }
+                                },
+                                scales: {
+                                    x: { ticks: { font: { size: 9 }, maxRotation: 0 }, grid: { display: false } },
+                                    y: { beginAtZero: false, ticks: { font: { size: 9 } } }
+                                }
+                            }
+                        });
+                    }
+
+                    if (cfg.type === 'sporadicUse') {
+                        new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: cfg.labels,
+                                datasets: [{
+                                    label: 'Innames',
+                                    data: cfg.counts,
+                                    backgroundColor: 'rgba(37, 99, 235, 0.35)',
+                                    borderColor: '#2563eb',
+                                    borderWidth: 1,
+                                    borderRadius: 6
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: { enabled: true }
+                                },
+                                scales: {
+                                    x: { ticks: { font: { size: 9 }, maxRotation: 0 }, grid: { display: false } },
+                                    y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 9 } } }
+                                }
+                            }
+                        });
+                    }
+                });
+            } catch(e) {
+                console.error('Medicatiegrafieken error:', e);
+            }
         });
     <\/script>
 </body>
