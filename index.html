@@ -724,20 +724,6 @@
                 const dia = parseInt(diaInput.value) || 0;
                 const hr = parseInt(hrInput.value) || 0;
                 
-                // ALLEEN KLEUREN ALS ER WAARDEN ZIJN!!!
-                if (sys === 0 && dia === 0 && hr === 0) {
-                    sysInput.style.backgroundColor = '';
-                    sysInput.style.fontWeight = 'normal';
-                    sysInput.style.color = 'black';
-                    diaInput.style.backgroundColor = '';
-                    diaInput.style.fontWeight = 'normal';
-                    diaInput.style.color = 'black';
-                    hrInput.style.backgroundColor = '';
-                    hrInput.style.fontWeight = 'normal';
-                    hrInput.style.color = 'black';
-                    return;
-                }
-                
                 const groen_sys = parseInt(localStorage.getItem('alarm_bp_groen_sys') || '129');
                 const geel_sys = parseInt(localStorage.getItem('alarm_bp_geel_sys') || '139');
                 const oranje_sys = parseInt(localStorage.getItem('alarm_bp_oranje_sys') || '159');
@@ -752,36 +738,55 @@
                 const hr_max_groen = parseInt(localStorage.getItem('alarm_hr_groen_max') || '100');
                 const hr_max_geel = parseInt(localStorage.getItem('alarm_hr_geel_max') || '120');
                 
-                // MEGA FELLE KLEUREN MET BOLD TEXT
-                let sys_color = '';
-                if (sys >= rood_sys) sys_color = '#ff0000';       // 🔴 PURE ROOD
-                else if (sys >= oranje_sys) sys_color = '#ff6600'; // 🟠 PURE ORANJE
-                else if (sys >= geel_sys) sys_color = '#ffcc00';   // 🟡 PURE GEEL
-                else if (sys >= groen_sys) sys_color = '#00cc00';  // 🟢 PURE GROEN
+                // SYS KLEUREN - JUISTE LOGICA!
+                if (sys > 0) {
+                    let sys_color = '';
+                    if (sys <= groen_sys) sys_color = '#00cc00';        // 🟢 GROEN
+                    else if (sys <= geel_sys) sys_color = '#ffcc00';    // 🟡 GEEL
+                    else if (sys <= oranje_sys) sys_color = '#ff6600';  // 🟠 ORANJE
+                    else sys_color = '#ff0000';                         // 🔴 ROOD
+                    
+                    sysInput.style.backgroundColor = sys_color;
+                    sysInput.style.fontWeight = 'bold';
+                    sysInput.style.color = 'white';
+                } else {
+                    sysInput.style.backgroundColor = '';
+                    sysInput.style.fontWeight = 'normal';
+                    sysInput.style.color = 'black';
+                }
                 
-                let dia_color = '';
-                if (dia >= rood_dia) dia_color = '#ff0000';
-                else if (dia >= oranje_dia) dia_color = '#ff6600';
-                else if (dia >= geel_dia) dia_color = '#ffcc00';
-                else if (dia >= groen_dia) dia_color = '#00cc00';
+                // DIA KLEUREN - JUISTE LOGICA!
+                if (dia > 0) {
+                    let dia_color = '';
+                    if (dia <= groen_dia) dia_color = '#00cc00';        // 🟢 GROEN
+                    else if (dia <= geel_dia) dia_color = '#ffcc00';    // 🟡 GEEL
+                    else if (dia <= oranje_dia) dia_color = '#ff6600';  // 🟠 ORANJE
+                    else dia_color = '#ff0000';                         // 🔴 ROOD
+                    
+                    diaInput.style.backgroundColor = dia_color;
+                    diaInput.style.fontWeight = 'bold';
+                    diaInput.style.color = 'white';
+                } else {
+                    diaInput.style.backgroundColor = '';
+                    diaInput.style.fontWeight = 'normal';
+                    diaInput.style.color = 'black';
+                }
                 
-                let hr_color = '';
-                if (hr < hr_min || hr > hr_max_geel + 1) hr_color = '#ff0000';
-                else if (hr > hr_max_geel) hr_color = '#ff6600';
-                else if (hr > hr_max_groen) hr_color = '#ffcc00';
-                else if (hr >= hr_min && hr <= hr_max_groen) hr_color = '#00cc00';
-                
-                sysInput.style.backgroundColor = sys_color;
-                sysInput.style.fontWeight = sys_color ? 'bold' : 'normal';
-                sysInput.style.color = sys_color ? 'white' : 'black';
-                
-                diaInput.style.backgroundColor = dia_color;
-                diaInput.style.fontWeight = dia_color ? 'bold' : 'normal';
-                diaInput.style.color = dia_color ? 'white' : 'black';
-                
-                hrInput.style.backgroundColor = hr_color;
-                hrInput.style.fontWeight = hr_color ? 'bold' : 'normal';
-                hrInput.style.color = hr_color ? 'white' : 'black';
+                // HR KLEUREN - JUISTE LOGICA!
+                if (hr > 0) {
+                    let hr_color = '';
+                    if (hr >= hr_min && hr <= hr_max_groen) hr_color = '#00cc00';    // 🟢 GROEN
+                    else if (hr <= hr_max_geel) hr_color = '#ffcc00';               // 🟡 GEEL
+                    else hr_color = '#ff0000';                                      // 🔴 ROOD
+                    
+                    hrInput.style.backgroundColor = hr_color;
+                    hrInput.style.fontWeight = 'bold';
+                    hrInput.style.color = 'white';
+                } else {
+                    hrInput.style.backgroundColor = '';
+                    hrInput.style.fontWeight = 'normal';
+                    hrInput.style.color = 'black';
+                }
             }
 
             colorAllInputs() {
