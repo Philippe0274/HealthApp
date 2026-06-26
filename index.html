@@ -298,32 +298,56 @@
 
             getPills(id) {
                 let count = 0;
-                for (let day in this.data.intakes) {
-                    if (this.data.intakes[day][id]) count++;
-                }
                 const med = this.data.meds.find(m => m.id === id);
-                return med ? med.pills - count : 0;
+                if (!med) return 0;
+                const perIntake = med.type === 'sporadic' ? (parseInt(med.pillsPerIntake) || 1) : 1;
+                for (let day in this.data.intakes) {
+                    if (this.data.intakes[day][id]) count += perIntake;
+                }
+                return Math.max(0, med.pills - count);
             }
 
-            addMed() {
-                const name = prompt('Naam:');
+            addMed(type = 'daily') {
+                const isSporadic = type === 'sporadic';
+                const name = prompt(isSporadic ? 'Naam sporadische medicatie:' : 'Naam dagelijkse medicatie:');
                 if (!name) return;
                 const dosage = prompt('Dosage:');
                 if (!dosage) return;
                 const p = parseInt(prompt('Pillen (1-70):') || '0');
                 if (p < 1 || p > 70) { alert('1-70!'); return; }
                 
+                let pillsPerIntake = 1;
+                if (isSporadic) {
+                    pillsPerIntake = parseInt(prompt('Aantal pillen per inname:', '1') || '0');
+                    if (pillsPerIntake < 1 || pillsPerIntake > p) { alert('Aantal per inname moet tussen 1 en ' + p + ' zijn!'); return; }
+                }
+                
                 const med = {
                     id: Date.now().toString(),
                     name: name,
                     dosage: dosage,
                     pills: p,
+                    type: isSporadic ? 'sporadic' : 'daily',
+                    pillsPerIntake: isSporadic ? pillsPerIntake : 1,
                     color: MEDS_COLORS[this.data.meds.length % 5],
                     icon: MEDS_ICONS[this.data.meds.length % 5]
                 };
                 this.data.meds.push(med);
                 this.save();
-                this.sendTg(`${med.icon} <b>${med.name}</b> TOEGEVOEGD!\n├─ ${med.dosage}\n├─ ${med.pills} pillen\n└─ ✅`);
+                if (isSporadic) {
+                    this.sendTg(`${med.icon} <b>${med.name}</b> TOEGEVOEGD!
+├─ 🔵 Sporadische medicatie
+├─ ${med.dosage}
+├─ ${med.pills} pillen voorraad
+├─ 💊 ${med.pillsPerIntake} pillen per inname
+└─ ✅`);
+                } else {
+                    this.sendTg(`${med.icon} <b>${med.name}</b> TOEGEVOEGD!
+├─ 🟢 Dagelijkse medicatie
+├─ ${med.dosage}
+├─ ${med.pills} pillen
+└─ ✅`);
+                }
                 this.show();
             }
 
@@ -337,29 +361,110 @@
                 this.show();
             }
 
-            resetMed(id) {
+            adjustMedStock(id) {
                 const med = this.data.meds.find(m => m.id === id);
-                const p = parseInt(prompt(`${med.name}: Nieuwe aantal?\n(1-70, nu: ${med.pills})`) || '0');
-                if (p < 1 || p > 70) { alert('1-70!'); return; }
-                const old = med.pills;
-                med.pills = p;
-                this.save();
-                this.sendTg(`🔄 <b>${med.name}</b> RESET\n├─ ${old} → ${p}\n└─ 📊 ${p}/${p}`);
-                this.show();
+                if (!med) return;
+
+                const current = this.getPills(id);
+                const typeLabel = med.type === 'sporadic' ? '🔵 Sporadische medicatie' : '🟢 Dagelijkse medicatie';
+                const choice = prompt(
+                    `${med.name} - Voorraad aanpassen\n\n` +
+                    `Huidige voorraad: ${current}/${med.pills}\n\n` +
+                    `Kies een optie:\n` +
+                    `1 = ➕ Pillen toevoegen\n` +
+                    `2 = ➖ Pillen verwijderen\n` +
+                    `3 = 📦 Nieuwe verpakking toevoegen`
+                );
+                if (!choice) return;
+
+                if (choice === '1') {
+                    const qty = parseInt(prompt('Hoeveel pillen toevoegen?', '1') || '0');
+                    if (qty < 1 || qty > 500) { alert('Aantal moet tussen 1 en 500 zijn!'); return; }
+                    const oldCurrent = this.getPills(id);
+                    med.pills = (parseInt(med.pills) || 0) + qty;
+                    const newCurrent = this.getPills(id);
+                    this.save();
+                    this.sendTg(`📦 <b>${med.name}</b> - VOORRAAD AANGEPAST\n├─ ${typeLabel}\n├─ ➕ ${qty} pillen toegevoegd\n├─ ${oldCurrent} → ${newCurrent}\n└─ ✅`);
+                    this.show();
+                    return;
+                }
+
+                if (choice === '2') {
+                    const qty = parseInt(prompt('Hoeveel pillen verwijderen?', '1') || '0');
+                    if (qty < 1 || qty > 500) { alert('Aantal moet tussen 1 en 500 zijn!'); return; }
+                    const oldCurrent = this.getPills(id);
+                    if (qty > oldCurrent) {
+                        alert(`Je kan geen ${qty} pillen verwijderen.\nHuidige voorraad = ${oldCurrent}.`);
+                        return;
+                    }
+                    med.pills = (parseInt(med.pills) || 0) - qty;
+                    const newCurrent = this.getPills(id);
+                    this.save();
+                    this.sendTg(`📦 <b>${med.name}</b> - VOORRAAD AANGEPAST\n├─ ${typeLabel}\n├─ ➖ ${qty} pillen verwijderd\n├─ ${oldCurrent} → ${newCurrent}\n└─ ✅`);
+                    this.show();
+                    return;
+                }
+
+                if (choice === '3') {
+                    const qty = parseInt(prompt('Hoeveel pillen zitten er in de nieuwe verpakking?', '28') || '0');
+                    if (qty < 1 || qty > 500) { alert('Aantal moet tussen 1 en 500 zijn!'); return; }
+                    const oldCurrent = this.getPills(id);
+                    med.pills = (parseInt(med.pills) || 0) + qty;
+                    const newCurrent = this.getPills(id);
+                    this.save();
+                    this.sendTg(`📦 <b>${med.name}</b> - NIEUWE VERPAKKING\n├─ ${typeLabel}\n├─ 📦 Nieuwe verpakking: ${qty} pillen\n├─ ${oldCurrent} → ${newCurrent}\n└─ ✅`);
+                    this.show();
+                    return;
+                }
+
+                alert('Ongeldige keuze. Kies 1, 2 of 3.');
             }
 
             setIntake(id, time) {
                 if (!this.data.intakes[this.date]) this.data.intakes[this.date] = {};
                 const med = this.data.meds.find(m => m.id === id);
+                const isSporadic = med?.type === 'sporadic';
+                const perIntake = isSporadic ? (parseInt(med.pillsPerIntake) || 1) : 1;
                 if (time) {
                     this.data.intakes[this.date][id] = time;
-                    this.sendTg(`✅ <b>${med.icon} ${med.name}</b> INGENOMEN!\n├─ ⏰ ${time}\n├─ 📊 ${this.getPills(id)}/${med.pills}\n└─ ✅`);
+                    if (isSporadic) {
+                        this.sendTg(`✅ <b>${med.icon} ${med.name}</b> INGENOMEN!
+├─ 🔵 Sporadische medicatie
+├─ ⏰ ${time}
+├─ 💊 Verbruikt: ${perIntake} pillen
+├─ 📦 Voorraad: ${this.getPills(id)}/${med.pills}
+└─ ✅`);
+                    } else {
+                        this.sendTg(`✅ <b>${med.icon} ${med.name}</b> INGENOMEN!
+├─ ⏰ ${time}
+├─ 📊 ${this.getPills(id)}/${med.pills}
+└─ ✅`);
+                    }
                     if (this.getPills(id) < 5) {
-                        this.sendTg(`⚠️ <b>${med.name}</b> - WAARSCHUWING!\n├─ ${this.getPills(id)} pillen\n└─ 🚨 BESTELLEN!`);
+                        if (isSporadic) {
+                            this.sendTg(`⚠️ <b>${med.name}</b> - WAARSCHUWING!
+├─ 🔵 Sporadische medicatie
+├─ ${this.getPills(id)} pillen over
+└─ 🚨 BESTELLEN!`);
+                        } else {
+                            this.sendTg(`⚠️ <b>${med.name}</b> - WAARSCHUWING!
+├─ ${this.getPills(id)} pillen
+└─ 🚨 BESTELLEN!`);
+                        }
                     }
                 } else {
                     delete this.data.intakes[this.date][id];
-                    this.sendTg(`❌ <b>${med.icon} ${med.name}</b> VERWIJDERD\n├─ Inname uit ${this.date}\n└─ 📊 ${this.getPills(id)}/${med.pills}`);
+                    if (isSporadic) {
+                        this.sendTg(`❌ <b>${med.icon} ${med.name}</b> VERWIJDERD
+├─ 🔵 Sporadische medicatie
+├─ Inname uit ${this.date}
+├─ ➕ ${perIntake} pillen terug in voorraad
+└─ 📦 Voorraad: ${this.getPills(id)}/${med.pills}`);
+                    } else {
+                        this.sendTg(`❌ <b>${med.icon} ${med.name}</b> VERWIJDERD
+├─ Inname uit ${this.date}
+└─ 📊 ${this.getPills(id)}/${med.pills}`);
+                    }
                 }
                 this.save();
                 this.show();
@@ -1283,7 +1388,8 @@
                     const pills = this.getPills(med.id);
                     const taken = med.pills - pills;
                     const rate = med.pills > 0 ? Math.round((taken / med.pills) * 100) : 0;
-                    medicationsHtml += `<div class="med-item">${med.icon} <b>${med.name}</b> (${med.dosage}) - ${rate}% • ${pills} pillen over</div>`;
+                    const typeInfo = med.type === 'sporadic' ? ` - 🔵 sporadisch (${parseInt(med.pillsPerIntake) || 1} per inname)` : ' - 🟢 dagelijks';
+                    medicationsHtml += `<div class="med-item">${med.icon} <b>${med.name}</b> (${med.dosage})${typeInfo} - ${rate}% • ${pills} pillen over</div>`;
                 });
 
                 return {
@@ -1669,7 +1775,8 @@
                     const pills = this.getPills(med.id);
                     const taken = med.pills - pills;
                     const rate = med.pills > 0 ? Math.round((taken / med.pills) * 100) : 0;
-                    medicationsHtml += `<div class="med-item">${med.icon} <b>${med.name}</b> (${med.dosage}) - ${rate}% • ${pills} pillen over</div>`;
+                    const typeInfo = med.type === 'sporadic' ? ` - 🔵 sporadisch (${parseInt(med.pillsPerIntake) || 1} per inname)` : ' - 🟢 dagelijks';
+                    medicationsHtml += `<div class="med-item">${med.icon} <b>${med.name}</b> (${med.dosage})${typeInfo} - ${rate}% • ${pills} pillen over</div>`;
                 });
 
                 return {
@@ -1832,13 +1939,18 @@
                     html += '<h2 style="font-size:14px;font-weight:700;margin-bottom:10px;">💊 MEDICATIES</h2>';
                     for (let med of this.data.meds) {
                         html += '<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
-                        html += '<div><div style="font-weight:700;">' + med.icon + ' ' + med.name + '</div><div style="font-size:11px;color:#6b7280;">' + med.dosage + ' • ' + this.getPills(med.id) + '/' + med.pills + '</div></div>';
+                        const medTypeLabel = med.type === 'sporadic' ? ' 🔵 Sporadisch' : ' 🟢 Dagelijks';
+                        const perIntakeLabel = med.type === 'sporadic' ? ' • ' + (parseInt(med.pillsPerIntake) || 1) + ' per inname' : '';
+                        html += '<div><div style="font-weight:700;">' + med.icon + ' ' + med.name + '</div><div style="font-size:11px;color:#6b7280;">' + med.dosage + ' • ' + this.getPills(med.id) + '/' + med.pills + medTypeLabel + perIntakeLabel + '</div></div>';
                         html += '<div style="display:flex;gap:6px;">';
-                        html += '<button onclick="app.resetMed(\'' + med.id + '\')" style="background:#3b82f6;color:white;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;">Reset</button>';
+                        html += '<button onclick="app.adjustMedStock(\'' + med.id + '\')" style="background:#3b82f6;color:white;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;">📦 Voorraad</button>';
                         html += '<button onclick="app.rmMed(\'' + med.id + '\')" style="background:#ef4444;color:white;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;">✕</button>';
                         html += '</div></div>';
                     }
-                    html += '<button onclick="app.addMed()" style="background:#10b981;color:white;border:none;border-radius:8px;padding:8px 12px;width:100%;font-weight:700;cursor:pointer;margin-top:8px;">+ Toevoegen</button>';
+                    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">';
+                    html += '<button onclick="app.addMed(\'daily\')" style="background:#10b981;color:white;border:none;border-radius:8px;padding:8px 8px;width:100%;font-weight:700;cursor:pointer;font-size:12px;">+ Dagelijkse</button>';
+                    html += '<button onclick="app.addMed(\'sporadic\')" style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:8px 8px;width:100%;font-weight:700;cursor:pointer;font-size:12px;">+ Sporadische</button>';
+                    html += '</div>';
                     html += '</div>';
                 }
 
@@ -1880,7 +1992,9 @@
                     const pct = remaining > (med.pills / 10) ? '#10b981' : remaining >= 5 ? '#f59e0b' : '#ef4444';
                     html += '<div style="background:white;border-radius:12px;padding:8px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';
                     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
-                    html += '<h2 style="font-size:12px;font-weight:700;margin:0;color:' + med.color + ';">' + med.icon + ' ' + med.name + '</h2>';
+                    const isSporadicMed = med.type === 'sporadic';
+                    const typeBadge = isSporadicMed ? ' <span style="font-size:9px;background:#dbeafe;color:#1d4ed8;border-radius:10px;padding:1px 5px;">Sporadisch</span>' : '';
+                    html += '<h2 style="font-size:12px;font-weight:700;margin:0;color:' + med.color + ';">' + med.icon + ' ' + med.name + typeBadge + '</h2>';
                     html += '<div style="font-size:11px;font-weight:600;color:' + pct + ';">' + (remaining > (med.pills / 10) ? '✅' : remaining >= 5 ? '⚠️' : '🚨') + ' ' + remaining + '/' + med.pills + '</div>';
                     html += '</div>';
                     html += '<div style="background:' + med.color + '33;border-radius:8px;padding:8px;display:grid;gap:3px;grid-template-columns:repeat(' + Math.min(10, med.pills) + ',1fr);">';
@@ -1927,7 +2041,9 @@
                     const time = intakes[med.id] || '';
                     html += '<div style="background:white;border-radius:10px;padding:6px;margin-bottom:6px;box-shadow:0 1px 2px rgba(0,0,0,0.03);border-left:4px solid ' + med.color + ';">';
                     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:6px;">';
-                    html += '<div style="flex:1;min-width:0;"><h2 style="font-size:11px;font-weight:700;margin:0;color:' + med.color + ';">' + med.icon + ' ' + med.name + '</h2><div style="font-size:9px;color:#6b7280;">' + med.dosage + '</div></div>';
+                    const dayTypeBadge = med.type === 'sporadic' ? ' <span style="font-size:8px;background:#dbeafe;color:#1d4ed8;border-radius:8px;padding:1px 4px;">Sporadisch</span>' : '';
+                    const dayPerIntake = med.type === 'sporadic' ? ' • ' + (parseInt(med.pillsPerIntake) || 1) + ' per inname' : '';
+                    html += '<div style="flex:1;min-width:0;"><h2 style="font-size:11px;font-weight:700;margin:0;color:' + med.color + ';">' + med.icon + ' ' + med.name + dayTypeBadge + '</h2><div style="font-size:9px;color:#6b7280;">' + med.dosage + dayPerIntake + '</div></div>';
                     html += '<span style="background:' + med.color + ';color:white;padding:2px 6px;border-radius:10px;font-weight:600;font-size:10px;flex-shrink:0;white-space:nowrap;">' + this.getPills(med.id) + '/' + med.pills + '</span>';
                     html += '</div>';
                     html += time ? '<div style="background:#d1fae5;border-radius:6px;padding:4px;margin-bottom:4px;font-size:10px;color:#065f46;font-weight:600;">✅ ' + time + '</div>' : '<div style="background:#fef3c7;border-radius:6px;padding:4px;margin-bottom:4px;font-size:10px;color:#92400e;font-weight:600;">⏰ Niet ingevuld</div>';
