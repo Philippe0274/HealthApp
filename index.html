@@ -650,7 +650,7 @@
                             </div>
                             
                             <div style="margin-bottom:16px;">
-                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🟢 GROEN Bloeddruk</label>
+                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🟢 GROEN</label>
                                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                                     <input type="number" id="alarmBpGroenSys" value="${bp_groen_sys}" placeholder="Sys" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
                                     <input type="number" id="alarmBpGroenDia" value="${bp_groen_dia}" placeholder="Dia" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
@@ -658,7 +658,7 @@
                             </div>
                             
                             <div style="margin-bottom:16px;">
-                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🟡 GEEL Bloeddruk</label>
+                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🟡 GEEL</label>
                                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                                     <input type="number" id="alarmBpGeelSys" value="${bp_geel_sys}" placeholder="Sys" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
                                     <input type="number" id="alarmBpGeelDia" value="${bp_geel_dia}" placeholder="Dia" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
@@ -666,7 +666,7 @@
                             </div>
                             
                             <div style="margin-bottom:16px;">
-                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🟠 ORANJE Bloeddruk</label>
+                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🟠 ORANJE</label>
                                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                                     <input type="number" id="alarmBpOranjeSys" value="${bp_oranje_sys}" placeholder="Sys" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
                                     <input type="number" id="alarmBpOranjeDia" value="${bp_oranje_dia}" placeholder="Dia" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
@@ -674,7 +674,7 @@
                             </div>
                             
                             <div style="margin-bottom:20px;">
-                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🔴 ROOD Bloeddruk</label>
+                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🔴 ROOD</label>
                                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                                     <input type="number" id="alarmBpRoodSys" value="${bp_rood_sys}" placeholder="Sys" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
                                     <input type="number" id="alarmBpRoodDia" value="${bp_rood_dia}" placeholder="Dia" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
@@ -683,10 +683,10 @@
                             
                             <div style="margin-bottom:20px;">
                                 <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">❤️ HARTSLAG</label>
-                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                                    <div><label style="font-size:10px;color:#9ca3af;">Groen Min</label><input type="number" id="alarmHrGroenMin" value="${hr_groen_min}" style="width:100%;padding:6px;border:1px solid #d1d5db;border-radius:4px;font-size:12px;box-sizing:border-box;"></div>
-                                    <div><label style="font-size:10px;color:#9ca3af;">Groen Max</label><input type="number" id="alarmHrGroenMax" value="${hr_groen_max}" style="width:100%;padding:6px;border:1px solid #d1d5db;border-radius:4px;font-size:12px;box-sizing:border-box;"></div>
-                                    <div><label style="font-size:10px;color:#9ca3af;">Geel Max</label><input type="number" id="alarmHrGeelMax" value="${hr_geel_max}" style="width:100%;padding:6px;border:1px solid #d1d5db;border-radius:4px;font-size:12px;box-sizing:border-box;"></div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+                                    <div><label style="font-size:9px;color:#9ca3af;display:block;margin-bottom:4px;">Min</label><input type="number" id="alarmHrGroenMin" value="${hr_groen_min}" style="width:100%;padding:6px;border:1px solid #d1d5db;border-radius:4px;font-size:12px;box-sizing:border-box;"></div>
+                                    <div><label style="font-size:9px;color:#9ca3af;display:block;margin-bottom:4px;">Max G</label><input type="number" id="alarmHrGroenMax" value="${hr_groen_max}" style="width:100%;padding:6px;border:1px solid #d1d5db;border-radius:4px;font-size:12px;box-sizing:border-box;"></div>
+                                    <div><label style="font-size:9px;color:#9ca3af;display:block;margin-bottom:4px;">Max Ge</label><input type="number" id="alarmHrGeelMax" value="${hr_geel_max}" style="width:100%;padding:6px;border:1px solid #d1d5db;border-radius:4px;font-size:12px;box-sizing:border-box;"></div>
                                 </div>
                             </div>
                             
@@ -697,6 +697,55 @@
                         </div>
                     </div>
                 `);
+            }
+
+            updateInputColor(moment) {
+                const sysInput = document.getElementById('sys-' + moment);
+                const diaInput = document.getElementById('dia-' + moment);
+                const hrInput = document.getElementById('hr-' + moment);
+                if (!sysInput || !diaInput || !hrInput) return;
+                
+                const sys = parseInt(sysInput.value) || 0;
+                const dia = parseInt(diaInput.value) || 0;
+                const hr = parseInt(hrInput.value) || 0;
+                
+                const groen_sys = parseInt(localStorage.getItem('alarm_bp_groen_sys') || '129');
+                const geel_sys = parseInt(localStorage.getItem('alarm_bp_geel_sys') || '139');
+                const oranje_sys = parseInt(localStorage.getItem('alarm_bp_oranje_sys') || '159');
+                const rood_sys = parseInt(localStorage.getItem('alarm_bp_rood_sys') || '179');
+                
+                const groen_dia = parseInt(localStorage.getItem('alarm_bp_groen_dia') || '84');
+                const geel_dia = parseInt(localStorage.getItem('alarm_bp_geel_dia') || '89');
+                const oranje_dia = parseInt(localStorage.getItem('alarm_bp_oranje_dia') || '99');
+                const rood_dia = parseInt(localStorage.getItem('alarm_bp_rood_dia') || '109');
+                
+                const hr_min = parseInt(localStorage.getItem('alarm_hr_groen_min') || '55');
+                const hr_max_groen = parseInt(localStorage.getItem('alarm_hr_groen_max') || '100');
+                const hr_max_geel = parseInt(localStorage.getItem('alarm_hr_geel_max') || '120');
+                
+                // Bloeddruk kleuren
+                let sys_color = '';
+                if (sys >= rood_sys) sys_color = '#fecaca';
+                else if (sys >= oranje_sys) sys_color = '#fed7aa';
+                else if (sys >= geel_sys) sys_color = '#fef08a';
+                else if (sys >= groen_sys) sys_color = '#bbf7d0';
+                
+                let dia_color = '';
+                if (dia >= rood_dia) dia_color = '#fecaca';
+                else if (dia >= oranje_dia) dia_color = '#fed7aa';
+                else if (dia >= geel_dia) dia_color = '#fef08a';
+                else if (dia >= groen_dia) dia_color = '#bbf7d0';
+                
+                // Hartslag kleuren
+                let hr_color = '';
+                if (hr < hr_min || hr > hr_max_geel + 1) hr_color = '#fecaca';
+                else if (hr > hr_max_geel) hr_color = '#fed7aa';
+                else if (hr > hr_max_groen) hr_color = '#fef08a';
+                else if (hr >= hr_min && hr <= hr_max_groen) hr_color = '#bbf7d0';
+                
+                sysInput.style.backgroundColor = sys_color;
+                diaInput.style.backgroundColor = dia_color;
+                hrInput.style.backgroundColor = hr_color;
             }
 
             showEditDoctorForm() {
@@ -1696,7 +1745,6 @@
                 html += '</div>';
                 html += '</div>';
                 
-                // 🚨 ALARM BUTTON
                 html += '<button onclick="app.showEditAlarmSettings()" style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);border:2px solid #ef4444;color:white;width:100%;padding:12px;border-radius:8px;font-weight:700;cursor:pointer;margin-bottom:12px;font-size:16px;"><span style="font-size:20px;">🚨</span> ALARM INSTELLINGEN</button>';
 
                 // PATIENT SECTION - Vóór kalender
@@ -1857,11 +1905,11 @@
                     
                     // ROW 3: Inputs - compact widths
                     html += '<div style="display:flex;gap:4px;margin-bottom:6px;align-items:center;">';
-                    html += '<input type="number" id="sys-' + moment + '" placeholder="Sys" value="' + sys + '" style="width:45px;padding:6px 4px;border:2px solid #e5e7eb;border-radius:6px;font-size:11px;flex-shrink:0;">';
+                    html += '<input type="number" id="sys-' + moment + '" placeholder="Sys" value="' + sys + '" oninput="app.updateInputColor(\'' + moment + '\')" style="width:45px;padding:6px 4px;border:2px solid #e5e7eb;border-radius:6px;font-size:11px;flex-shrink:0;">';
                     html += '<span style="font-size:10px;color:#6b7280;">/</span>';
-                    html += '<input type="number" id="dia-' + moment + '" placeholder="Dia" value="' + dia + '" style="width:45px;padding:6px 4px;border:2px solid #e5e7eb;border-radius:6px;font-size:11px;flex-shrink:0;">';
+                    html += '<input type="number" id="dia-' + moment + '" placeholder="Dia" value="' + dia + '" oninput="app.updateInputColor(\'' + moment + '\')" style="width:45px;padding:6px 4px;border:2px solid #e5e7eb;border-radius:6px;font-size:11px;flex-shrink:0;">';
                     html += '<span style="font-size:10px;color:#6b7280;">HR:</span>';
-                    html += '<input type="number" id="hr-' + moment + '" placeholder="HR" value="' + hr + '" style="width:45px;padding:6px 4px;border:2px solid #e5e7eb;border-radius:6px;font-size:11px;flex-shrink:0;">';
+                    html += '<input type="number" id="hr-' + moment + '" placeholder="HR" value="' + hr + '" oninput="app.updateInputColor(\'' + moment + '\')" style="width:45px;padding:6px 4px;border:2px solid #e5e7eb;border-radius:6px;font-size:11px;flex-shrink:0;">';
                     html += '</div>';
                     
                     // ROW 4: Action buttons
