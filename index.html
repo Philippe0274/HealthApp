@@ -405,7 +405,7 @@
                 }
                 this.save();
                 this.show();
-                setTimeout(() => this.updateInputColor(moment), 50);
+                setTimeout(() => this.colorAllInputs(), 50);
             }
 
             deleteValuesOnly(moment) {
@@ -724,29 +724,48 @@
                 const hr_max_groen = parseInt(localStorage.getItem('alarm_hr_groen_max') || '100');
                 const hr_max_geel = parseInt(localStorage.getItem('alarm_hr_geel_max') || '120');
                 
-                // Bloeddruk kleuren
+                // MEGA FELLE KLEUREN MET BOLD TEXT
                 let sys_color = '';
-                if (sys >= rood_sys) sys_color = '#fecaca';
-                else if (sys >= oranje_sys) sys_color = '#fed7aa';
-                else if (sys >= geel_sys) sys_color = '#fef08a';
-                else if (sys >= groen_sys) sys_color = '#bbf7d0';
+                if (sys >= rood_sys) sys_color = '#ff0000';       // 🔴 PURE ROOD
+                else if (sys >= oranje_sys) sys_color = '#ff6600'; // 🟠 PURE ORANJE
+                else if (sys >= geel_sys) sys_color = '#ffcc00';   // 🟡 PURE GEEL
+                else if (sys >= groen_sys) sys_color = '#00cc00';  // 🟢 PURE GROEN
                 
                 let dia_color = '';
-                if (dia >= rood_dia) dia_color = '#fecaca';
-                else if (dia >= oranje_dia) dia_color = '#fed7aa';
-                else if (dia >= geel_dia) dia_color = '#fef08a';
-                else if (dia >= groen_dia) dia_color = '#bbf7d0';
+                if (dia >= rood_dia) dia_color = '#ff0000';
+                else if (dia >= oranje_dia) dia_color = '#ff6600';
+                else if (dia >= geel_dia) dia_color = '#ffcc00';
+                else if (dia >= groen_dia) dia_color = '#00cc00';
                 
-                // Hartslag kleuren
                 let hr_color = '';
-                if (hr < hr_min || hr > hr_max_geel + 1) hr_color = '#fecaca';
-                else if (hr > hr_max_geel) hr_color = '#fed7aa';
-                else if (hr > hr_max_groen) hr_color = '#fef08a';
-                else if (hr >= hr_min && hr <= hr_max_groen) hr_color = '#bbf7d0';
+                if (hr < hr_min || hr > hr_max_geel + 1) hr_color = '#ff0000';
+                else if (hr > hr_max_geel) hr_color = '#ff6600';
+                else if (hr > hr_max_groen) hr_color = '#ffcc00';
+                else if (hr >= hr_min && hr <= hr_max_groen) hr_color = '#00cc00';
                 
                 sysInput.style.backgroundColor = sys_color;
+                sysInput.style.fontWeight = sys_color ? 'bold' : 'normal';
+                sysInput.style.color = sys_color ? 'white' : 'black';
+                
                 diaInput.style.backgroundColor = dia_color;
+                diaInput.style.fontWeight = dia_color ? 'bold' : 'normal';
+                diaInput.style.color = dia_color ? 'white' : 'black';
+                
                 hrInput.style.backgroundColor = hr_color;
+                hrInput.style.fontWeight = hr_color ? 'bold' : 'normal';
+                hrInput.style.color = hr_color ? 'white' : 'black';
+            }
+
+            colorAllInputs() {
+                // KLEUR ALLES OP DE PAGINA - ongeacht waar het vandaan komt
+                ['ochtend', 'middag', 'avond'].forEach(moment => {
+                    const sysEl = document.getElementById('sys-' + moment);
+                    const diaEl = document.getElementById('dia-' + moment);
+                    const hrEl = document.getElementById('hr-' + moment);
+                    if (sysEl && sysEl.value) {
+                        this.updateInputColor(moment);
+                    }
+                });
             }
 
             showEditDoctorForm() {
@@ -1637,8 +1656,10 @@
                 if (this.view === 'cal') {
                     document.getElementById('app').innerHTML = this.drawCal();
                     this.bindCal();
+                    setTimeout(() => this.colorAllInputs(), 20);
                 } else {
                     document.getElementById('app').innerHTML = this.drawDay();
+                    setTimeout(() => this.colorAllInputs(), 20);
                 }
             }
 
@@ -1926,15 +1947,20 @@
 
                 html += '</div>';
                 
-                // Kleur ALLE moments die waarden hebben (ongeacht welke dag)
-                setTimeout(() => {
-                    ['ochtend', 'middag', 'avond'].forEach(moment => {
-                        const sysEl = document.getElementById('sys-' + moment);
-                        if (sysEl && sysEl.value) {
-                            this.updateInputColor(moment);
-                        }
-                    });
-                }, 50);
+                // Kleur ALLES - zeker stellen dat ALLE inputs gekleurd worden
+                if (this.data.measures && this.data.measures[this.date]) {
+                    setTimeout(() => {
+                        ['ochtend', 'middag', 'avond'].forEach(moment => {
+                            const sysEl = document.getElementById('sys-' + moment);
+                            const diaEl = document.getElementById('dia-' + moment);
+                            const hrEl = document.getElementById('hr-' + moment);
+                            // Als ANY van de 3 een waarde heeft, kleur alles
+                            if ((sysEl && sysEl.value) || (diaEl && diaEl.value) || (hrEl && hrEl.value)) {
+                                this.updateInputColor(moment);
+                            }
+                        });
+                    }, 10);
+                }
                 
                 return html;
             }
