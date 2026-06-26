@@ -575,21 +575,6 @@
                 this.settingsVisible = false;
                 setTimeout(() => { this.show(); }, 100);
             }
-            
-            saveAlarmSettings() {
-                const wifeEmail = document.getElementById('wifeEmailInput')?.value || '';
-                
-                if (wifeEmail) {
-                    localStorage.setItem('wife_email', wifeEmail);
-                    this.sendTg(`✅ <b>ALARM INSTELLINGEN OPGESLAGEN</b>\n├─ Telegram: Jij\n├─ Email: ${wifeEmail}\n└─ Gereed`);
-                } else {
-                    localStorage.removeItem('wife_email');
-                    this.sendTg(`✅ <b>ALARM INSTELLINGEN OPGESLAGEN</b>\n├─ Telegram: Jij\n├─ Email: (niet ingesteld)\n└─ Gereed`);
-                }
-                
-                alert('✅ Alarm instellingen opgeslagen!');
-                document.getElementById('alarm-modal')?.remove();
-            }
 
             saveDoctor() {
                 const name = document.getElementById('doctorNameInput').value;
@@ -606,6 +591,112 @@
                 this.sendTg('✅ Huisarts gegevens bijgewerkt:\n' + name + '\n' + address + '\n' + phone);
                 document.getElementById('doctor-modal').remove();
                 this.show();
+            }
+
+            saveAlarmSettings() {
+                const email = document.getElementById('alarmEmailInput')?.value || '';
+                const bp_groen_sys = document.getElementById('alarmBpGroenSys')?.value || '129';
+                const bp_groen_dia = document.getElementById('alarmBpGroenDia')?.value || '84';
+                const bp_geel_sys = document.getElementById('alarmBpGeelSys')?.value || '139';
+                const bp_geel_dia = document.getElementById('alarmBpGeelDia')?.value || '89';
+                const bp_oranje_sys = document.getElementById('alarmBpOranjeSys')?.value || '159';
+                const bp_oranje_dia = document.getElementById('alarmBpOranjeDia')?.value || '99';
+                const bp_rood_sys = document.getElementById('alarmBpRoodSys')?.value || '179';
+                const bp_rood_dia = document.getElementById('alarmBpRoodDia')?.value || '109';
+                const hr_groen_min = document.getElementById('alarmHrGroenMin')?.value || '55';
+                const hr_groen_max = document.getElementById('alarmHrGroenMax')?.value || '100';
+                const hr_geel_max = document.getElementById('alarmHrGeelMax')?.value || '120';
+                
+                localStorage.setItem('alarm_email', email);
+                localStorage.setItem('alarm_bp_groen_sys', bp_groen_sys);
+                localStorage.setItem('alarm_bp_groen_dia', bp_groen_dia);
+                localStorage.setItem('alarm_bp_geel_sys', bp_geel_sys);
+                localStorage.setItem('alarm_bp_geel_dia', bp_geel_dia);
+                localStorage.setItem('alarm_bp_oranje_sys', bp_oranje_sys);
+                localStorage.setItem('alarm_bp_oranje_dia', bp_oranje_dia);
+                localStorage.setItem('alarm_bp_rood_sys', bp_rood_sys);
+                localStorage.setItem('alarm_bp_rood_dia', bp_rood_dia);
+                localStorage.setItem('alarm_hr_groen_min', hr_groen_min);
+                localStorage.setItem('alarm_hr_groen_max', hr_groen_max);
+                localStorage.setItem('alarm_hr_geel_max', hr_geel_max);
+                
+                this.sendTg('✅ Alarm instellingen opgeslagen!');
+                document.getElementById('alarm-modal').remove();
+                this.show();
+            }
+
+            showEditAlarmSettings() {
+                const email = localStorage.getItem('alarm_email') || '';
+                const bp_groen_sys = localStorage.getItem('alarm_bp_groen_sys') || '129';
+                const bp_groen_dia = localStorage.getItem('alarm_bp_groen_dia') || '84';
+                const bp_geel_sys = localStorage.getItem('alarm_bp_geel_sys') || '139';
+                const bp_geel_dia = localStorage.getItem('alarm_bp_geel_dia') || '89';
+                const bp_oranje_sys = localStorage.getItem('alarm_bp_oranje_sys') || '159';
+                const bp_oranje_dia = localStorage.getItem('alarm_bp_oranje_dia') || '99';
+                const bp_rood_sys = localStorage.getItem('alarm_bp_rood_sys') || '179';
+                const bp_rood_dia = localStorage.getItem('alarm_bp_rood_dia') || '109';
+                const hr_groen_min = localStorage.getItem('alarm_hr_groen_min') || '55';
+                const hr_groen_max = localStorage.getItem('alarm_hr_groen_max') || '100';
+                const hr_geel_max = localStorage.getItem('alarm_hr_geel_max') || '120';
+                
+                document.body.insertAdjacentHTML('beforeend', `
+                    <div id="alarm-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target.id==='alarm-modal') document.getElementById('alarm-modal').remove();">
+                        <div style="background:white;border-radius:12px;padding:24px;width:95%;max-width:340px;max-height:90vh;overflow-y:auto;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                            <h2 style="margin:0 0 20px 0;font-size:18px;color:#1f2937;font-weight:600;">🚨 Alarm Instellingen</h2>
+                            
+                            <div style="margin-bottom:16px;">
+                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">📧 Email (Vrouw)</label>
+                                <input type="email" id="alarmEmailInput" value="${email}" placeholder="vrouw@example.com" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
+                            </div>
+                            
+                            <div style="margin-bottom:16px;">
+                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🟢 GROEN Bloeddruk</label>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                                    <input type="number" id="alarmBpGroenSys" value="${bp_groen_sys}" placeholder="Sys" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+                                    <input type="number" id="alarmBpGroenDia" value="${bp_groen_dia}" placeholder="Dia" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+                                </div>
+                            </div>
+                            
+                            <div style="margin-bottom:16px;">
+                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🟡 GEEL Bloeddruk</label>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                                    <input type="number" id="alarmBpGeelSys" value="${bp_geel_sys}" placeholder="Sys" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+                                    <input type="number" id="alarmBpGeelDia" value="${bp_geel_dia}" placeholder="Dia" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+                                </div>
+                            </div>
+                            
+                            <div style="margin-bottom:16px;">
+                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🟠 ORANJE Bloeddruk</label>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                                    <input type="number" id="alarmBpOranjeSys" value="${bp_oranje_sys}" placeholder="Sys" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+                                    <input type="number" id="alarmBpOranjeDia" value="${bp_oranje_dia}" placeholder="Dia" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+                                </div>
+                            </div>
+                            
+                            <div style="margin-bottom:20px;">
+                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🔴 ROOD Bloeddruk</label>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                                    <input type="number" id="alarmBpRoodSys" value="${bp_rood_sys}" placeholder="Sys" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+                                    <input type="number" id="alarmBpRoodDia" value="${bp_rood_dia}" placeholder="Dia" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;">
+                                </div>
+                            </div>
+                            
+                            <div style="margin-bottom:20px;">
+                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">❤️ HARTSLAG</label>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                                    <div><label style="font-size:10px;color:#9ca3af;">Groen Min</label><input type="number" id="alarmHrGroenMin" value="${hr_groen_min}" style="width:100%;padding:6px;border:1px solid #d1d5db;border-radius:4px;font-size:12px;box-sizing:border-box;"></div>
+                                    <div><label style="font-size:10px;color:#9ca3af;">Groen Max</label><input type="number" id="alarmHrGroenMax" value="${hr_groen_max}" style="width:100%;padding:6px;border:1px solid #d1d5db;border-radius:4px;font-size:12px;box-sizing:border-box;"></div>
+                                    <div><label style="font-size:10px;color:#9ca3af;">Geel Max</label><input type="number" id="alarmHrGeelMax" value="${hr_geel_max}" style="width:100%;padding:6px;border:1px solid #d1d5db;border-radius:4px;font-size:12px;box-sizing:border-box;"></div>
+                                </div>
+                            </div>
+                            
+                            <div style="display:flex;gap:12px;">
+                                <button onclick="app.saveAlarmSettings()" style="background:#10b981;color:white;border:none;flex:1;padding:12px;border-radius:8px;font-weight:500;cursor:pointer;">💾 OPSLAAN</button>
+                                <button onclick="document.getElementById('alarm-modal').remove()" style="background:#e5e7eb;color:#1f2937;border:none;flex:1;padding:12px;border-radius:8px;font-weight:500;cursor:pointer;">SLUITEN</button>
+                            </div>
+                        </div>
+                    </div>
+                `);
             }
 
             showEditDoctorForm() {
@@ -1605,8 +1696,8 @@
                 html += '</div>';
                 html += '</div>';
                 
-                // 🚨 ALARM KNOP
-                html += '<button onclick="showAlarmSettings()" style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);border:2px solid #ef4444;color:white;width:100%;padding:12px;border-radius:8px;font-weight:700;cursor:pointer;margin-bottom:12px;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px;"><span style="font-size:20px;">🚨</span> ALARM INSTELLINGEN</button>';
+                // 🚨 ALARM BUTTON
+                html += '<button onclick="app.showEditAlarmSettings()" style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);border:2px solid #ef4444;color:white;width:100%;padding:12px;border-radius:8px;font-weight:700;cursor:pointer;margin-bottom:12px;font-size:16px;"><span style="font-size:20px;">🚨</span> ALARM INSTELLINGEN</button>';
 
                 // PATIENT SECTION - Vóór kalender
                 if (!this.data.patient) {
@@ -1825,58 +1916,6 @@
                     showEmailManager();
                 }
             }
-        }
-        
-        // 🚨 ALARM INSTELLINGEN MODAL
-        function showAlarmSettings() {
-            let html = '<div id="alarm-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:12px;" onclick="if(event.target.id===\'alarm-modal\') document.getElementById(\'alarm-modal\').remove();">';
-            html += '<div style="background:white;border-radius:16px;padding:20px;width:100%;max-width:380px;max-height:90vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,0.2);">';
-            
-            html += '<div style="text-align:center;margin-bottom:16px;">';
-            html += '<div style="font-size:40px;">🚨</div>';
-            html += '<h2 style="margin:8px 0;font-size:18px;color:#1f2937;font-weight:700;">Alarm Instellingen</h2>';
-            html += '</div>';
-            
-            // TELEGRAM (JIJ)
-            html += '<div style="background:#0088cc1a;border-left:4px solid #0088cc;border-radius:10px;padding:12px;margin-bottom:12px;">';
-            html += '<div style="font-size:11px;font-weight:700;color:#0088cc;margin-bottom:6px;">📱 TELEGRAM (Jij)</div>';
-            html += '<div style="font-size:9px;color:#0088cc;margin-bottom:8px;">Status: ✅ Ingesteld</div>';
-            html += '<div style="background:#f3f4f6;border-radius:6px;padding:8px;">';
-            html += '<div style="font-size:10px;color:#6b7280;word-break:break-all;">ID: 8526489078</div>';
-            html += '</div>';
-            html += '</div>';
-            
-            // EMAIL (VROUW)
-            html += '<div style="background:#f3f4f6;border-radius:10px;padding:12px;margin-bottom:12px;">';
-            html += '<label style="font-size:11px;font-weight:700;color:#1f2937;display:block;margin-bottom:6px;">📧 EMAIL (Vrouw - optioneel)</label>';
-            html += '<input type="email" id="wifeEmailInput" placeholder="vrouw@example.com" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;box-sizing:border-box;">';
-            html += '<div style="font-size:9px;color:#6b7280;margin-top:4px;">Zij krijgt email-alert bij ROOD alarm</div>';
-            html += '</div>';
-            
-            // CUSTOM GELUID
-            html += '<div style="background:#f3f4f6;border-radius:10px;padding:12px;margin-bottom:12px;">';
-            html += '<label style="font-size:11px;font-weight:700;color:#1f2937;display:block;margin-bottom:6px;">🔊 Custom alarm geluid</label>';
-            html += '<input type="file" id="alarmSoundInput" accept="audio/*" style="width:100%;padding:6px;border:1px solid #d1d5db;border-radius:6px;font-size:10px;box-sizing:border-box;">';
-            html += '<div style="font-size:9px;color:#6b7280;margin-top:4px;">MP3/WAV - speelt af bij ROOD alarm</div>';
-            html += '</div>';
-            
-            // MEDISCHE NORMEN
-            html += '<div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:8px;padding:10px;margin-bottom:12px;">';
-            html += '<div style="font-size:10px;font-weight:700;color:#92400e;margin-bottom:6px;">📊 Medische Normen</div>';
-            html += '<div style="font-size:9px;color:#b45309;line-height:1.6;">';
-            html += '🟢 Groen: ≤129/84<br>';
-            html += '🟡 Geel: ≤139/89<br>';
-            html += '🟠 Oranje: ≤159/99<br>';
-            html += '🔴 Rood: >159/99';
-            html += '</div></div>';
-            
-            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
-            html += '<button onclick="app.saveAlarmSettings()" style="background:#dc2626;color:white;border:none;padding:10px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;">💾 OPSLAAN</button>';
-            html += '<button onclick="document.getElementById(\'alarm-modal\').remove()" style="background:#e5e7eb;color:#1f2937;border:none;padding:10px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;">Sluiten</button>';
-            html += '</div>';
-            
-            html += '</div></div>';
-            document.body.insertAdjacentHTML('beforeend', html);
         }
         
         function showDoctorPopup() {
