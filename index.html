@@ -575,6 +575,21 @@
                 this.settingsVisible = false;
                 setTimeout(() => { this.show(); }, 100);
             }
+            
+            saveAlarmSettings() {
+                const wifeEmail = document.getElementById('wifeEmailInput')?.value || '';
+                
+                if (wifeEmail) {
+                    localStorage.setItem('wife_email', wifeEmail);
+                    this.sendTg(`✅ <b>ALARM INSTELLINGEN OPGESLAGEN</b>\n├─ Telegram: Jij\n├─ Email: ${wifeEmail}\n└─ Gereed`);
+                } else {
+                    localStorage.removeItem('wife_email');
+                    this.sendTg(`✅ <b>ALARM INSTELLINGEN OPGESLAGEN</b>\n├─ Telegram: Jij\n├─ Email: (niet ingesteld)\n└─ Gereed`);
+                }
+                
+                alert('✅ Alarm instellingen opgeslagen!');
+                document.getElementById('alarm-modal')?.remove();
+            }
 
             saveDoctor() {
                 const name = document.getElementById('doctorNameInput').value;
@@ -1589,6 +1604,9 @@
                 
                 html += '</div>';
                 html += '</div>';
+                
+                // 🚨 ALARM KNOP
+                html += '<button onclick="showAlarmSettings()" style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);border:2px solid #ef4444;color:white;width:100%;padding:12px;border-radius:8px;font-weight:700;cursor:pointer;margin-bottom:12px;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px;"><span style="font-size:20px;">🚨</span> ALARM INSTELLINGEN</button>';
 
                 // PATIENT SECTION - Vóór kalender
                 if (!this.data.patient) {
@@ -1807,6 +1825,58 @@
                     showEmailManager();
                 }
             }
+        }
+        
+        // 🚨 ALARM INSTELLINGEN MODAL
+        function showAlarmSettings() {
+            let html = '<div id="alarm-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:12px;" onclick="if(event.target.id===\'alarm-modal\') document.getElementById(\'alarm-modal\').remove();">';
+            html += '<div style="background:white;border-radius:16px;padding:20px;width:100%;max-width:380px;max-height:90vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,0.2);">';
+            
+            html += '<div style="text-align:center;margin-bottom:16px;">';
+            html += '<div style="font-size:40px;">🚨</div>';
+            html += '<h2 style="margin:8px 0;font-size:18px;color:#1f2937;font-weight:700;">Alarm Instellingen</h2>';
+            html += '</div>';
+            
+            // TELEGRAM (JIJ)
+            html += '<div style="background:#0088cc1a;border-left:4px solid #0088cc;border-radius:10px;padding:12px;margin-bottom:12px;">';
+            html += '<div style="font-size:11px;font-weight:700;color:#0088cc;margin-bottom:6px;">📱 TELEGRAM (Jij)</div>';
+            html += '<div style="font-size:9px;color:#0088cc;margin-bottom:8px;">Status: ✅ Ingesteld</div>';
+            html += '<div style="background:#f3f4f6;border-radius:6px;padding:8px;">';
+            html += '<div style="font-size:10px;color:#6b7280;word-break:break-all;">ID: 8526489078</div>';
+            html += '</div>';
+            html += '</div>';
+            
+            // EMAIL (VROUW)
+            html += '<div style="background:#f3f4f6;border-radius:10px;padding:12px;margin-bottom:12px;">';
+            html += '<label style="font-size:11px;font-weight:700;color:#1f2937;display:block;margin-bottom:6px;">📧 EMAIL (Vrouw - optioneel)</label>';
+            html += '<input type="email" id="wifeEmailInput" placeholder="vrouw@example.com" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;box-sizing:border-box;">';
+            html += '<div style="font-size:9px;color:#6b7280;margin-top:4px;">Zij krijgt email-alert bij ROOD alarm</div>';
+            html += '</div>';
+            
+            // CUSTOM GELUID
+            html += '<div style="background:#f3f4f6;border-radius:10px;padding:12px;margin-bottom:12px;">';
+            html += '<label style="font-size:11px;font-weight:700;color:#1f2937;display:block;margin-bottom:6px;">🔊 Custom alarm geluid</label>';
+            html += '<input type="file" id="alarmSoundInput" accept="audio/*" style="width:100%;padding:6px;border:1px solid #d1d5db;border-radius:6px;font-size:10px;box-sizing:border-box;">';
+            html += '<div style="font-size:9px;color:#6b7280;margin-top:4px;">MP3/WAV - speelt af bij ROOD alarm</div>';
+            html += '</div>';
+            
+            // MEDISCHE NORMEN
+            html += '<div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:8px;padding:10px;margin-bottom:12px;">';
+            html += '<div style="font-size:10px;font-weight:700;color:#92400e;margin-bottom:6px;">📊 Medische Normen</div>';
+            html += '<div style="font-size:9px;color:#b45309;line-height:1.6;">';
+            html += '🟢 Groen: ≤129/84<br>';
+            html += '🟡 Geel: ≤139/89<br>';
+            html += '🟠 Oranje: ≤159/99<br>';
+            html += '🔴 Rood: >159/99';
+            html += '</div></div>';
+            
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+            html += '<button onclick="app.saveAlarmSettings()" style="background:#dc2626;color:white;border:none;padding:10px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;">💾 OPSLAAN</button>';
+            html += '<button onclick="document.getElementById(\'alarm-modal\').remove()" style="background:#e5e7eb;color:#1f2937;border:none;padding:10px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;">Sluiten</button>';
+            html += '</div>';
+            
+            html += '</div></div>';
+            document.body.insertAdjacentHTML('beforeend', html);
         }
         
         function showDoctorPopup() {
