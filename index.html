@@ -710,6 +710,20 @@
                 const dia = parseInt(diaInput.value) || 0;
                 const hr = parseInt(hrInput.value) || 0;
                 
+                // ALLEEN KLEUREN ALS ER WAARDEN ZIJN!!!
+                if (sys === 0 && dia === 0 && hr === 0) {
+                    sysInput.style.backgroundColor = '';
+                    sysInput.style.fontWeight = 'normal';
+                    sysInput.style.color = 'black';
+                    diaInput.style.backgroundColor = '';
+                    diaInput.style.fontWeight = 'normal';
+                    diaInput.style.color = 'black';
+                    hrInput.style.backgroundColor = '';
+                    hrInput.style.fontWeight = 'normal';
+                    hrInput.style.color = 'black';
+                    return;
+                }
+                
                 const groen_sys = parseInt(localStorage.getItem('alarm_bp_groen_sys') || '129');
                 const geel_sys = parseInt(localStorage.getItem('alarm_bp_geel_sys') || '139');
                 const oranje_sys = parseInt(localStorage.getItem('alarm_bp_oranje_sys') || '159');
@@ -757,13 +771,17 @@
             }
 
             colorAllInputs() {
-                // KLEUR ALLES OP DE PAGINA - ongeacht waar het vandaan komt
-                ['ochtend', 'middag', 'avond'].forEach(moment => {
-                    const sysEl = document.getElementById('sys-' + moment);
-                    const diaEl = document.getElementById('dia-' + moment);
-                    const hrEl = document.getElementById('hr-' + moment);
-                    if (sysEl && sysEl.value) {
-                        this.updateInputColor(moment);
+                // FORCE: Vind ALLE number inputs op de pagina
+                document.querySelectorAll('input[type="number"]').forEach(input => {
+                    const id = input.id;
+                    // Check of het een bloeddruk/hartslag input is
+                    if (id && (id.startsWith('sys-') || id.startsWith('dia-') || id.startsWith('hr-'))) {
+                        // Extract moment (ochtend/middag/avond) uit ID
+                        const parts = id.split('-');
+                        const moment = parts[1];
+                        if (moment) {
+                            this.updateInputColor(moment);
+                        }
                     }
                 });
             }
