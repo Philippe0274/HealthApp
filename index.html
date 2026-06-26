@@ -271,6 +271,20 @@
                     hours: { ma_do: '07:00-19:30', vr: '07:00-18:30' }
                 }));
                 this.show();
+                
+                // 🎨 EERST alles kleuren, DAARNA observer starten
+                setTimeout(() => {
+                    this.colorAllInputs();
+                    
+                    // MutationObserver - observeer DOM en kleur AUTOMATISCH wanneer inputs verschijnen!
+                    const observer = new MutationObserver(() => {
+                        this.colorAllInputs();
+                    });
+                    observer.observe(document.getElementById('app'), {
+                        childList: true,
+                        subtree: true
+                    });
+                }, 50);
             }
 
             save() {
