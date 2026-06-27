@@ -19,6 +19,41 @@
         body { font-family: -apple-system; }
         .day-cell { aspect-ratio: 1; border-radius: 8px; padding: 4px; font-size: 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 48px; background: #fff; border: 2px solid #e5e7eb; font-weight: 600; }
         .day-cell.today { background: #fbbf24; color: #333; }
+
+        /* ===== Professionele alarm popup v4.0 ===== */
+        .vital-alarm-overlay {
+            position: fixed; inset: 0; z-index: 999999;
+            background: rgba(15, 23, 42, 0.74);
+            display: flex; align-items: center; justify-content: center;
+            padding: 18px; animation: vitalAlarmFadeIn .18s ease-out;
+        }
+        .vital-alarm-card {
+            width: min(94vw, 460px); max-height: 92vh; overflow-y: auto;
+            background: #ffffff; border-radius: 26px;
+            box-shadow: 0 26px 80px rgba(0,0,0,.42);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            animation: vitalAlarmPop .20s ease-out;
+        }
+        .vital-alarm-header { padding: 22px 20px; color: white; text-align: center; }
+        .vital-alarm-kicker { font-size: 12px; letter-spacing: .13em; text-transform: uppercase; opacity: .92; font-weight: 800; }
+        .vital-alarm-title { font-size: 25px; line-height: 1.12; font-weight: 900; margin-top: 6px; }
+        .vital-alarm-body { padding: 20px; }
+        .vital-values { display: grid; grid-template-columns: 1.25fr .85fr; gap: 12px; margin-bottom: 14px; }
+        .vital-box { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 18px; padding: 16px 12px; text-align: center; }
+        .vital-box-label { color: #64748b; font-size: 12px; font-weight: 900; letter-spacing: .06em; }
+        .vital-bp { font-size: 46px; line-height: 1; font-weight: 950; color: #0f172a; margin: 9px 0 4px; }
+        .vital-hr { font-size: 38px; line-height: 1; font-weight: 950; color: #0f172a; margin: 12px 0 4px; }
+        .vital-unit { font-size: 12px; color: #64748b; font-weight: 800; }
+        .vital-meta { display:flex; gap:8px; flex-wrap:wrap; margin: 0 0 14px; }
+        .vital-pill { background:#f1f5f9; color:#334155; border-radius:999px; padding:8px 11px; font-size:12px; font-weight:800; }
+        .vital-advice { border-radius: 18px; padding: 15px; line-height: 1.45; font-size: 15px; color: #111827; }
+        .vital-advice-title { font-weight: 950; margin-bottom: 8px; font-size: 16px; }
+        .vital-advice ul { margin: 8px 0 0 18px; padding: 0; }
+        .vital-advice li { margin: 6px 0; }
+        .vital-alarm-btn { width: 100%; border: 0; border-radius: 16px; padding: 15px; margin-top: 16px; color: white; font-weight: 950; font-size: 16px; cursor: pointer; }
+        @keyframes vitalAlarmFadeIn { from { opacity:0; } to { opacity:1; } }
+        @keyframes vitalAlarmPop { from { transform:scale(.96); opacity:.4; } to { transform:scale(1); opacity:1; } }
+        @media (max-width: 420px) { .vital-values{grid-template-columns:1fr;} .vital-bp{font-size:42px;} }
     </style>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -524,7 +559,10 @@
                 }
                 this.save();
                 this.show();
-                setTimeout(() => this.colorAllInputs(), 50);
+                setTimeout(() => {
+                    this.colorAllInputs();
+                    this.checkCriticalValues(sysVal, diaVal, hrVal, timeDisplay, moment);
+                }, 50);
             }
 
             deleteValuesOnly(moment) {
@@ -848,8 +886,8 @@
                     let sys_color = '';
                     if (sys <= groen_sys) sys_color = '#00cc00';        // 🟢 GROEN
                     else if (sys <= geel_sys) sys_color = '#ffcc00';    // 🟡 GEEL
-                    else if (sys <= oranje_sys) sys_color = '#ff6600';  // 🟠 ORANJE
-                    else sys_color = '#ff0000';                         // 🔴 ROOD
+                    else if (sys <= rood_sys) sys_color = '#ff6600';    // 🟠 ORANJE tot aan rode grens
+                    else sys_color = '#ff0000';                         // 🔴 ROOD boven rode grens
                     
                     sysInput.style.backgroundColor = sys_color;
                     sysInput.style.fontWeight = 'bold';
@@ -865,8 +903,8 @@
                     let dia_color = '';
                     if (dia <= groen_dia) dia_color = '#00cc00';        // 🟢 GROEN
                     else if (dia <= geel_dia) dia_color = '#ffcc00';    // 🟡 GEEL
-                    else if (dia <= oranje_dia) dia_color = '#ff6600';  // 🟠 ORANJE
-                    else dia_color = '#ff0000';                         // 🔴 ROOD
+                    else if (dia <= rood_dia) dia_color = '#ff6600';    // 🟠 ORANJE tot aan rode grens
+                    else dia_color = '#ff0000';                         // 🔴 ROOD boven rode grens
                     
                     diaInput.style.backgroundColor = dia_color;
                     diaInput.style.fontWeight = 'bold';
@@ -939,6 +977,145 @@
                         </div>
                     </div>
                 `);
+            }
+
+
+            getAlarmLevel(sys, dia, hr) {
+                const order = { green: 0, yellow: 1, orange: 2, red: 3 };
+                const raise = (current, next) => order[next] > order[current] ? next : current;
+
+                const groenSys = parseInt(localStorage.getItem('alarm_bp_groen_sys') || '129');
+                const geelSys = parseInt(localStorage.getItem('alarm_bp_geel_sys') || '139');
+                const oranjeSys = parseInt(localStorage.getItem('alarm_bp_oranje_sys') || '159');
+                const roodSys = parseInt(localStorage.getItem('alarm_bp_rood_sys') || '179');
+
+                const groenDia = parseInt(localStorage.getItem('alarm_bp_groen_dia') || '84');
+                const geelDia = parseInt(localStorage.getItem('alarm_bp_geel_dia') || '89');
+                const oranjeDia = parseInt(localStorage.getItem('alarm_bp_oranje_dia') || '99');
+                const roodDia = parseInt(localStorage.getItem('alarm_bp_rood_dia') || '109');
+
+                const hrMin = parseInt(localStorage.getItem('alarm_hr_groen_min') || '55');
+                const hrGroenMax = parseInt(localStorage.getItem('alarm_hr_groen_max') || '100');
+                const hrGeelMax = parseInt(localStorage.getItem('alarm_hr_geel_max') || '120');
+
+                let level = 'green';
+
+                if (sys > groenSys) level = raise(level, sys <= geelSys ? 'yellow' : (sys <= roodSys ? 'orange' : 'red'));
+                if (dia > groenDia) level = raise(level, dia <= geelDia ? 'yellow' : (dia <= roodDia ? 'orange' : 'red'));
+
+                if (hr > 0 && (hr < hrMin || hr > hrGroenMax)) {
+                    if (hr < hrMin) level = raise(level, 'red');
+                    else level = raise(level, hr <= hrGeelMax ? 'yellow' : 'red');
+                }
+
+                return level;
+            }
+
+            checkCriticalValues(sys, dia, hr, time, moment) {
+                const level = this.getAlarmLevel(sys, dia, hr);
+                if (level === 'green') return;
+                this.showVitalAlarmPopup(level, { sys, dia, hr, time, moment });
+            }
+
+            showVitalAlarmPopup(level, data) {
+                const existing = document.getElementById('vital-alarm-overlay');
+                if (existing) existing.remove();
+
+                const configs = {
+                    yellow: {
+                        color: '#f59e0b', soft: '#fffbeb', border: '#fde68a',
+                        kicker: 'Verhoogde waarden vastgesteld',
+                        title: '🟡 STATUS: OPVOLGEN',
+                        button: 'Begrepen',
+                        adviceTitle: 'Advies',
+                        bullets: [
+                            'Rust 5 tot 10 minuten in zittende houding.',
+                            'Vermijd koffie, sigaretten of fysieke inspanning.',
+                            'Meet opnieuw binnen 30 minuten.',
+                            'Blijf de waarden vandaag goed opvolgen.'
+                        ]
+                    },
+                    orange: {
+                        color: '#ea580c', soft: '#fff7ed', border: '#fed7aa',
+                        kicker: 'Hoge waarden vastgesteld',
+                        title: '🟠 STATUS: HUISARTS CONTACTEREN',
+                        button: 'Ik meet opnieuw',
+                        adviceTitle: 'Aanbevolen actie',
+                        bullets: [
+                            'Blijf rustig zitten en adem langzaam.',
+                            'Meet opnieuw na 10 minuten rust.',
+                            'Neem contact op met uw huisarts als deze waarden aanhouden.',
+                            'Noteer klachten zoals hoofdpijn, duizeligheid of pijn op de borst.'
+                        ]
+                    },
+                    red: {
+                        color: '#dc2626', soft: '#fef2f2', border: '#fecaca',
+                        kicker: 'Kritieke waarden vastgesteld',
+                        title: '🚨 STATUS: DRINGEND HANDELEN',
+                        button: 'Ik heb het begrepen',
+                        adviceTitle: 'Belangrijk',
+                        bullets: [
+                            'Uw waarden bevinden zich in een kritieke zone.',
+                            'Blijf rustig zitten en meet na enkele minuten opnieuw.',
+                            'Neem onmiddellijk contact op met uw huisarts of wachtdienst als dit bevestigd wordt.',
+                            'Bel 112 bij pijn op de borst, kortademigheid, verlammingsverschijnselen, spraakstoornissen, plots ernstige hoofdpijn of bewustzijnsverlies.'
+                        ]
+                    }
+                };
+
+                const cfg = configs[level];
+                if (!cfg) return;
+
+                const momentLabel = data.moment === 'ochtend' ? 'Ochtend' : data.moment === 'middag' ? 'Middag' : data.moment === 'avond' ? 'Avond' : 'Meting';
+                const rawDate = this.date || this.today();
+                const dObj = new Date(rawDate+'T00:00:00');
+                const dagen=['Zondag','Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag'];
+                const parts=rawDate.split('-');
+                const dateLabel = parts.length===3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : rawDate;
+                const dayLabel = isNaN(dObj) ? '' : dagen[dObj.getDay()];
+                const patientName = (this.data.patient && this.data.patient.firstName) ? this.data.patient.firstName : '';
+                const personalTitle = patientName ? `${patientName}, ${cfg.title}` : cfg.title;
+                const timeLabel = data.time || 'Geen uur ingevuld';
+                const bulletHtml = cfg.bullets.map(b => `<li>${b}</li>`).join('');
+
+                const overlay = document.createElement('div');
+                overlay.id = 'vital-alarm-overlay';
+                overlay.className = 'vital-alarm-overlay';
+                overlay.innerHTML = `
+                    <div class="vital-alarm-card" role="dialog" aria-modal="true">
+                        <div class="vital-alarm-header" style="background:${cfg.color};">
+                            <div class="vital-alarm-kicker">${cfg.kicker}</div>
+                            <div class="vital-alarm-title">${personalTitle}</div>
+                        </div>
+                        <div class="vital-alarm-body">
+                            <div class="vital-values">
+                                <div class="vital-box">
+                                    <div class="vital-box-label">❤️ BLOEDDRUK</div>
+                                    <div class="vital-bp">${data.sys}<span style="color:#94a3b8;font-size:.72em;">/</span>${data.dia}</div>
+                                    <div class="vital-unit">mmHg</div>
+                                </div>
+                                <div class="vital-box">
+                                    <div class="vital-box-label">🫀 HARTSLAG</div>
+                                    <div class="vital-hr">${data.hr}</div>
+                                    <div class="vital-unit">bpm</div>
+                                </div>
+                            </div>
+                            <div class="vital-meta">
+                                <div class="vital-pill">📅 ${dateLabel}<br><strong>${dayLabel}</strong></div>
+                                <div class="vital-pill">⏰ ${timeLabel}</div>
+                                <div class="vital-pill">📍 ${momentLabel}</div>
+                            </div>
+                            <div class="vital-advice" style="background:${cfg.soft};border:1px solid ${cfg.border};">
+                                <div class="vital-advice-title">${cfg.adviceTitle}</div>
+                                <ul>${bulletHtml}</ul>
+                            </div>
+                            <button class="vital-alarm-btn" style="background:${cfg.color};">${cfg.button}</button>
+                        </div>
+                    </div>
+                `;
+                overlay.querySelector('.vital-alarm-btn').onclick = () => overlay.remove();
+                overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+                document.body.appendChild(overlay);
             }
 
             openTg() {
