@@ -51,6 +51,15 @@
         .vital-advice ul { margin: 8px 0 0 18px; padding: 0; }
         .vital-advice li { margin: 6px 0; }
         .vital-alarm-btn { width: 100%; border: 0; border-radius: 16px; padding: 15px; margin-top: 16px; color: white; font-weight: 950; font-size: 16px; cursor: pointer; }
+
+        .vital-analysis { margin: 14px 0; }
+        .vital-analysis-title { font-size: 13px; font-weight: 950; color:#0f172a; margin: 0 0 10px; letter-spacing:.04em; text-transform:uppercase; }
+        .vital-abnormal-card { display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:flex-start; border-radius:18px; padding:13px 14px; margin:9px 0; border:1px solid #e5e7eb; background:#f8fafc; }
+        .vital-abnormal-badge { width:38px; height:38px; border-radius:14px; display:flex; align-items:center; justify-content:center; color:white; font-size:18px; font-weight:950; box-shadow:0 8px 18px rgba(15,23,42,.12); }
+        .vital-abnormal-name { font-size:14px; font-weight:950; color:#0f172a; margin-bottom:2px; }
+        .vital-abnormal-value { font-size:24px; font-weight:950; color:#0f172a; line-height:1.05; margin:3px 0; }
+        .vital-abnormal-explain { font-size:12px; color:#475569; font-weight:750; line-height:1.35; }
+        .vital-personal-summary { border-radius:18px; padding:13px 14px; margin:0 0 14px; font-size:15px; font-weight:850; line-height:1.35; color:#0f172a; }
         @keyframes vitalAlarmFadeIn { from { opacity:0; } to { opacity:1; } }
         @keyframes vitalAlarmPop { from { transform:scale(.96); opacity:.4; } to { transform:scale(1); opacity:1; } }
         @media (max-width: 420px) { .vital-values{grid-template-columns:1fr;} .vital-bp{font-size:42px;} }
@@ -980,41 +989,170 @@
             }
 
 
-            getAlarmLevel(sys, dia, hr) {
-                const order = { green: 0, yellow: 1, orange: 2, red: 3 };
-                const raise = (current, next) => order[next] > order[current] ? next : current;
+            getAlarmThresholds() {
+                return {
+                    groenSys: parseInt(localStorage.getItem('alarm_bp_groen_sys') || '129'),
+                    geelSys: parseInt(localStorage.getItem('alarm_bp_geel_sys') || '139'),
+                    oranjeSys: parseInt(localStorage.getItem('alarm_bp_oranje_sys') || '159'),
+                    roodSys: parseInt(localStorage.getItem('alarm_bp_rood_sys') || '179'),
+                    groenDia: parseInt(localStorage.getItem('alarm_bp_groen_dia') || '84'),
+                    geelDia: parseInt(localStorage.getItem('alarm_bp_geel_dia') || '89'),
+                    oranjeDia: parseInt(localStorage.getItem('alarm_bp_oranje_dia') || '99'),
+                    roodDia: parseInt(localStorage.getItem('alarm_bp_rood_dia') || '109'),
+                    hrMin: parseInt(localStorage.getItem('alarm_hr_groen_min') || '55'),
+                    hrGroenMax: parseInt(localStorage.getItem('alarm_hr_groen_max') || '100'),
+                    hrGeelMax: parseInt(localStorage.getItem('alarm_hr_geel_max') || '120')
+                };
+            }
 
-                const groenSys = parseInt(localStorage.getItem('alarm_bp_groen_sys') || '129');
-                const geelSys = parseInt(localStorage.getItem('alarm_bp_geel_sys') || '139');
-                const oranjeSys = parseInt(localStorage.getItem('alarm_bp_oranje_sys') || '159');
-                const roodSys = parseInt(localStorage.getItem('alarm_bp_rood_sys') || '179');
+            getVitalLevelInfo(type, value) {
+                const t = this.getAlarmThresholds();
 
-                const groenDia = parseInt(localStorage.getItem('alarm_bp_groen_dia') || '84');
-                const geelDia = parseInt(localStorage.getItem('alarm_bp_geel_dia') || '89');
-                const oranjeDia = parseInt(localStorage.getItem('alarm_bp_oranje_dia') || '99');
-                const roodDia = parseInt(localStorage.getItem('alarm_bp_rood_dia') || '109');
-
-                const hrMin = parseInt(localStorage.getItem('alarm_hr_groen_min') || '55');
-                const hrGroenMax = parseInt(localStorage.getItem('alarm_hr_groen_max') || '100');
-                const hrGeelMax = parseInt(localStorage.getItem('alarm_hr_geel_max') || '120');
-
-                let level = 'green';
-
-                if (sys > groenSys) level = raise(level, sys <= geelSys ? 'yellow' : (sys <= roodSys ? 'orange' : 'red'));
-                if (dia > groenDia) level = raise(level, dia <= geelDia ? 'yellow' : (dia <= roodDia ? 'orange' : 'red'));
-
-                if (hr > 0 && (hr < hrMin || hr > hrGroenMax)) {
-                    if (hr < hrMin) level = raise(level, 'red');
-                    else level = raise(level, hr <= hrGeelMax ? 'yellow' : 'red');
+                if (type === 'sys') {
+                    if (value <= t.groenSys) return { level: 'green' };
+                    if (value <= t.geelSys) return {
+                        level: 'yellow',
+                        icon: '🟡',
+                        color: '#f59e0b',
+                        name: 'Bovendruk (SYS)',
+                        unit: 'mmHg',
+                        value: value,
+                        short: 'verhoogde bovendruk',
+                        explanation: `Waarde ${value} mmHg ligt boven de groene grens (${t.groenSys}) en valt in de gele zone (tot ${t.geelSys}).`
+                    };
+                    if (value <= t.roodSys) return {
+                        level: 'orange',
+                        icon: '🟠',
+                        color: '#ea580c',
+                        name: 'Bovendruk (SYS)',
+                        unit: 'mmHg',
+                        value: value,
+                        short: 'hoge bovendruk',
+                        explanation: `Waarde ${value} mmHg ligt boven de gele grens (${t.geelSys}) en blijft onder de rode grens (${t.roodSys}).`
+                    };
+                    return {
+                        level: 'red',
+                        icon: '🔴',
+                        color: '#dc2626',
+                        name: 'Bovendruk (SYS)',
+                        unit: 'mmHg',
+                        value: value,
+                        short: 'kritieke bovendruk',
+                        explanation: `Waarde ${value} mmHg overschrijdt de rode grens (${t.roodSys}).`
+                    };
                 }
 
-                return level;
+                if (type === 'dia') {
+                    if (value <= t.groenDia) return { level: 'green' };
+                    if (value <= t.geelDia) return {
+                        level: 'yellow',
+                        icon: '🟡',
+                        color: '#f59e0b',
+                        name: 'Onderdruk (DIA)',
+                        unit: 'mmHg',
+                        value: value,
+                        short: 'verhoogde onderdruk',
+                        explanation: `Waarde ${value} mmHg ligt boven de groene grens (${t.groenDia}) en valt in de gele zone (tot ${t.geelDia}).`
+                    };
+                    if (value <= t.roodDia) return {
+                        level: 'orange',
+                        icon: '🟠',
+                        color: '#ea580c',
+                        name: 'Onderdruk (DIA)',
+                        unit: 'mmHg',
+                        value: value,
+                        short: 'hoge onderdruk',
+                        explanation: `Waarde ${value} mmHg ligt boven de gele grens (${t.geelDia}) en blijft onder de rode grens (${t.roodDia}).`
+                    };
+                    return {
+                        level: 'red',
+                        icon: '🔴',
+                        color: '#dc2626',
+                        name: 'Onderdruk (DIA)',
+                        unit: 'mmHg',
+                        value: value,
+                        short: 'kritieke onderdruk',
+                        explanation: `Waarde ${value} mmHg overschrijdt de rode grens (${t.roodDia}).`
+                    };
+                }
+
+                if (type === 'hr') {
+                    if (value >= t.hrMin && value <= t.hrGroenMax) return { level: 'green' };
+                    if (value < t.hrMin) return {
+                        level: 'red',
+                        icon: '🔴',
+                        color: '#dc2626',
+                        name: 'Hartslag',
+                        unit: 'bpm',
+                        value: value,
+                        short: 'kritiek lage hartslag',
+                        explanation: `Hartslag ${value} bpm ligt onder de minimumgrens (${t.hrMin}).`
+                    };
+                    if (value <= t.hrGeelMax) return {
+                        level: 'yellow',
+                        icon: '🟡',
+                        color: '#f59e0b',
+                        name: 'Hartslag',
+                        unit: 'bpm',
+                        value: value,
+                        short: 'verhoogde hartslag',
+                        explanation: `Hartslag ${value} bpm ligt boven de groene bovengrens (${t.hrGroenMax}) en valt in de gele zone (tot ${t.hrGeelMax}).`
+                    };
+                    return {
+                        level: 'red',
+                        icon: '🔴',
+                        color: '#dc2626',
+                        name: 'Hartslag',
+                        unit: 'bpm',
+                        value: value,
+                        short: 'kritieke hartslag',
+                        explanation: `Hartslag ${value} bpm overschrijdt de rode grens (${t.hrGeelMax}).`
+                    };
+                }
+
+                return { level: 'green' };
+            }
+
+            getAbnormalVitals(sys, dia, hr) {
+                const values = [
+                    this.getVitalLevelInfo('sys', sys),
+                    this.getVitalLevelInfo('dia', dia),
+                    this.getVitalLevelInfo('hr', hr)
+                ];
+                return values.filter(v => v.level && v.level !== 'green');
+            }
+
+            getAlarmLevel(sys, dia, hr) {
+                const order = { green: 0, yellow: 1, orange: 2, red: 3 };
+                return this.getAbnormalVitals(sys, dia, hr).reduce((highest, item) => {
+                    return order[item.level] > order[highest] ? item.level : highest;
+                }, 'green');
+            }
+
+            buildPersonalAlarmTitle(patientName, level, abnormalVitals) {
+                const redCount = abnormalVitals.filter(v => v.level === 'red').length;
+                const orangeCount = abnormalVitals.filter(v => v.level === 'orange').length;
+                const name = patientName || 'Patiënt';
+
+                if (abnormalVitals.length > 1) {
+                    if (redCount > 0) return `🚨 ${name}, meerdere vitale waarden vereisen onmiddellijke aandacht`;
+                    if (orangeCount > 0) return `🟠 ${name}, meerdere waarden vragen extra aandacht`;
+                    return `🟡 ${name}, meerdere waarden zijn verhoogd`;
+                }
+
+                const v = abnormalVitals[0];
+                if (!v) return `${name}, waarden gecontroleerd`;
+
+                if (v.level === 'red') return `🚨 ${name}, uw ${v.short} vraagt onmiddellijke aandacht`;
+                if (v.level === 'orange') return `🟠 ${name}, uw ${v.short} vraagt extra aandacht`;
+                return `🟡 ${name}, uw ${v.short} moet opgevolgd worden`;
             }
 
             checkCriticalValues(sys, dia, hr, time, moment) {
+                const abnormalVitals = this.getAbnormalVitals(sys, dia, hr);
+                if (!abnormalVitals.length) return;
                 const level = this.getAlarmLevel(sys, dia, hr);
-                if (level === 'green') return;
-                this.showVitalAlarmPopup(level, { sys, dia, hr, time, moment });
+                this.showVitalAlarmPopup(level, { sys, dia, hr, time, moment, abnormalVitals });
             }
 
             showVitalAlarmPopup(level, data) {
@@ -1024,41 +1162,38 @@
                 const configs = {
                     yellow: {
                         color: '#f59e0b', soft: '#fffbeb', border: '#fde68a',
-                        kicker: 'Verhoogde waarden vastgesteld',
-                        title: '🟡 STATUS: OPVOLGEN',
+                        kicker: 'Opvolging aanbevolen',
                         button: 'Begrepen',
                         adviceTitle: 'Advies',
                         bullets: [
-                            'Rust 5 tot 10 minuten in zittende houding.',
-                            'Vermijd koffie, sigaretten of fysieke inspanning.',
-                            'Meet opnieuw binnen 30 minuten.',
-                            'Blijf de waarden vandaag goed opvolgen.'
+                            'rust 5 tot 10 minuten in zittende houding.',
+                            'vermijd koffie, sigaretten of fysieke inspanning.',
+                            'meet opnieuw binnen 30 minuten.',
+                            'blijf de waarden vandaag goed opvolgen.'
                         ]
                     },
                     orange: {
                         color: '#ea580c', soft: '#fff7ed', border: '#fed7aa',
-                        kicker: 'Hoge waarden vastgesteld',
-                        title: '🟠 STATUS: HUISARTS CONTACTEREN',
+                        kicker: 'Extra aandacht nodig',
                         button: 'Ik meet opnieuw',
                         adviceTitle: 'Aanbevolen actie',
                         bullets: [
-                            'Blijf rustig zitten en adem langzaam.',
-                            'Meet opnieuw na 10 minuten rust.',
-                            'Neem contact op met uw huisarts als deze waarden aanhouden.',
-                            'Noteer klachten zoals hoofdpijn, duizeligheid of pijn op de borst.'
+                            'blijf rustig zitten en adem langzaam.',
+                            'meet opnieuw na 10 minuten rust.',
+                            'neem contact op met uw huisarts als deze waarden aanhouden.',
+                            'noteer klachten zoals hoofdpijn, duizeligheid of pijn op de borst.'
                         ]
                     },
                     red: {
                         color: '#dc2626', soft: '#fef2f2', border: '#fecaca',
-                        kicker: 'Kritieke waarden vastgesteld',
-                        title: '🚨 STATUS: DRINGEND HANDELEN',
+                        kicker: 'Dringende medische waarschuwing',
                         button: 'Ik heb het begrepen',
                         adviceTitle: 'Belangrijk',
                         bullets: [
-                            'Uw waarden bevinden zich in een kritieke zone.',
-                            'Blijf rustig zitten en meet na enkele minuten opnieuw.',
-                            'Neem onmiddellijk contact op met uw huisarts of wachtdienst als dit bevestigd wordt.',
-                            'Bel 112 bij pijn op de borst, kortademigheid, verlammingsverschijnselen, spraakstoornissen, plots ernstige hoofdpijn of bewustzijnsverlies.'
+                            'uw afwijkende waarde(n) bevinden zich in een kritieke zone.',
+                            'blijf rustig zitten en meet na enkele minuten opnieuw.',
+                            'neem onmiddellijk contact op met uw huisarts of wachtdienst als dit bevestigd wordt.',
+                            'bel 112 bij pijn op de borst, kortademigheid, verlammingsverschijnselen, spraakstoornissen, plots ernstige hoofdpijn of bewustzijnsverlies.'
                         ]
                     }
                 };
@@ -1068,15 +1203,36 @@
 
                 const momentLabel = data.moment === 'ochtend' ? 'Ochtend' : data.moment === 'middag' ? 'Middag' : data.moment === 'avond' ? 'Avond' : 'Meting';
                 const rawDate = this.date || this.today();
-                const dObj = new Date(rawDate+'T00:00:00');
-                const dagen=['Zondag','Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag'];
-                const parts=rawDate.split('-');
-                const dateLabel = parts.length===3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : rawDate;
-                const dayLabel = isNaN(dObj) ? '' : dagen[dObj.getDay()];
-                const patientName = (this.data.patient && this.data.patient.firstName) ? this.data.patient.firstName : '';
-                const personalTitle = patientName ? `${patientName}, ${cfg.title}` : cfg.title;
+                const dObj = new Date(rawDate + 'T00:00:00');
+                const dagen = ['Zondag','Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag'];
+                const parts = rawDate.split('-');
+                const dateLabel = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : rawDate;
+                const dayLabel = isNaN(dObj.getTime()) ? '' : dagen[dObj.getDay()];
+                const patientName = (this.data.patient && this.data.patient.firstName) ? this.data.patient.firstName.trim() : '';
+                const displayName = patientName || 'Patiënt';
                 const timeLabel = data.time || 'Geen uur ingevuld';
-                const bulletHtml = cfg.bullets.map(b => `<li>${b}</li>`).join('');
+                const abnormalVitals = data.abnormalVitals || this.getAbnormalVitals(data.sys, data.dia, data.hr);
+                const personalTitle = this.buildPersonalAlarmTitle(displayName, level, abnormalVitals);
+
+                const summaryText = abnormalVitals.length > 1
+                    ? `${displayName}, de volgende waarden bepalen samen deze ${level === 'red' ? 'rode' : level === 'orange' ? 'oranje' : 'gele'} waarschuwing.`
+                    : `${displayName}, deze waarde bepaalt de ${level === 'red' ? 'rode' : level === 'orange' ? 'oranje' : 'gele'} waarschuwing.`;
+
+                const abnormalHtml = abnormalVitals.map(v => `
+                    <div class="vital-abnormal-card" style="border-color:${v.color};background:${level === 'red' ? '#fff7f7' : level === 'orange' ? '#fff7ed' : '#fffbeb'};">
+                        <div class="vital-abnormal-badge" style="background:${v.color};">${v.icon}</div>
+                        <div>
+                            <div class="vital-abnormal-name">${v.name}</div>
+                            <div class="vital-abnormal-value">${v.value} <span style="font-size:13px;color:#64748b;">${v.unit}</span></div>
+                            <div class="vital-abnormal-explain">${v.explanation}</div>
+                        </div>
+                    </div>
+                `).join('');
+
+                const bulletHtml = cfg.bullets.map((b, index) => {
+                    const prefix = index === 0 ? `${displayName}, ` : '';
+                    return `<li>${prefix}${b}</li>`;
+                }).join('');
 
                 const overlay = document.createElement('div');
                 overlay.id = 'vital-alarm-overlay';
@@ -1088,23 +1244,21 @@
                             <div class="vital-alarm-title">${personalTitle}</div>
                         </div>
                         <div class="vital-alarm-body">
-                            <div class="vital-values">
-                                <div class="vital-box">
-                                    <div class="vital-box-label">❤️ BLOEDDRUK</div>
-                                    <div class="vital-bp">${data.sys}<span style="color:#94a3b8;font-size:.72em;">/</span>${data.dia}</div>
-                                    <div class="vital-unit">mmHg</div>
-                                </div>
-                                <div class="vital-box">
-                                    <div class="vital-box-label">🫀 HARTSLAG</div>
-                                    <div class="vital-hr">${data.hr}</div>
-                                    <div class="vital-unit">bpm</div>
-                                </div>
-                            </div>
                             <div class="vital-meta">
                                 <div class="vital-pill">📅 ${dateLabel}<br><strong>${dayLabel}</strong></div>
                                 <div class="vital-pill">⏰ ${timeLabel}</div>
                                 <div class="vital-pill">📍 ${momentLabel}</div>
                             </div>
+
+                            <div class="vital-personal-summary" style="background:${cfg.soft};border:1px solid ${cfg.border};">
+                                ${summaryText}
+                            </div>
+
+                            <div class="vital-analysis">
+                                <div class="vital-analysis-title">Afwijkende waarden</div>
+                                ${abnormalHtml}
+                            </div>
+
                             <div class="vital-advice" style="background:${cfg.soft};border:1px solid ${cfg.border};">
                                 <div class="vital-advice-title">${cfg.adviceTitle}</div>
                                 <ul>${bulletHtml}</ul>
