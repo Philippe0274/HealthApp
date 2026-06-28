@@ -3018,17 +3018,18 @@
                 }, 10);
             }
 
-            savePatient(firstName, lastName, birthDate, photoBase64, allergies, medicalHistory, mobilityStatus) {
+            savePatient(firstName, lastName, birthDate, photoBase64, allergies, medicalHistory, mobilityStatus, language) {
                 const isNew = !this.data.patient;
+                const existingPhoto = this.data.patient && this.data.patient.photo ? this.data.patient.photo : null;
                 this.data.patient = {
                     firstName: firstName,
                     lastName: lastName,
                     birthDate: birthDate,
-                    photo: photoBase64,
+                    photo: photoBase64 || existingPhoto,
                     allergies: allergies || '',
                     medicalHistory: medicalHistory || '',
-                    language: (this.data.patient?.language)||'nl',
-                    mobilityStatus: mobilityStatus || ''
+                    mobilityStatus: mobilityStatus || '',
+                    language: language || 'nl'
                 };
                 this.save();
                 
@@ -3203,7 +3204,7 @@
                     } else {
                         html += '<div style="width:60px;height:60px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:24px;">👤</div>';
                     }
-                    html += '<div style="flex:1;"><p style="margin:0;font-size:13px;color:#1f2937;font-weight:600;">' + p.firstName + '</p><small style="font-size:11px;color:#6b7280;">' + p.lastName + ' • ' + formatDate(p.birthDate) + '</small></div>';
+                    html += '<div style="flex:1;"><p style="margin:0;font-size:13px;color:#1f2937;font-weight:600;">' + p.firstName + '</p><small style="font-size:11px;color:#6b7280;">' + p.lastName + ' • ' + formatDate(p.birthDate) + ' • 🌍 ' + getPatientLanguageLabel(p.language || 'nl') + '</small></div>';
                     html += '<div style="display:flex;gap:6px;flex-shrink:0;">';
                     html += '<button onclick="showPatientInfoPopup()" style="background:transparent;border:none;color:#6366f1;cursor:pointer;padding:4px;border-radius:4px;font-size:18px;" title="Toon patient info">👁️</button>';
                     html += '<button onclick="showPatientEditForm()" style="background:transparent;border:none;color:#3b82f6;cursor:pointer;padding:4px;border-radius:4px;font-size:18px;">✏️</button>';
@@ -3493,6 +3494,15 @@
                             <input type="date" id="patient-birth" value="1970-05-27" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
                         </div>
                         <div style="margin-bottom:16px;">
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🌍 Taal patiënt</label>
+                            <select id="patient-language" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;background:white;">
+                                <option value="nl" selected>🇳🇱 Nederlands</option>
+                                <option value="fr">🇫🇷 Français</option>
+                                <option value="es">🇪🇸 Español</option>
+                                <option value="en">🇬🇧 English</option>
+                            </select>
+                        </div>
+                        <div style="margin-bottom:16px;">
                             <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:8px;">📷 Foto (optioneel)</label>
                             <input type="file" id="patient-photo" accept="image/*" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
                             <img id="photo-preview" style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-top:8px;display:none;">
@@ -3504,15 +3514,6 @@
                         <div style="margin-bottom:16px;">
                             <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🏥 Gekende medische historie</label>
                             <textarea id="patient-medical-history" placeholder="bijv. Diabetes, Hypertensie, Hartaandoening..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;font-family:inherit;min-height:60px;resize:vertical;"></textarea>
-                        </div>
-                        <div style="margin-bottom:16px;">
-                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🌍 Taal patiënt</label>
-                            <select id="patient-language" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;">
-                              <option value="nl">🇳🇱 Nederlands</option>
-                              <option value="fr">🇫🇷 Français</option>
-                              <option value="es">🇪🇸 Español</option>
-                              <option value="en">🇬🇧 English</option>
-                            </select>
                         </div>
                         <div style="margin-bottom:16px;">
                             <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🚶 Mobiliteitstoestand</label>
@@ -3582,6 +3583,16 @@
             img.src = base64;
         }
         
+        function getPatientLanguageLabel(language) {
+            const labels = {
+                nl: 'Nederlands',
+                fr: 'Français',
+                es: 'Español',
+                en: 'English'
+            };
+            return labels[language || 'nl'] || labels.nl;
+        }
+
         function showPatientInfoPopup() {
             const p = app.data.patient;
             if (!p) return;
@@ -3603,6 +3614,7 @@
                                 <p style="margin:0 0 4px 0;font-size:16px;font-weight:600;color:#1f2937;">${p.firstName} ${p.lastName}</p>
                                 <p style="margin:0;font-size:13px;color:#6b7280;">Geboortedatum: ${formatDate(p.birthDate)}</p>
                                 <p style="margin:4px 0 0 0;font-size:12px;color:#6b7280;">Leeftijd: ${age} jaar</p>
+                                <p style="margin:4px 0 0 0;font-size:12px;color:#6b7280;">Taal: ${getPatientLanguageLabel(p.language || 'nl')}</p>
                             </div>
                         </div>
                         
@@ -3637,6 +3649,15 @@
                         <div style="margin-bottom:16px;">
                             <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Geboortedatum</label>
                             <input type="date" id="patient-birth" value="${p.birthDate}" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
+                        </div>
+                        <div style="margin-bottom:16px;">
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🌍 Taal patiënt</label>
+                            <select id="patient-language" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;background:white;">
+                                <option value="nl" ${(p.language || 'nl') === 'nl' ? 'selected' : ''}>🇳🇱 Nederlands</option>
+                                <option value="fr" ${(p.language || 'nl') === 'fr' ? 'selected' : ''}>🇫🇷 Français</option>
+                                <option value="es" ${(p.language || 'nl') === 'es' ? 'selected' : ''}>🇪🇸 Español</option>
+                                <option value="en" ${(p.language || 'nl') === 'en' ? 'selected' : ''}>🇬🇧 English</option>
+                            </select>
                         </div>
                         <div style="margin-bottom:16px;">
                             <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:8px;">📷 Foto (optioneel)</label>
@@ -3719,7 +3740,7 @@
             const allergies = document.getElementById('patient-allergies').value;
             const medicalHistory = document.getElementById('patient-medical-history').value;
             const mobilityStatus = document.getElementById('patient-mobility-status').value;
-            const language = document.getElementById('patient-language').value;
+            const language = document.getElementById('patient-language')?.value || 'nl';
             const preview = document.getElementById('photo-preview');
             
             // Check of foto geldig is (data URL en zichtbaar)
@@ -3735,14 +3756,14 @@
                 if (photoBase64) {
                     compressImage(photoBase64, (compressed) => {
                         if (app && app.savePatient) {
-                            app.savePatient(firstName, lastName, birthDate, compressed, allergies, medicalHistory, mobilityStatus);
+                            app.savePatient(firstName, lastName, birthDate, compressed, allergies, medicalHistory, mobilityStatus, language);
                             const modal = document.getElementById('patient-modal');
                             if (modal) modal.remove();
                         }
                     });
                 } else {
                     if (app && app.savePatient) {
-                        app.savePatient(firstName, lastName, birthDate, null, allergies, medicalHistory, mobilityStatus);
+                        app.savePatient(firstName, lastName, birthDate, null, allergies, medicalHistory, mobilityStatus, language);
                         const modal = document.getElementById('patient-modal');
                         if (modal) modal.remove();
                     }
