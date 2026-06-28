@@ -12,7 +12,42 @@
     <link rel="manifest" href="/HealthApp/manifest.json">
     <link rel="icon" type="image/png" href="/HealthApp/logo.png">
     <link rel="apple-touch-icon" href="/HealthApp/logo.png">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com">
+function getFollowUpStats(app){
+ const measures=app.data.measures||{};
+ let first=null,last=null,total=0;
+ Object.keys(measures).sort().forEach(d=>{
+   ['ochtend','middag','avond'].forEach(m=>{
+     const x=measures[d][m];
+     if(x && (x.sys||x.dia||x.hr)){
+       total++;
+       const dt=d+' '+(x.time||'00:00');
+       if(!first||dt<first) first=dt;
+       if(!last||dt>last) last=dt;
+     }
+   });
+ });
+ let days='-';
+ if(first){
+   const fd=new Date(first.replace(' ','T'));
+   days=Math.max(1,Math.floor((Date.now()-fd.getTime())/86400000)+1);
+ }
+ const lang=(app.data.patient&&app.data.patient.language)||'Nederlands';
+ return {first:first?first.split(' ')[0]:'-',last:last?last.replace(' ',' '):'-',days,total,lang};
+}
+
+
+setInterval(()=>{
+ if(window.app){
+   const el=document.getElementById('followupContent');
+   if(el){
+    const s=getFollowUpStats(window.app);
+    el.innerHTML=`📅 Opvolging gestart: ${s.first}<br>📆 Laatste meting: ${s.last}<br>⏳ Duur opvolging: ${s.days} dagen<br>❤️ Totaal metingen: ${s.total}<br>🌍 Taal: ${s.lang}`;
+   }
+ }
+},1000);
+
+</script>
     <style>
         * { -webkit-user-select: none; }
         input, button { -webkit-user-select: text !important; }
@@ -75,7 +110,18 @@
         @keyframes vitalAlarmPop { from { transform:scale(.96); opacity:.4; } to { transform:scale(1); opacity:1; } }
         @media (max-width: 420px) { .vital-values{grid-template-columns:1fr;} .vital-bp{font-size:42px;} }
     </style>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://accounts.google.com/gsi/client" async defer>
+setInterval(()=>{
+ if(window.app){
+   const el=document.getElementById('followupContent');
+   if(el){
+    const s=getFollowUpStats(window.app);
+    el.innerHTML=`📅 Opvolging gestart: ${s.first}<br>📆 Laatste meting: ${s.last}<br>⏳ Duur opvolging: ${s.days} dagen<br>❤️ Totaal metingen: ${s.total}<br>🌍 Taal: ${s.lang}`;
+   }
+ }
+},1000);
+
+</script>
 </head>
 <body class="bg-gray-50">
     <div id="app"></div>
@@ -3494,7 +3540,11 @@
                             <input type="date" id="patient-birth" value="1970-05-27" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
                         </div>
                         <div style="margin-bottom:16px;">
-                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🌍 Taal patiënt</label>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🌍 Taal
+<div id="followupBox" style="margin-top:12px;padding:12px;border:1px solid #d1d5db;border-radius:10px;background:#f8fafc">
+<b>📊 OPVOLGING</b><br>
+<div id="followupContent"></div>
+</div> patiënt</label>
                             <select id="patient-language" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;background:white;">
                                 <option value="nl" selected>🇳🇱 Nederlands</option>
                                 <option value="fr">🇫🇷 Français</option>
@@ -3813,6 +3863,17 @@
               });
             }
         }
-    </script>
+    
+setInterval(()=>{
+ if(window.app){
+   const el=document.getElementById('followupContent');
+   if(el){
+    const s=getFollowUpStats(window.app);
+    el.innerHTML=`📅 Opvolging gestart: ${s.first}<br>📆 Laatste meting: ${s.last}<br>⏳ Duur opvolging: ${s.days} dagen<br>❤️ Totaal metingen: ${s.total}<br>🌍 Taal: ${s.lang}`;
+   }
+ }
+},1000);
+
+</script>
 </body>
 </html>
