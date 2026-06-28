@@ -1012,6 +1012,7 @@
                     if (value <= t.groenSys) return { level: 'green' };
                     if (value <= t.geelSys) return {
                         level: 'yellow',
+                        key: 'sys',
                         icon: '🟡',
                         color: '#f59e0b',
                         name: 'Bovendruk (SYS)',
@@ -1022,6 +1023,7 @@
                     };
                     if (value <= t.roodSys) return {
                         level: 'orange',
+                        key: 'sys',
                         icon: '🟠',
                         color: '#ea580c',
                         name: 'Bovendruk (SYS)',
@@ -1032,6 +1034,7 @@
                     };
                     return {
                         level: 'red',
+                        key: 'sys',
                         icon: '🔴',
                         color: '#dc2626',
                         name: 'Bovendruk (SYS)',
@@ -1046,6 +1049,7 @@
                     if (value <= t.groenDia) return { level: 'green' };
                     if (value <= t.geelDia) return {
                         level: 'yellow',
+                        key: 'dia',
                         icon: '🟡',
                         color: '#f59e0b',
                         name: 'Onderdruk (DIA)',
@@ -1056,6 +1060,7 @@
                     };
                     if (value <= t.roodDia) return {
                         level: 'orange',
+                        key: 'dia',
                         icon: '🟠',
                         color: '#ea580c',
                         name: 'Onderdruk (DIA)',
@@ -1066,6 +1071,7 @@
                     };
                     return {
                         level: 'red',
+                        key: 'dia',
                         icon: '🔴',
                         color: '#dc2626',
                         name: 'Onderdruk (DIA)',
@@ -1080,6 +1086,7 @@
                     if (value >= t.hrMin && value <= t.hrGroenMax) return { level: 'green' };
                     if (value < t.hrMin) return {
                         level: 'red',
+                        key: 'hr',
                         icon: '🔴',
                         color: '#dc2626',
                         name: 'Hartslag',
@@ -1090,6 +1097,7 @@
                     };
                     if (value <= t.hrGeelMax) return {
                         level: 'yellow',
+                        key: 'hr',
                         icon: '🟡',
                         color: '#f59e0b',
                         name: 'Hartslag',
@@ -1100,6 +1108,7 @@
                     };
                     return {
                         level: 'red',
+                        key: 'hr',
                         icon: '🔴',
                         color: '#dc2626',
                         name: 'Hartslag',
@@ -1148,11 +1157,194 @@
                 return `🟡 ${name}, uw ${v.short} moet opgevolgd worden`;
             }
 
+            getMomentIndex(moment) {
+                const order = { ochtend: 1, middag: 2, avond: 3 };
+                return order[moment] || 9;
+            }
+
+            getMeasurementOrder(date, moment) {
+                return `${date}-${String(this.getMomentIndex(moment)).padStart(2, '0')}`;
+            }
+
+            getAllPreviousMeasurements(currentDate, currentMoment, limit = 4) {
+                const measures = this.data.measures || {};
+                const currentOrder = this.getMeasurementOrder(currentDate, currentMoment);
+                const entries = [];
+
+                Object.keys(measures).forEach(date => {
+                    const day = measures[date] || {};
+                    ['ochtend', 'middag', 'avond'].forEach(moment => {
+                        const m = day[moment];
+                        if (!m || !m.sys || !m.dia || !m.hr) return;
+                        if (date === currentDate && moment === currentMoment) return;
+                        const order = this.getMeasurementOrder(date, moment);
+                        if (order >= currentOrder) return;
+                        entries.push({
+                            date,
+                            moment,
+                            time: m.time || '',
+                            sys: parseInt(m.sys),
+                            dia: parseInt(m.dia),
+                            hr: parseInt(m.hr),
+                            order
+                        });
+                    });
+                });
+
+                return entries
+                    .filter(e => !isNaN(e.sys) && !isNaN(e.dia) && !isNaN(e.hr))
+                    .sort((a, b) => b.order.localeCompare(a.order))
+                    .slice(0, limit);
+            }
+
+            getPreviousMeasurement(currentDate, currentMoment) {
+                return this.getAllPreviousMeasurements(currentDate, currentMoment, 1)[0] || null;
+            }
+
+            formatMeasurementLabel(entry) {
+                if (!entry) return '';
+                const parts = String(entry.date || '').split('-');
+                const dateLabel = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : entry.date;
+                const momentLabel = entry.moment === 'ochtend' ? 'ochtend' : entry.moment === 'middag' ? 'middag' : entry.moment === 'avond' ? 'avond' : 'meting';
+                return `${dateLabel} ${momentLabel}${entry.time ? ' om ' + entry.time : ''}`;
+            }
+
+            getLevelForSingleValue(type, value) {
+                const info = this.getVitalLevelInfo(type, parseInt(value));
+                return info.level || 'green';
+            }
+
+            getAlarmLevelForMeasurement(m) {
+                if (!m) return 'green';
+                const order = { green: 0, yellow: 1, orange: 2, red: 3 };
+                const levels = [
+                    this.getLevelForSingleValue('sys', m.sys),
+                    this.getLevelForSingleValue('dia', m.dia),
+                    this.getLevelForSingleValue('hr', m.hr)
+                ];
+                return levels.reduce((highest, lvl) => order[lvl] > order[highest] ? lvl : highest, 'green');
+            }
+
+            getLevelLabel(level) {
+                return { green: 'groene', yellow: 'gele', orange: 'oranje', red: 'rode' }[level] || 'onbekende';
+            }
+
+            getLevelIcon(level) {
+                return { green: '🟢', yellow: '🟡', orange: '🟠', red: '🔴' }[level] || '⚪';
+            }
+
+            getDeltaWord(diff, key) {
+                if (diff === 0) return 'gelijk gebleven';
+                if (key === 'hr') return diff > 0 ? 'gestegen' : 'gedaald';
+                return diff > 0 ? 'gestegen' : 'gedaald';
+            }
+
+            buildVitalComparisonText(vital, previous) {
+                if (!previous || !vital || !vital.key || previous[vital.key] === undefined || isNaN(previous[vital.key])) {
+                    return 'Geen vorige meting beschikbaar om mee te vergelijken.';
+                }
+                const oldValue = parseInt(previous[vital.key]);
+                const diff = vital.value - oldValue;
+                const unit = vital.unit || '';
+                const prevLabel = this.formatMeasurementLabel(previous);
+                if (diff === 0) {
+                    return `Onveranderd tegenover de vorige meting (${prevLabel}): opnieuw ${vital.value} ${unit}.`;
+                }
+                const direction = this.getDeltaWord(diff, vital.key);
+                const sign = diff > 0 ? '+' : '−';
+                let nuance = '';
+                if (Math.abs(diff) >= (vital.key === 'hr' ? 25 : 20)) nuance = ' Dit is een duidelijke verandering.';
+                if (Math.abs(diff) >= (vital.key === 'hr' ? 40 : 35)) nuance = ' Dit is een zeer grote verandering.';
+                return `Tegenover de vorige meting (${prevLabel}) is deze waarde ${direction}: ${oldValue} → ${vital.value} ${unit} (${sign}${Math.abs(diff)}).${nuance}`;
+            }
+
+            buildOverallComparisonText(current, previous, displayName) {
+                if (!previous) {
+                    return `${displayName}, dit is de eerste bruikbare meting vóór deze waarschuwing. Er is nog geen vorige meting om mee te vergelijken.`;
+                }
+                const diffs = {
+                    sys: parseInt(current.sys) - parseInt(previous.sys),
+                    dia: parseInt(current.dia) - parseInt(previous.dia),
+                    hr: parseInt(current.hr) - parseInt(previous.hr)
+                };
+                const labels = { sys: 'bovendruk', dia: 'onderdruk', hr: 'hartslag' };
+                const parts = ['sys', 'dia', 'hr'].map(key => {
+                    const diff = diffs[key];
+                    if (diff === 0) return `${labels[key]} gelijk`;
+                    return `${labels[key]} ${diff > 0 ? 'gestegen' : 'gedaald'} met ${Math.abs(diff)}`;
+                });
+                return `${displayName}, vergeleken met de voorlaatste meting (${this.formatMeasurementLabel(previous)}) is de ${parts.join(', ')}.`;
+            }
+
+            classifyComparison(current, previous, history, level) {
+                if (!previous) return { icon: 'ℹ️', title: 'Geen vergelijking mogelijk', text: 'Er is nog geen vorige volledige meting gevonden. De waarschuwing is daarom alleen gebaseerd op de huidige waarden.' };
+
+                const ds = parseInt(current.sys) - parseInt(previous.sys);
+                const dd = parseInt(current.dia) - parseInt(previous.dia);
+                const dh = parseInt(current.hr) - parseInt(previous.hr);
+                const bpScore = ds + dd;
+                const allDown = ds < 0 && dd < 0 && dh <= 0;
+                const allUp = ds > 0 && dd > 0 && dh >= 0;
+                const stable = Math.abs(ds) <= 3 && Math.abs(dd) <= 3 && Math.abs(dh) <= 5;
+                const strongWorse = ds >= 20 || dd >= 12 || dh >= 25;
+                const extreme = ds >= 50 || dd >= 25 || dh >= 40;
+                const strongBetter = ds <= -15 || dd <= -10 || dh <= -20;
+                const prevLevel = this.getAlarmLevelForMeasurement(previous);
+                const levelOrder = { green: 0, yellow: 1, orange: 2, red: 3 };
+                const zoneUp = levelOrder[level] > levelOrder[prevLevel];
+                const zoneDown = levelOrder[level] < levelOrder[prevLevel];
+
+                if (extreme) return { icon: '🚨', title: 'Uitzonderlijk grote stijging', text: `De verandering tegenover de vorige meting is uitzonderlijk groot: SYS ${previous.sys} → ${current.sys}, DIA ${previous.dia} → ${current.dia}, HR ${previous.hr} → ${current.hr}. Controleer onmiddellijk opnieuw na rust.` };
+                if (zoneUp && level === 'red') return { icon: '🔴', title: 'Overgang naar rode zone', text: `De vorige meting zat in de ${this.getLevelLabel(prevLevel)} zone. Deze meting komt uit in de rode zone. Dat is een duidelijke verslechtering.` };
+                if (zoneDown) return { icon: '✅', title: 'Zone verbetert', text: `De vorige meting zat in de ${this.getLevelLabel(prevLevel)} zone. Deze meting zit nu in de ${this.getLevelLabel(level)} zone. Dat is een gunstige evolutie, ook al blijft opvolging nodig.` };
+                if (strongWorse || allUp) return { icon: '⚠️', title: 'Duidelijke verslechtering', text: `De huidige meting is slechter dan de vorige: SYS ${previous.sys} → ${current.sys} (${ds >= 0 ? '+' : ''}${ds}), DIA ${previous.dia} → ${current.dia} (${dd >= 0 ? '+' : ''}${dd}), HR ${previous.hr} → ${current.hr} (${dh >= 0 ? '+' : ''}${dh}).` };
+                if (allDown || strongBetter) return { icon: '✅', title: 'Positieve evolutie', text: `De waarden verbeteren tegenover de vorige meting: SYS ${previous.sys} → ${current.sys}, DIA ${previous.dia} → ${current.dia}, HR ${previous.hr} → ${current.hr}. De trend gaat de goede richting uit.` };
+                if (stable) return { icon: '➖', title: 'Vrij stabiel', text: 'De meting verschilt nauwelijks van de vorige. De waarden blijven dus ongeveer op hetzelfde niveau.' };
+                if (ds > 8 && Math.abs(dd) <= 5) return { icon: '🟡', title: 'Vooral bovendruk stijgt', text: `Vooral de bovendruk is gestegen: ${previous.sys} → ${current.sys} (+${ds}). De onderdruk verandert weinig.` };
+                if (dd > 6 && Math.abs(ds) <= 8) return { icon: '🟡', title: 'Vooral onderdruk stijgt', text: `Vooral de onderdruk is gestegen: ${previous.dia} → ${current.dia} (+${dd}). Hou de volgende meting goed in de gaten.` };
+                if (dh > 15 && bpScore <= 8) return { icon: '❤️', title: 'Vooral hartslag stijgt', text: `De bloeddruk verandert weinig, maar de hartslag stijgt van ${previous.hr} naar ${current.hr} bpm (+${dh}). Rust even en controleer opnieuw.` };
+                if (dh < -15 && Math.abs(bpScore) <= 12) return { icon: '❤️', title: 'Hartslag verbetert', text: `De bloeddruk blijft ongeveer gelijk, maar de hartslag daalt van ${previous.hr} naar ${current.hr} bpm. Dat is gunstig.` };
+                if (bpScore < -8 && dh > 12) return { icon: '⚖️', title: 'Gemengd beeld', text: 'De bloeddruk verbetert, maar de hartslag stijgt. Daarom blijft opvolging nodig.' };
+                if (bpScore > 8 && dh < -12) return { icon: '⚖️', title: 'Gemengd beeld', text: 'De hartslag verbetert, maar de bloeddruk stijgt. Daarom blijft een nieuwe controle belangrijk.' };
+
+                return { icon: '📊', title: 'Gemengde evolutie', text: `Er is geen eenduidige verbetering of verslechtering: SYS ${previous.sys} → ${current.sys}, DIA ${previous.dia} → ${current.dia}, HR ${previous.hr} → ${current.hr}.` };
+            }
+
+            buildThreeMeasurementTrend(current, history) {
+                if (!history || history.length < 2) return '';
+                const series = [current, ...history.slice(0, 2)].reverse();
+                const sysDown = series[0].sys > series[1].sys && series[1].sys > series[2].sys;
+                const diaDown = series[0].dia > series[1].dia && series[1].dia > series[2].dia;
+                const sysUp = series[0].sys < series[1].sys && series[1].sys < series[2].sys;
+                const diaUp = series[0].dia < series[1].dia && series[1].dia < series[2].dia;
+                const hrDown = series[0].hr > series[1].hr && series[1].hr > series[2].hr;
+                const hrUp = series[0].hr < series[1].hr && series[1].hr < series[2].hr;
+
+                if (sysDown && diaDown) return '📉 Over de laatste 3 metingen daalt de bloeddruk stap voor stap. Dat is een gunstige trend.';
+                if (sysUp && diaUp) return '📈 Over de laatste 3 metingen stijgt de bloeddruk stap voor stap. Dat verdient extra aandacht.';
+                if (hrUp && !(sysUp && diaUp)) return '❤️ Over de laatste 3 metingen stijgt vooral de hartslag. Controleer of dit samenhangt met inspanning, stress, pijn of klachten.';
+                if (hrDown && !(sysDown && diaDown)) return '❤️ Over de laatste 3 metingen daalt vooral de hartslag. Dat kan gunstig zijn als u zich goed voelt.';
+                return '';
+            }
+
+            buildSmartComparisonHtml(current, previous, history, displayName, level) {
+                const c = this.classifyComparison(current, previous, history, level);
+                const trend = this.buildThreeMeasurementTrend(current, history);
+                return `
+                    <div><strong>${c.icon} ${c.title}</strong></div>
+                    <div style="margin-top:6px;">${c.text}</div>
+                    ${trend ? `<div style="margin-top:8px;"><strong>Trend:</strong> ${trend}</div>` : ''}
+                `;
+            }
+
             checkCriticalValues(sys, dia, hr, time, moment) {
                 const abnormalVitals = this.getAbnormalVitals(sys, dia, hr);
                 if (!abnormalVitals.length) return;
                 const level = this.getAlarmLevel(sys, dia, hr);
-                this.showVitalAlarmPopup(level, { sys, dia, hr, time, moment, abnormalVitals });
+                const currentDate = this.date || this.today();
+                const previousMeasurements = this.getAllPreviousMeasurements(currentDate, moment, 4);
+                const previousMeasurement = previousMeasurements[0] || null;
+                this.showVitalAlarmPopup(level, { sys, dia, hr, time, moment, abnormalVitals, previousMeasurement, previousMeasurements });
             }
 
             showVitalAlarmPopup(level, data) {
@@ -1212,22 +1404,29 @@
                 const displayName = patientName || 'Patiënt';
                 const timeLabel = data.time || 'Geen uur ingevuld';
                 const abnormalVitals = data.abnormalVitals || this.getAbnormalVitals(data.sys, data.dia, data.hr);
+                const previousMeasurement = data.previousMeasurement || null;
+                const previousMeasurements = data.previousMeasurements || (previousMeasurement ? [previousMeasurement] : []);
                 const personalTitle = this.buildPersonalAlarmTitle(displayName, level, abnormalVitals);
 
-                const summaryText = abnormalVitals.length > 1
-                    ? `${displayName}, de volgende waarden bepalen samen deze ${level === 'red' ? 'rode' : level === 'orange' ? 'oranje' : 'gele'} waarschuwing.`
-                    : `${displayName}, deze waarde bepaalt de ${level === 'red' ? 'rode' : level === 'orange' ? 'oranje' : 'gele'} waarschuwing.`;
+                const warningColorLabel = level === 'red' ? 'rode' : level === 'orange' ? 'oranje' : 'gele';
+                const warningBaseText = abnormalVitals.length > 1
+                    ? `${displayName}, de volgende waarden bepalen samen deze ${warningColorLabel} waarschuwing.`
+                    : `${displayName}, deze waarde bepaalt de ${warningColorLabel} waarschuwing.`;
+                const summaryText = `${warningBaseText}<br><br>${this.buildSmartComparisonHtml(data, previousMeasurement, previousMeasurements, displayName, level)}<br><div style="margin-top:8px;"><strong>Detail:</strong> ${this.buildOverallComparisonText(data, previousMeasurement, displayName)}</div>`;
 
-                const abnormalHtml = abnormalVitals.map(v => `
+                const abnormalHtml = abnormalVitals.map(v => {
+                    const comparisonText = this.buildVitalComparisonText(v, previousMeasurement);
+                    return `
                     <div class="vital-abnormal-card" style="border-color:${v.color};background:${level === 'red' ? '#fff7f7' : level === 'orange' ? '#fff7ed' : '#fffbeb'};">
                         <div class="vital-abnormal-badge" style="background:${v.color};">${v.icon}</div>
                         <div>
                             <div class="vital-abnormal-name">${v.name}</div>
                             <div class="vital-abnormal-value">${v.value} <span style="font-size:13px;color:#64748b;">${v.unit}</span></div>
-                            <div class="vital-abnormal-explain">${v.explanation}</div>
+                            <div class="vital-abnormal-explain"><strong>Vergelijking:</strong> ${comparisonText}<br><strong>Zone:</strong> ${v.explanation}</div>
                         </div>
                     </div>
-                `).join('');
+                `;
+                }).join('');
 
                 const bulletHtml = cfg.bullets.map((b, index) => {
                     const prefix = index === 0 ? `${displayName}, ` : '';
