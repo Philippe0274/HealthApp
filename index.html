@@ -3027,6 +3027,7 @@
                     photo: photoBase64,
                     allergies: allergies || '',
                     medicalHistory: medicalHistory || '',
+                    language: (this.data.patient?.language)||'nl',
                     mobilityStatus: mobilityStatus || ''
                 };
                 this.save();
@@ -3505,6 +3506,15 @@
                             <textarea id="patient-medical-history" placeholder="bijv. Diabetes, Hypertensie, Hartaandoening..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;font-family:inherit;min-height:60px;resize:vertical;"></textarea>
                         </div>
                         <div style="margin-bottom:16px;">
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🌍 Taal patiënt</label>
+                            <select id="patient-language" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;">
+                              <option value="nl">🇳🇱 Nederlands</option>
+                              <option value="fr">🇫🇷 Français</option>
+                              <option value="es">🇪🇸 Español</option>
+                              <option value="en">🇬🇧 English</option>
+                            </select>
+                        </div>
+                        <div style="margin-bottom:16px;">
                             <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🚶 Mobiliteitstoestand</label>
                             <textarea id="patient-mobility-status" placeholder="bijv. Krukken/Rolstoel, Loopt met hulpmiddel..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;font-family:inherit;min-height:60px;resize:vertical;"></textarea>
                         </div>
@@ -3709,6 +3719,7 @@
             const allergies = document.getElementById('patient-allergies').value;
             const medicalHistory = document.getElementById('patient-medical-history').value;
             const mobilityStatus = document.getElementById('patient-mobility-status').value;
+            const language = document.getElementById('patient-language').value;
             const preview = document.getElementById('photo-preview');
             
             // Check of foto geldig is (data URL en zichtbaar)
