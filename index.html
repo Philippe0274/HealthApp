@@ -286,7 +286,27 @@
           }
         }
 
-        class App {
+        
+const LANG={
+ nl:{patient:"Patiënt",save:"Opslaan"},
+ fr:{patient:"Patient",save:"Enregistrer"},
+ es:{patient:"Paciente",save:"Guardar"},
+ en:{patient:"Patient",save:"Save"}
+};
+function getLangCode(v){
+ switch((v||'').toLowerCase()){
+  case 'français': return 'fr';
+  case 'español': return 'es';
+  case 'english': return 'en';
+  default:return 'nl';
+ }
+}
+function t(key){
+ const lang=getLangCode((window.app&&window.app.data&&window.app.data.patient&&window.app.data.patient.language)||'Nederlands');
+ return (LANG[lang]&&LANG[lang][key])||LANG.nl[key]||key;
+}
+
+class App {
             constructor() {
                 try {
                     const saved = localStorage.getItem('data');
