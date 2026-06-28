@@ -17,8 +17,19 @@
         * { -webkit-user-select: none; }
         input, button { -webkit-user-select: text !important; }
         body { font-family: -apple-system; }
-        .day-cell { aspect-ratio: 1; border-radius: 8px; padding: 4px; font-size: 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 48px; background: #fff; border: 2px solid #e5e7eb; font-weight: 600; }
-        .day-cell.today { background: #fbbf24; color: #333; }
+        .day-cell { aspect-ratio: 1; border-radius: 9px; padding: 2px; font-size: 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 36px; background: #fff; border: 1px solid #e5e7eb; font-weight: 750; line-height: 1.05; position: relative; overflow: hidden; }
+        .day-cell.weekend { background: #e0f2fe; border-color: #bae6fd; color: #075985; }
+        .day-cell.holiday { background: #ede9fe; border-color: #c4b5fd; color: #4c1d95; }
+        .day-cell.today { background: #ff1493 !important; border-color: #db2777 !important; color: #fff !important; box-shadow: 0 0 0 2px #f9a8d4, 0 8px 20px rgba(219,39,119,.35); transform: scale(1.03); }
+        .day-number { font-size: 11px; font-weight: 950; }
+        .holiday-name { font-size: 7px; font-weight: 850; margin-top: 1px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .calendar-wrap { background:white;border-radius:12px;padding:8px;box-shadow:0 1px 4px rgba(0,0,0,0.03);margin-bottom:12px; }
+        .calendar-head { display:flex;gap:8px;margin-bottom:8px;align-items:center; }
+        .calendar-nav-btn { background:#f8fafc;border:1px solid #e5e7eb;border-radius:9px;width:32px;height:32px;font-size:14px;cursor:pointer; }
+        .calendar-title { flex:1;text-align:center;font-size:14px;font-weight:850;color:#0f172a; }
+        .calendar-weekdays { display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:5px; }
+        .calendar-weekday { text-align:center;font-weight:800;color:#64748b;font-size:10px;padding:3px 0; }
+        .calendar-grid { display:grid;grid-template-columns:repeat(7,1fr);gap:3px; }
 
         /* ===== Professionele alarm popup v4.0 ===== */
         .vital-alarm-overlay {
@@ -2951,7 +2962,52 @@
                 }
             }
 
-            drawCal() {
+            getEasterDate(year) {
+                const a = year % 19;
+                const b = Math.floor(year / 100);
+                const c = year % 100;
+                const d = Math.floor(b / 4);
+                const e = b % 4;
+                const f = Math.floor((b + 8) / 25);
+                const g = Math.floor((b - f + 1) / 3);
+                const h = (19 * a + b - d - g + 15) % 30;
+                const i = Math.floor(c / 4);
+                const k = c % 4;
+                const l = (32 + 2 * e + 2 * i - h - k) % 7;
+                const m = Math.floor((a + 11 * h + 22 * l) / 451);
+                const month = Math.floor((h + l - 7 * m + 114) / 31) - 1;
+                const day = ((h + l - 7 * m + 114) % 31) + 1;
+                return new Date(year, month, day);
+            }
+
+            formatLocalDate(d) {
+                return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            }
+
+            getBelgianHoliday(dateStr) {
+                const year = parseInt(dateStr.slice(0, 4));
+                const holidays = {
+                    [`${year}-01-01`]: 'Nieuwjaar',
+                    [`${year}-05-01`]: 'Dag vd Arbeid',
+                    [`${year}-07-21`]: 'Nationale feestdag',
+                    [`${year}-08-15`]: 'O.L.V. Hemelvaart',
+                    [`${year}-11-01`]: 'Allerheiligen',
+                    [`${year}-11-11`]: 'Wapenstilstand',
+                    [`${year}-12-25`]: 'Kerstmis'
+                };
+                const easter = this.getEasterDate(year);
+                const addDays = (base, days) => {
+                    const d = new Date(base);
+                    d.setDate(d.getDate() + days);
+                    return this.formatLocalDate(d);
+                };
+                holidays[addDays(easter, 1)] = 'Paasmaandag';
+                holidays[addDays(easter, 39)] = 'O.H. Hemelvaart';
+                holidays[addDays(easter, 50)] = 'Pinkstermaandag';
+                return holidays[dateStr] || '';
+            }
+
+            buildCalendarHtml() {
                 const y = this.month.getFullYear();
                 const m = this.month.getMonth();
                 const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
@@ -2964,11 +3020,33 @@
                 for (let i = 0; i < firstDay; i++) cal += '<div></div>';
                 for (let d = 1; d <= lastDay; d++) {
                     const dateStr = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                    const dayOfWeek = new Date(y, m, d).getDay();
+                    const holiday = this.getBelgianHoliday(dateStr);
                     let cls = 'day-cell';
+                    if (dayOfWeek === 0 || dayOfWeek === 6) cls += ' weekend';
+                    if (holiday) cls += ' holiday';
                     if (dateStr === today) cls += ' today';
-                    cal += '<div class="' + cls + '" onclick="app.date=\'' + dateStr + '\';app.view=\'day\';app.show();">' + d + '</div>';
+                    const holidayHtml = holiday ? '<div class="holiday-name">' + holiday + '</div>' : '';
+                    cal += '<div class="' + cls + '" title="' + (holiday || dateStr) + '" onclick="app.date=\'' + dateStr + '\';app.view=\'day\';app.show();"><div class="day-number">' + d + '</div>' + holidayHtml + '</div>';
                 }
 
+                let html = '<div class="calendar-wrap">';
+                html += '<div class="calendar-head">';
+                html += '<button class="calendar-nav-btn" onclick="app.month.setMonth(app.month.getMonth()-1);app.show();">◀</button>';
+                html += '<div class="calendar-title">📅 ' + months[m] + ' ' + y + '</div>';
+                html += '<button class="calendar-nav-btn" onclick="app.month.setMonth(app.month.getMonth()+1);app.show();">▶</button>';
+                html += '</div>';
+                html += '<div class="calendar-weekdays">';
+                for (let d of days) html += '<div class="calendar-weekday">' + d + '</div>';
+                html += '</div>';
+                html += '<div class="calendar-grid">' + cal + '</div>';
+                html += '</div>';
+                return html;
+            }
+
+            drawCal() {
+                const y = this.month.getFullYear();
+                const m = this.month.getMonth();
                 let html = '<div style="min-height:100vh;background:#f9fafb;padding:12px;">';
                 html += '<div style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);color:white;border-radius:16px;padding:12px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px;">';
                 
@@ -3029,6 +3107,9 @@
                     html += '<button onclick="app.safeRemovePatient()" style="background:transparent;border:none;color:#ef4444;cursor:pointer;padding:4px;border-radius:4px;font-size:18px;">🗑️</button>';
                     html += '</div></div>';
                 }
+
+                // KALENDER - tussen patiëntgegevens en medicatie
+                html += this.buildCalendarHtml();
 
                 if (this.showSet) {
                     html += '<div style="background:white;border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';
@@ -3100,19 +3181,7 @@
                     html += '</div></div>';
                 }
 
-                html += '<div style="display:flex;gap:8px;margin-bottom:12px;">';
-                html += '<button style="background:white;border:none;border-radius:10px;width:36px;height:36px;font-size:16px;cursor:pointer;" onclick="app.month.setMonth(app.month.getMonth()-1);app.show();">◀</button>';
-                html += '<div style="flex:1;text-align:center;font-size:16px;font-weight:700;">📅 ' + months[m] + ' ' + y + '</div>';
-                html += '<button style="background:white;border:none;border-radius:10px;width:36px;height:36px;font-size:16px;cursor:pointer;" onclick="app.month.setMonth(app.month.getMonth()+1);app.show();">▶</button>';
                 html += '</div>';
-                html += '<div style="background:white;border-radius:12px;padding:10px;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';
-                html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:8px;">';
-                for (let d of days) {
-                    html += '<div style="text-align:center;font-weight:600;color:#6b7280;font-size:11px;padding:6px 0;">' + d + '</div>';
-                }
-                html += '</div>';
-                html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">' + cal + '</div>';
-                html += '</div></div>';
                 return html;
             }
 
