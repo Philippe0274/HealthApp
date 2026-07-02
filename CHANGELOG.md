@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.1 - 2026-07-02
+
+- PWA-updateflow hersteld zodat nieuwe GitHub-versies automatisch op smartphones actief worden.
+- Service worker toegevoegd met versiegestuurde cache names op basis van `APP_VERSION`.
+- Nieuwe service worker gebruikt `skipWaiting()` en `clients.claim()` voor directe activatie.
+- Oude Health Tracker caches worden tijdens `activate` automatisch verwijderd.
+- App registreert de service worker met `updateViaCache: 'none'` en `/sw.js?v=APP_VERSION`.
+- Kleine update-melding toegevoegd: "Nieuwe versie beschikbaar."
+- Geen wijzigingen aan localStorage, patiëntgegevens, metingen, medicatie, rapporten, Google Drive, Telegram, backup of restore.
+
 ## 2.0.0 - 2026-07-02
 
 - Verhoogd naar `APP_VERSION` 2.0.0.
