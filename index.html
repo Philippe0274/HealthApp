@@ -287,229 +287,23 @@
         }
 
         
-const APP_VERSION = '2.0.0';
-const LANGUAGE_OPTIONS = [
- { code:'nl', label:'Nederlands', flag:'🇳🇱' },
- { code:'fr', label:'Français', flag:'🇫🇷' },
- { code:'es', label:'Español', flag:'🇪🇸' },
- { code:'en', label:'English', flag:'🇬🇧' }
-];
-const RELATIONSHIP_OPTIONS = ['Echtgenote','Echtgenoot','Partner','Dochter','Zoon','Huisarts','Familie','Vriend','Andere'];
 const LANG={
- nl:{
-  appTitle:'Bloeddruk/Medicatie', appSubtitle:'Opvolgingstool', patient:'Patiënt', patientAdd:'Patiënt toevoegen', patientEdit:'Patiënt wijzigen', patientInfo:'Patiënt info',
-  firstName:'Voornaam', lastName:'Achternaam', birthDate:'Geboortedatum', age:'Leeftijd', language:'Taal', patientLanguage:'Taal patiënt', photo:'Foto (optioneel)',
-  allergies:'Allergieën', medicalHistory:'Gekende medische historie', mobility:'Mobiliteitstoestand', save:'Opslaan', cancel:'Annuleren', close:'Sluiten', change:'Wijzigen', remove:'Wissen',
-  emergencyContact:'Noodcontact', noEmergencyContact:'Nog geen noodcontact ingevuld', fullName:'Volledige naam', relationship:'Relatie', email:'E-mailadres', phone:'Telefoonnummer',
-  emergencyLanguage:'Taal noodcontact', removeEmergency:'Noodcontact verwijderen', followUp:'Opvolging', followUpStarted:'Opvolging gestart', lastMeasurement:'Laatste meting',
-  followUpDuration:'Duur opvolging', totalMeasurements:'Totaal metingen', noMeasurement:'Nog geen meting', days:'dagen', day:'dag', alarmSettings:'Alarm instellingen',
-  medications:'Medicaties', stock:'Voorraad', daily:'Dagelijkse', sporadic:'Sporadische', reminderSettings:'Reminder instellingen', morningDeadline:'Ochtend deadline',
-  afternoonDeadline:'Middag deadline', eveningDeadline:'Avond deadline', medicationCheck:'Medicatie check', reportCheck:'Rapport check', fillRequired:'Vul voornaam, achternaam en geboortedatum in!',
-  deletePatientConfirm:'Patiëntgegevens wissen?', saved:'Opgeslagen', doctor:'Huisarts', doctorEdit:'Huisarts wijzigen', name:'Naam', address:'Adres', opened:'Geopend', closed:'Gesloten',
-  outsideHours:'Buiten openingsuren', onCallActive:'Wachtdienst Midden-Brabant is actief', call:'Bellen', onCall:'Wachtpost', reportTitle:'Health Tracker Rapport',
-  reportDocTitle:'Arts Rapport', reportSubtitle:'Medisch opvolgingsdocument voor arts of specialist', reportPeriod:'Rapportperiode', notFilled:'Niet ingevuld',
-  noPatientData:'Geen patiëntgegevens ingevuld', patientCardAvailable:'De patiëntkaart blijft beschikbaar zodra de gegevens in de app zijn ingevuld.', emergencyReportLanguage:'Rapporttaal alarm',
-  printPdf:'Print / PDF', avgBloodPressure:'Gemiddelde bloeddruk', avgHeartRate:'Gemiddelde hartslag', adherenceDailyMedication:'Therapietrouw dagelijkse medicatie',
-  bpMeasurements:'Bloeddrukmetingen', bloodPressure:'Bloeddruk', heartRate:'Hartslag', summaryAnalysis:'Samenvatting - Gezondheidsanalyse', average:'Gemiddelde',
-  trend:'Trend', trendAnalysis:'Trends Analyse', measurements:'Metingen', medicationCompliance:'Medicatie Naleving', recommendations:'Aanbevelingen & Advies',
-  smartAdvice:'Intelligente Persoonlijke Aanbevelingen', activeMedicationOverview:'Actieve medicatie - medisch overzicht + grafieken', noMeasurements:'Geen metingen',
-  noMedications:'Geen medicaties', status:'Status'
- },
- fr:{
-  appTitle:'Tension/Médication', appSubtitle:'Outil de suivi', patient:'Patient', patientAdd:'Ajouter un patient', patientEdit:'Modifier le patient', patientInfo:'Info patient',
-  firstName:'Prénom', lastName:'Nom', birthDate:'Date de naissance', age:'Âge', language:'Langue', patientLanguage:'Langue du patient', photo:'Photo (optionnel)',
-  allergies:'Allergies', medicalHistory:'Antécédents médicaux connus', mobility:'Mobilité', save:'Enregistrer', cancel:'Annuler', close:'Fermer', change:'Modifier', remove:'Supprimer',
-  emergencyContact:'Contact d’urgence', noEmergencyContact:'Aucun contact d’urgence renseigné', fullName:'Nom complet', relationship:'Relation', email:'E-mail', phone:'Téléphone',
-  emergencyLanguage:'Langue du contact', removeEmergency:'Supprimer le contact d’urgence', followUp:'Suivi', followUpStarted:'Suivi démarré', lastMeasurement:'Dernière mesure',
-  followUpDuration:'Durée du suivi', totalMeasurements:'Nombre de mesures', noMeasurement:'Aucune mesure', days:'jours', day:'jour', alarmSettings:'Paramètres d’alarme',
-  medications:'Médicaments', stock:'Stock', daily:'Quotidien', sporadic:'Occasionnel', reminderSettings:'Paramètres des rappels', morningDeadline:'Heure limite matin',
-  afternoonDeadline:'Heure limite midi', eveningDeadline:'Heure limite soir', medicationCheck:'Contrôle médicaments', reportCheck:'Contrôle rapport', fillRequired:'Complétez le prénom, le nom et la date de naissance.',
-  deletePatientConfirm:'Supprimer les données du patient ?', saved:'Enregistré', doctor:'Médecin', doctorEdit:'Modifier le médecin', name:'Nom', address:'Adresse', opened:'Ouvert', closed:'Fermé',
-  outsideHours:'En dehors des heures d’ouverture', onCallActive:'Le service de garde Midden-Brabant est actif', call:'Appeler', onCall:'Garde', reportTitle:'Rapport Health Tracker',
-  reportDocTitle:'Rapport médical', reportSubtitle:'Document de suivi médical pour médecin ou spécialiste', reportPeriod:'Période du rapport', notFilled:'Non renseigné',
-  noPatientData:'Aucune donnée patient renseignée', patientCardAvailable:'La fiche patient sera disponible dès que les données seront complétées dans l’app.', emergencyReportLanguage:'Langue du rapport d’alarme',
-  printPdf:'Imprimer / PDF', avgBloodPressure:'Tension moyenne', avgHeartRate:'Fréquence cardiaque moyenne', adherenceDailyMedication:'Observance du traitement quotidien',
-  bpMeasurements:'Mesures de tension', bloodPressure:'Tension', heartRate:'Fréquence cardiaque', summaryAnalysis:'Résumé - Analyse de santé', average:'Moyenne',
-  trend:'Tendance', trendAnalysis:'Analyse des tendances', measurements:'Mesures', medicationCompliance:'Observance médicamenteuse', recommendations:'Recommandations & conseils',
-  smartAdvice:'Recommandations personnelles intelligentes', activeMedicationOverview:'Médication active - aperçu médical + graphiques', noMeasurements:'Aucune mesure',
-  noMedications:'Aucun médicament', status:'Statut'
- },
- es:{
-  appTitle:'Presión/Medicación', appSubtitle:'Herramienta de seguimiento', patient:'Paciente', patientAdd:'Añadir paciente', patientEdit:'Editar paciente', patientInfo:'Info paciente',
-  firstName:'Nombre', lastName:'Apellido', birthDate:'Fecha de nacimiento', age:'Edad', language:'Idioma', patientLanguage:'Idioma del paciente', photo:'Foto (opcional)',
-  allergies:'Alergias', medicalHistory:'Antecedentes médicos conocidos', mobility:'Movilidad', save:'Guardar', cancel:'Cancelar', close:'Cerrar', change:'Cambiar', remove:'Eliminar',
-  emergencyContact:'Contacto de emergencia', noEmergencyContact:'Sin contacto de emergencia', fullName:'Nombre completo', relationship:'Relación', email:'Correo electrónico', phone:'Teléfono',
-  emergencyLanguage:'Idioma del contacto', removeEmergency:'Eliminar contacto de emergencia', followUp:'Seguimiento', followUpStarted:'Inicio del seguimiento', lastMeasurement:'Última medición',
-  followUpDuration:'Duración del seguimiento', totalMeasurements:'Total de mediciones', noMeasurement:'Sin mediciones', days:'días', day:'día', alarmSettings:'Ajustes de alarma',
-  medications:'Medicamentos', stock:'Stock', daily:'Diaria', sporadic:'Ocasional', reminderSettings:'Ajustes de recordatorios', morningDeadline:'Límite mañana',
-  afternoonDeadline:'Límite mediodía', eveningDeadline:'Límite noche', medicationCheck:'Control medicación', reportCheck:'Control informe', fillRequired:'Complete nombre, apellido y fecha de nacimiento.',
-  deletePatientConfirm:'¿Eliminar los datos del paciente?', saved:'Guardado', doctor:'Médico', doctorEdit:'Editar médico', name:'Nombre', address:'Dirección', opened:'Abierto', closed:'Cerrado',
-  outsideHours:'Fuera del horario de apertura', onCallActive:'El servicio de guardia Midden-Brabant está activo', call:'Llamar', onCall:'Guardia', reportTitle:'Informe Health Tracker',
-  reportDocTitle:'Informe médico', reportSubtitle:'Documento de seguimiento médico para médico o especialista', reportPeriod:'Periodo del informe', notFilled:'No completado',
-  noPatientData:'No se han introducido datos del paciente', patientCardAvailable:'La ficha del paciente estará disponible cuando se completen los datos en la app.', emergencyReportLanguage:'Idioma del informe de alarma',
-  printPdf:'Imprimir / PDF', avgBloodPressure:'Presión arterial media', avgHeartRate:'Frecuencia cardiaca media', adherenceDailyMedication:'Adherencia a la medicación diaria',
-  bpMeasurements:'Mediciones de presión arterial', bloodPressure:'Presión arterial', heartRate:'Frecuencia cardiaca', summaryAnalysis:'Resumen - análisis de salud', average:'Media',
-  trend:'Tendencia', trendAnalysis:'Análisis de tendencias', measurements:'Mediciones', medicationCompliance:'Adherencia a la medicación', recommendations:'Recomendaciones y consejos',
-  smartAdvice:'Recomendaciones personales inteligentes', activeMedicationOverview:'Medicación activa - resumen médico + gráficos', noMeasurements:'Sin mediciones',
-  noMedications:'Sin medicación', status:'Estado'
- },
- en:{
-  appTitle:'Blood Pressure/Medication', appSubtitle:'Follow-up tool', patient:'Patient', patientAdd:'Add patient', patientEdit:'Edit patient', patientInfo:'Patient info',
-  firstName:'First name', lastName:'Last name', birthDate:'Date of birth', age:'Age', language:'Language', patientLanguage:'Patient language', photo:'Photo (optional)',
-  allergies:'Allergies', medicalHistory:'Known medical history', mobility:'Mobility status', save:'Save', cancel:'Cancel', close:'Close', change:'Change', remove:'Delete',
-  emergencyContact:'Emergency contact', noEmergencyContact:'No emergency contact entered', fullName:'Full name', relationship:'Relationship', email:'Email address', phone:'Phone number',
-  emergencyLanguage:'Contact language', removeEmergency:'Delete emergency contact', followUp:'Follow-up', followUpStarted:'Follow-up started', lastMeasurement:'Last measurement',
-  followUpDuration:'Follow-up duration', totalMeasurements:'Total measurements', noMeasurement:'No measurement yet', days:'days', day:'day', alarmSettings:'Alarm settings',
-  medications:'Medication', stock:'Stock', daily:'Daily', sporadic:'Sporadic', reminderSettings:'Reminder settings', morningDeadline:'Morning deadline',
-  afternoonDeadline:'Afternoon deadline', eveningDeadline:'Evening deadline', medicationCheck:'Medication check', reportCheck:'Report check', fillRequired:'Enter first name, last name and date of birth.',
-  deletePatientConfirm:'Delete patient data?', saved:'Saved', doctor:'Doctor', doctorEdit:'Edit doctor', name:'Name', address:'Address', opened:'Open', closed:'Closed',
-  outsideHours:'Outside opening hours', onCallActive:'Midden-Brabant on-call service is active', call:'Call', onCall:'On-call', reportTitle:'Health Tracker Report',
-  reportDocTitle:'Medical Report', reportSubtitle:'Medical follow-up document for doctor or specialist', reportPeriod:'Report period', notFilled:'Not filled in',
-  noPatientData:'No patient data entered', patientCardAvailable:'The patient card will be available once the data has been entered in the app.', emergencyReportLanguage:'Alarm report language',
-  printPdf:'Print / PDF', avgBloodPressure:'Average blood pressure', avgHeartRate:'Average heart rate', adherenceDailyMedication:'Daily medication adherence',
-  bpMeasurements:'Blood pressure measurements', bloodPressure:'Blood pressure', heartRate:'Heart rate', summaryAnalysis:'Summary - Health analysis', average:'Average',
-  trend:'Trend', trendAnalysis:'Trend analysis', measurements:'Measurements', medicationCompliance:'Medication adherence', recommendations:'Recommendations & advice',
-  smartAdvice:'Smart personal recommendations', activeMedicationOverview:'Active medication - medical overview + charts', noMeasurements:'No measurements',
-  noMedications:'No medications', status:'Status'
- }
+ nl:{patient:"Patiënt",save:"Opslaan"},
+ fr:{patient:"Patient",save:"Enregistrer"},
+ es:{patient:"Paciente",save:"Guardar"},
+ en:{patient:"Patient",save:"Save"}
 };
-function normalizeLangCode(v){
- const x=(v||'').toLowerCase();
- if(['fr','français','francais','french'].includes(x)) return 'fr';
- if(['es','español','espanol','spanish'].includes(x)) return 'es';
- if(['en','english'].includes(x)) return 'en';
- return 'nl';
-}
-function getAppLanguage(){
- if (window.app && window.app.data && window.app.data.patient && window.app.data.patient.language) {
-  return normalizeLangCode(window.app.data.patient.language);
+function getLangCode(v){
+ switch((v||'').toLowerCase()){
+  case 'français': return 'fr';
+  case 'español': return 'es';
+  case 'english': return 'en';
+  default:return 'nl';
  }
- try {
-  const saved = JSON.parse(localStorage.getItem('data') || 'null');
-  if (saved && saved.patient && saved.patient.language) return normalizeLangCode(saved.patient.language);
- } catch(e) {}
- return 'nl';
 }
-function t(key, lang){
- const code=normalizeLangCode(lang || getAppLanguage());
- return (LANG[code]&&LANG[code][key])||LANG.nl[key]||key;
-}
-function buildLanguageOptions(selected){
- const code=normalizeLangCode(selected);
- return LANGUAGE_OPTIONS.map(l => `<option value="${l.code}" ${l.code===code?'selected':''}>${l.flag} ${l.label}</option>`).join('');
-}
-function getPatientLanguageLabel(language) {
- const code = normalizeLangCode(language);
- const item = LANGUAGE_OPTIONS.find(l => l.code === code) || LANGUAGE_OPTIONS[0];
- return item.label;
-}
-function createEmptyEmergencyContact(language){
- return { fullName:'', relationship:'', email:'', phone:'', language: normalizeLangCode(language || getAppLanguage()) };
-}
-function normalizeEmergencyContact(contact, fallbackLanguage){
- const c = contact || {};
- return {
-  fullName: c.fullName || '',
-  relationship: c.relationship || '',
-  email: c.email || '',
-  phone: c.phone || '',
-  language: normalizeLangCode(c.language || fallbackLanguage || getAppLanguage())
- };
-}
-function hasEmergencyContact(contact){
- const c = normalizeEmergencyContact(contact);
- return !!(c.fullName || c.relationship || c.email || c.phone);
-}
-function getEmergencyContactReportLanguage(patient){
- const contact = normalizeEmergencyContact(patient && patient.emergencyContact, patient && patient.language);
- return contact.language;
-}
-function getRelationshipOptions(selected){
- return RELATIONSHIP_OPTIONS.map(r => `<option value="${r}" ${r===selected?'selected':''}>${r}</option>`).join('');
-}
-function translateAppText(root){
- const lang = getAppLanguage();
- if (lang === 'nl') return;
- const exact = {
-  'Patient toevoegen': t('patientAdd', lang),
-  'Patient wijzigen': t('patientEdit', lang),
-  'Patient Info': t('patientInfo', lang),
-  'PATIËNT': t('patient', lang).toUpperCase(),
-  'Taal patiënt': t('patientLanguage', lang),
-  'Voornaam': t('firstName', lang),
-  'Achternaam': t('lastName', lang),
-  'Geboortedatum': t('birthDate', lang),
-  'Leeftijd': t('age', lang),
-  'Allergieën': t('allergies', lang),
-  'Gekende medische historie': t('medicalHistory', lang),
-  'Medische Historie': t('medicalHistory', lang),
-  'Mobiliteitstoestand': t('mobility', lang),
-  'Annuleren': t('cancel', lang),
-  'Opslaan': t('save', lang),
-  'Sluiten': t('close', lang),
-  'Wijzigen': t('change', lang),
-  'Wissen': t('remove', lang),
-  'ALARM INSTELLINGEN': t('alarmSettings', lang).toUpperCase(),
-  'REMINDERS INSTELLINGEN': t('reminderSettings', lang).toUpperCase(),
-  'MEDICATIES': t('medications', lang).toUpperCase(),
-  'Voorraad': t('stock', lang),
-  'Dagelijkse': t('daily', lang),
-  'Sporadische': t('sporadic', lang),
-  'Ochtend deadline': t('morningDeadline', lang),
-  'Middag deadline': t('afternoonDeadline', lang),
-  'Avond deadline': t('eveningDeadline', lang),
-  'Medicatie check': t('medicationCheck', lang),
-  'Rapport check': t('reportCheck', lang)
-  ,'HUISARTS': t('doctor', lang).toUpperCase()
-  ,'Huisarts wijzigen': t('doctorEdit', lang)
-  ,'Naam': t('name', lang)
-  ,'Adres': t('address', lang)
-  ,'Telefoon': t('phone', lang)
-  ,'GEOPEND': t('opened', lang).toUpperCase()
-  ,'GESLOTEN': t('closed', lang).toUpperCase()
-  ,'Buiten openingsuren': t('outsideHours', lang)
-  ,'Wachtdienst Midden-Brabant is actief': t('onCallActive', lang)
-  ,'Bellen': t('call', lang)
-  ,'Wachtpost': t('onCall', lang)
-  ,'Print / PDF': t('printPdf', lang)
-  ,'Health Tracker Rapport': t('reportTitle', lang)
-  ,'Arts Rapport': t('reportDocTitle', lang)
-  ,'Medisch opvolgingsdocument voor arts of specialist': t('reportSubtitle', lang)
-  ,'Rapportperiode': t('reportPeriod', lang)
-  ,'Gemiddelde bloeddruk': t('avgBloodPressure', lang)
-  ,'Gemiddelde hartslag': t('avgHeartRate', lang)
-  ,'Therapietrouw dagelijkse medicatie': t('adherenceDailyMedication', lang)
-  ,'Bloeddrukmetingen': t('bpMeasurements', lang)
-  ,'Bloeddruk': t('bloodPressure', lang)
-  ,'Hartslag': t('heartRate', lang)
-  ,'Status': t('status', lang)
-  ,'Samenvatting - Gezondheidsanalyse': t('summaryAnalysis', lang)
-  ,'Gemiddelde': t('average', lang)
-  ,'Trend': t('trend', lang)
-  ,'Trends Analyse': t('trendAnalysis', lang)
-  ,'Metingen': t('measurements', lang)
-  ,'Medicatie Naleving': t('medicationCompliance', lang)
-  ,'Aanbevelingen & Advies': t('recommendations', lang)
-  ,'Intelligente Persoonlijke Aanbevelingen': t('smartAdvice', lang)
-  ,'Actieve medicatie - medisch overzicht + grafieken': t('activeMedicationOverview', lang)
-  ,'Geen metingen': t('noMeasurements', lang)
-  ,'Geen medicaties': t('noMedications', lang)
-  ,'Medische voorgeschiedenis': t('medicalHistory', lang)
-  ,'Noodcontact': t('emergencyContact', lang)
-  ,'Mobiliteit': t('mobility', lang)
-  ,'Rapporttaal alarm': t('emergencyReportLanguage', lang)
- };
- const walker = document.createTreeWalker(root || document.body, NodeFilter.SHOW_TEXT);
- const nodes = [];
- while (walker.nextNode()) nodes.push(walker.currentNode);
- nodes.forEach(node => {
-  const raw = node.nodeValue;
-  const trimmed = raw.trim();
- if (exact[trimmed]) node.nodeValue = raw.replace(trimmed, exact[trimmed]);
- });
-}
-function applyPatientLanguage(root){
- translateAppText(root || document.getElementById('app') || document.body);
+function t(key){
+ const lang=getLangCode((window.app&&window.app.data&&window.app.data.patient&&window.app.data.patient.language)||'Nederlands');
+ return (LANG[lang]&&LANG[lang][key])||LANG.nl[key]||key;
 }
 
 class App {
@@ -537,7 +331,6 @@ class App {
                 this.view = 'cal';
                 this.showSet = false;
                 this.settingsVisible = false;
-                window.app = this;
                 this.settings = JSON.parse(localStorage.getItem('settings') || JSON.stringify({
                     ochtendDeadline: '10:00',
                     middagDeadline: '13:00',
@@ -948,7 +741,6 @@ class App {
                             this.data.intakes = backup.intakes || {};
                             this.data.measures = backup.measures || {};
                             this.data.rapportages = backup.rapportages || {};
-                            this.data.patient = backup.patient || null;
                             this.settings = backup.settings || this.settings;
                             localStorage.setItem('data', JSON.stringify(this.data));
                             localStorage.setItem('settings', JSON.stringify(this.settings));
@@ -1201,31 +993,30 @@ class App {
                 document.body.insertAdjacentHTML('beforeend', `
                     <div id="doctor-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target.id==='doctor-modal') document.getElementById('doctor-modal').remove();">
                         <div style="background:white;border-radius:12px;padding:24px;width:95%;max-width:320px;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
-                            <h2 style="margin:0 0 20px 0;font-size:18px;color:#1f2937;font-weight:600;">✏️ ${t('doctorEdit')}</h2>
+                            <h2 style="margin:0 0 20px 0;font-size:18px;color:#1f2937;font-weight:600;">✏️ Huisarts wijzigen</h2>
                             
                             <div style="margin-bottom:16px;">
-                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">${t('name')}</label>
+                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Naam</label>
                                 <input type="text" id="doctorNameInput" value="${d.name}" placeholder="Dr. Naam" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
                             </div>
                             
                             <div style="margin-bottom:16px;">
-                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">${t('address')}</label>
+                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Adres</label>
                                 <input type="text" id="doctorAddressInput" value="${d.address}" placeholder="Straat 123 - 1234 Stad" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
                             </div>
                             
                             <div style="margin-bottom:20px;">
-                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">${t('phone')}</label>
+                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Telefoon</label>
                                 <input type="tel" id="doctorPhoneInput" value="${d.phone}" placeholder="02 123 45 67" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
                             </div>
                             
                             <div style="display:flex;gap:12px;">
-                                <button onclick="app.saveDoctor()" style="background:#10b981;color:white;border:none;flex:1;padding:12px;border-radius:8px;font-weight:500;cursor:pointer;">💾 ${t('save').toUpperCase()}</button>
-                                <button onclick="document.getElementById('doctor-modal').remove()" style="background:#e5e7eb;color:#1f2937;border:none;flex:1;padding:12px;border-radius:8px;font-weight:500;cursor:pointer;">${t('close').toUpperCase()}</button>
+                                <button onclick="app.saveDoctor()" style="background:#10b981;color:white;border:none;flex:1;padding:12px;border-radius:8px;font-weight:500;cursor:pointer;">💾 OPSLAAN</button>
+                                <button onclick="document.getElementById('doctor-modal').remove()" style="background:#e5e7eb;color:#1f2937;border:none;flex:1;padding:12px;border-radius:8px;font-weight:500;cursor:pointer;">SLUITEN</button>
                             </div>
                         </div>
                     </div>
                 `);
-                applyPatientLanguage(document.getElementById('doctor-modal'));
             }
 
 
@@ -1831,24 +1622,23 @@ class App {
                 const chartData = this.generateChartsData();
                 const advice = this.generateSmartAdvice();
                 const doctor = this.doctor;
-                const reportLang = getAppLanguage();
 
                 // v3.1 - Moderne eerste rapportpagina, zonder bestaande patiëntinformatie te verliezen
                 const patient = this.data.patient || null;
                 const formatReportDate = (dateStr) => {
-                    if (!dateStr) return t('notFilled', reportLang);
-                    try { return new Date(dateStr).toLocaleDateString(reportLang === 'nl' ? 'nl-NL' : reportLang, {year:'numeric', month:'long', day:'numeric'}); }
+                    if (!dateStr) return 'Niet ingevuld';
+                    try { return new Date(dateStr).toLocaleDateString('nl-NL', {year:'numeric', month:'long', day:'numeric'}); }
                     catch(e) { return dateStr; }
                 };
                 const calcAge = (birthDate) => {
-                    if (!birthDate) return t('notFilled', reportLang);
+                    if (!birthDate) return 'Niet ingevuld';
                     const b = new Date(birthDate);
-                    if (isNaN(b.getTime())) return t('notFilled', reportLang);
+                    if (isNaN(b.getTime())) return 'Niet ingevuld';
                     const t = new Date();
                     let age = t.getFullYear() - b.getFullYear();
                     const m = t.getMonth() - b.getMonth();
                     if (m < 0 || (m === 0 && t.getDate() < b.getDate())) age--;
-                    return age + ' ' + (age === 1 ? LANG[reportLang].day : LANG[reportLang].days);
+                    return age + ' jaar';
                 };
                 const reportDates = (stats.sortedDates || []).filter(Boolean).sort();
                 const reportStart = reportDates.length ? reportDates[0] : this.today();
@@ -1863,12 +1653,10 @@ class App {
                     });
                 });
                 const therapyRate = expectedDailyIntakes > 0 ? Math.round((takenDailyIntakes / expectedDailyIntakes) * 100) : 0;
-                const therapyLabel = expectedDailyIntakes > 0 ? (therapyRate + '%') : '-';
+                const therapyLabel = expectedDailyIntakes > 0 ? (therapyRate + '%') : 'N.v.t.';
                 const therapyBarWidth = Math.max(0, Math.min(100, therapyRate));
                 const bpStatusObj = getBloodPressureStatus(stats.avgSys || 0, stats.avgDia || 0);
                 const hrStatusObj = getHeartRateStatus(stats.avgHr || 0);
-                const emergencyContact = normalizeEmergencyContact(patient && patient.emergencyContact, patient && patient.language);
-                const futureAlarmReportLanguage = getEmergencyContactReportLanguage(patient);
                 const generalStatusText = (stats.avgSys && stats.avgDia)
                     ? ((stats.avgSys < 135 && stats.avgDia < 85 && (expectedDailyIntakes === 0 || therapyRate >= 90)) ? '🟢 ALGEMENE STATUS GOED' : (stats.avgSys >= 160 || stats.avgDia >= 100 ? '🔴 AANDACHT NODIG' : '🟡 OPVOLGEN'))
                     : '⚪ ONVOLDOENDE GEGEVENS';
@@ -1879,30 +1667,29 @@ class App {
                 ${patient.photo ? `<img src="${patient.photo}" class="patient-photo">` : `<div class="patient-photo placeholder">👤</div>`}
             </div>
             <div class="patient-main">
-                <div class="card-eyebrow">👤 ${t('patient', reportLang).toUpperCase()}</div>
+                <div class="card-eyebrow">👤 PATIËNT</div>
                 <h2>${patient.firstName || ''} ${patient.lastName || ''}</h2>
                 <div class="info-grid">
-                    <div><span>📅 ${t('birthDate', reportLang)}</span><strong>${formatReportDate(patient.birthDate)}</strong></div>
-                    <div><span>🎂 ${t('age', reportLang)}</span><strong>${calcAge(patient.birthDate)}</strong></div>
-                    ${patient.allergies ? `<div class="full warning"><span>⚠️ ${t('allergies', reportLang)}</span><strong>${patient.allergies}</strong></div>` : ''}
-                    ${patient.medicalHistory ? `<div class="full"><span>🏥 ${t('medicalHistory', reportLang)}</span><strong>${patient.medicalHistory}</strong></div>` : ''}
-                    ${patient.mobilityStatus ? `<div class="full"><span>🚶 ${t('mobility', reportLang)}</span><strong>${patient.mobilityStatus}</strong></div>` : ''}
-                    ${hasEmergencyContact(emergencyContact) ? `<div class="full"><span>🚨 ${t('emergencyContact', reportLang)}</span><strong>${emergencyContact.fullName} (${emergencyContact.relationship || '-'})<br>${emergencyContact.email || '-'} • ${emergencyContact.phone || '-'}<br>${t('emergencyReportLanguage', reportLang)}: ${getPatientLanguageLabel(futureAlarmReportLanguage)}</strong></div>` : ''}
+                    <div><span>📅 Geboortedatum</span><strong>${formatReportDate(patient.birthDate)}</strong></div>
+                    <div><span>🎂 Leeftijd</span><strong>${calcAge(patient.birthDate)}</strong></div>
+                    ${patient.allergies ? `<div class="full warning"><span>⚠️ Allergieën</span><strong>${patient.allergies}</strong></div>` : ''}
+                    ${patient.medicalHistory ? `<div class="full"><span>🏥 Medische voorgeschiedenis</span><strong>${patient.medicalHistory}</strong></div>` : ''}
+                    ${patient.mobilityStatus ? `<div class="full"><span>🚶 Mobiliteit</span><strong>${patient.mobilityStatus}</strong></div>` : ''}
                 </div>
             </div>
         </div>` : `
         <div class="medical-card patient-card empty-patient">
             <div class="patient-photo placeholder">👤</div>
             <div class="patient-main">
-                <div class="card-eyebrow">👤 ${t('patient', reportLang).toUpperCase()}</div>
-                <h2>${t('noPatientData', reportLang)}</h2>
-                <p class="muted">${t('patientCardAvailable', reportLang)}</p>
+                <div class="card-eyebrow">👤 PATIËNT</div>
+                <h2>Geen patiëntgegevens ingevuld</h2>
+                <p class="muted">De patiëntkaart blijft beschikbaar zodra de gegevens in de app zijn ingevuld.</p>
             </div>
         </div>`;
                 const doctorCardHtml = `
         <div class="medical-card doctor-card">
             <div>
-                <div class="card-eyebrow">👨‍⚕️ ${t('doctor', reportLang).toUpperCase()}</div>
+                <div class="card-eyebrow">👨‍⚕️ HUISARTS</div>
                 <h3>${doctor.name}</h3>
                 <p>📍 ${doctor.address}</p>
                 <p>📞 ${doctor.phone}</p>
@@ -2214,7 +2001,7 @@ class App {
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <title>📋 ${t('reportDocTitle', reportLang)}</title>
+    <title>📋 Arts Rapport</title>
     <style>
         :root { --red:#dc2626; --dark:#111827; --muted:#6b7280; --soft:#f9fafb; --line:#e5e7eb; --green:#10b981; --amber:#f59e0b; --blue:#2563eb; }
         * { box-sizing: border-box; }
@@ -2341,20 +2128,20 @@ class App {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"><\/script>
 </head>
 <body>
-    <button class="button" onclick="window.print();">🖨️ ${t('printPdf', reportLang)}</button>
+    <button class="button" onclick="window.print();">🖨️ Print / PDF</button>
     <div class="report">
         <div class="hero">
             <div class="hero-left">
                 <img src="./logo.png" class="logo">
                 <div>
-                    <h1>❤️ ${t('reportTitle', reportLang)}</h1>
-                    <p>${t('reportSubtitle', reportLang)}</p>
+                    <h1>❤️ Health Tracker Rapport</h1>
+                    <p>Medisch opvolgingsdocument voor arts of specialist</p>
                 </div>
             </div>
             <div class="period-pill">
-                <strong>📅 ${t('reportPeriod', reportLang)}</strong><br>
+                <strong>📅 Rapportperiode</strong><br>
                 ${formatReportDate(reportStart)} → ${formatReportDate(reportEnd)}<br>
-                ${daysFollowed || 0} ${(daysFollowed || 0) === 1 ? LANG[reportLang].day : LANG[reportLang].days} ${t('followUp', reportLang).toLowerCase()}
+                ${daysFollowed || 0} dagen opvolging
             </div>
         </div>
 
@@ -2778,7 +2565,6 @@ class App {
                 const win = window.open('', '', 'width=900,height=1200');
                 win.document.write(html);
                 win.document.close();
-                setTimeout(() => translateAppText(win.document.body), 0);
             }
 
             generateReportStats() {
@@ -3249,14 +3035,12 @@ class App {
                 // 🎨 EXPLICIT KLEUREN - GUARANTEED
                 setTimeout(() => {
                     this.colorAllInputs();
-                    applyPatientLanguage(document.getElementById('app'));
                 }, 10);
             }
 
-            savePatient(firstName, lastName, birthDate, photoBase64, allergies, medicalHistory, mobilityStatus, language, emergencyContact) {
+            savePatient(firstName, lastName, birthDate, photoBase64, allergies, medicalHistory, mobilityStatus, language) {
                 const isNew = !this.data.patient;
                 const existingPhoto = this.data.patient && this.data.patient.photo ? this.data.patient.photo : null;
-                const patientLanguage = normalizeLangCode(language || 'nl');
                 this.data.patient = {
                     firstName: firstName,
                     lastName: lastName,
@@ -3265,8 +3049,7 @@ class App {
                     allergies: allergies || '',
                     medicalHistory: medicalHistory || '',
                     mobilityStatus: mobilityStatus || '',
-                    language: patientLanguage,
-                    emergencyContact: normalizeEmergencyContact(emergencyContact, patientLanguage)
+                    language: language || 'nl'
                 };
                 this.save();
                 
@@ -3279,11 +3062,10 @@ class App {
                 }
                 
                 this.show();
-                applyPatientLanguage(document.getElementById('app'));
             }
 
             removePatient() {
-                if (confirm(t('deletePatientConfirm'))) {
+                if (confirm('Patient gegevens wissen?')) {
                     const patientName = this.data.patient ? this.data.patient.firstName + ' ' + this.data.patient.lastName : 'Onbekend';
                     this.data.patient = null;
                     this.save();
@@ -3432,19 +3214,19 @@ class App {
                 const stats = this.getFollowUpStats();
                 const patient = this.data.patient || {};
                 const language = getPatientLanguageLabel(patient.language || 'nl');
-                const firstLabel = stats.first ? this.formatFollowUpDate(stats.first.date) : t('noMeasurement');
-                const lastLabel = stats.last ? (this.formatFollowUpDate(stats.last.date) + (stats.last.time ? ' om ' + stats.last.time : '')) : t('noMeasurement');
-                const daysLabel = stats.days ? (stats.days + ' ' + (stats.days === 1 ? t('day') : t('days'))) : '-';
+                const firstLabel = stats.first ? this.formatFollowUpDate(stats.first.date) : 'Nog geen meting';
+                const lastLabel = stats.last ? (this.formatFollowUpDate(stats.last.date) + (stats.last.time ? ' om ' + stats.last.time : '')) : 'Nog geen meting';
+                const daysLabel = stats.days ? (stats.days + (stats.days === 1 ? ' dag' : ' dagen')) : '-';
 
                 return '<div style="background:white;border-radius:8px;padding:12px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);border:1px solid #e5e7eb;">' +
-                    '<div style="font-size:13px;font-weight:800;color:#1f2937;margin-bottom:10px;display:flex;align-items:center;gap:6px;">📊 ' + t('followUp').toUpperCase() + '</div>' +
+                    '<div style="font-size:13px;font-weight:800;color:#1f2937;margin-bottom:10px;display:flex;align-items:center;gap:6px;">📊 OPVOLGING</div>' +
                     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
-                        '<div style="background:#f8fafc;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><div style="font-size:10px;color:#64748b;font-weight:700;">📅 ' + t('followUpStarted') + '</div><div style="font-size:12px;color:#111827;font-weight:800;margin-top:2px;">' + firstLabel + '</div></div>' +
-                        '<div style="background:#f8fafc;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><div style="font-size:10px;color:#64748b;font-weight:700;">📆 ' + t('lastMeasurement') + '</div><div style="font-size:12px;color:#111827;font-weight:800;margin-top:2px;">' + lastLabel + '</div></div>' +
-                        '<div style="background:#f8fafc;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><div style="font-size:10px;color:#64748b;font-weight:700;">⏳ ' + t('followUpDuration') + '</div><div style="font-size:12px;color:#111827;font-weight:800;margin-top:2px;">' + daysLabel + '</div></div>' +
-                        '<div style="background:#f8fafc;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><div style="font-size:10px;color:#64748b;font-weight:700;">❤️ ' + t('totalMeasurements') + '</div><div style="font-size:12px;color:#111827;font-weight:800;margin-top:2px;">' + stats.total + '</div></div>' +
+                        '<div style="background:#f8fafc;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><div style="font-size:10px;color:#64748b;font-weight:700;">📅 Opvolging gestart</div><div style="font-size:12px;color:#111827;font-weight:800;margin-top:2px;">' + firstLabel + '</div></div>' +
+                        '<div style="background:#f8fafc;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><div style="font-size:10px;color:#64748b;font-weight:700;">📆 Laatste meting</div><div style="font-size:12px;color:#111827;font-weight:800;margin-top:2px;">' + lastLabel + '</div></div>' +
+                        '<div style="background:#f8fafc;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><div style="font-size:10px;color:#64748b;font-weight:700;">⏳ Duur opvolging</div><div style="font-size:12px;color:#111827;font-weight:800;margin-top:2px;">' + daysLabel + '</div></div>' +
+                        '<div style="background:#f8fafc;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><div style="font-size:10px;color:#64748b;font-weight:700;">❤️ Totaal metingen</div><div style="font-size:12px;color:#111827;font-weight:800;margin-top:2px;">' + stats.total + '</div></div>' +
                     '</div>' +
-                    '<div style="margin-top:8px;background:#f8fafc;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><span style="font-size:10px;color:#64748b;font-weight:700;">🌍 ' + t('patientLanguage') + '</span> <strong style="font-size:12px;color:#111827;">' + language + '</strong></div>' +
+                    '<div style="margin-top:8px;background:#f8fafc;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><span style="font-size:10px;color:#64748b;font-weight:700;">🌍 Taal patiënt</span> <strong style="font-size:12px;color:#111827;">' + language + '</strong></div>' +
                 '</div>';
             }
 
@@ -3457,11 +3239,11 @@ class App {
                 // LEFT: Logo + Title
                 html += '<div style="display:flex;gap:8px;align-items:center;flex:1;">';
                 html += '<img src="./logo.png" style="width:48px;height:48px;border-radius:8px;background:white;padding:3px;flex-shrink:0;">';
-                html += '<div style="min-width:0;"><h1 style="font-size:13px;font-weight:700;margin:0;">' + t('appTitle') + '</h1><p style="font-size:9px;opacity:0.9;margin:2px 0 0 0;">' + t('appSubtitle') + ' (' + this.data.meds.length + ' meds) • v' + APP_VERSION + '</p></div>';
+                html += '<div style="min-width:0;"><h1 style="font-size:13px;font-weight:700;margin:0;">Bloeddruk/Medicatie</h1><p style="font-size:9px;opacity:0.9;margin:2px 0 0 0;">Opvolgingstool (' + this.data.meds.length + ' meds)</p></div>';
                 html += '</div>';
                 
-                // RIGHT: 13 buttons in a compact phone grid
-                html += '<div style="display:grid;grid-template-columns:repeat(4, 40px);gap:6px;flex-shrink:0;">';
+                // RIGHT: 13 buttons (3 per rij)
+                html += '<div style="display:grid;grid-template-columns:repeat(3, 40px);gap:6px;flex-shrink:0;">';
                 
                 // ROW 1: Telegram, Pillen, Uur
                 html += '<button onclick="app.openTg()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./telegram.png" style="width:24px;height:24px;"></button>';
@@ -3486,27 +3268,25 @@ class App {
                 
                 // ROW 5: Emails (NEW) + spacer
                 html += '<button onclick="showEmailManager()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;">📧</button>';
-                html += '<div></div><div></div><div></div>';
+                html += '<div></div><div></div>';
                 
                 html += '</div>';
                 html += '</div>';
                 
-                html += '<button onclick="app.showEditAlarmSettings()" style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);border:2px solid #ef4444;color:white;width:100%;padding:12px;border-radius:8px;font-weight:700;cursor:pointer;margin-bottom:12px;font-size:16px;"><span style="font-size:20px;">🚨</span> ' + t('alarmSettings').toUpperCase() + '</button>';
+                html += '<button onclick="app.showEditAlarmSettings()" style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);border:2px solid #ef4444;color:white;width:100%;padding:12px;border-radius:8px;font-weight:700;cursor:pointer;margin-bottom:12px;font-size:16px;"><span style="font-size:20px;">🚨</span> ALARM INSTELLINGEN</button>';
 
                 // PATIENT SECTION - Vóór kalender
                 if (!this.data.patient) {
-                    html += '<button onclick="showPatientForm()" style="background:#3b82f6;border:none;color:white;width:100%;padding:12px;border-radius:8px;font-weight:500;cursor:pointer;margin-bottom:12px;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;"><span style="font-size:18px;">👤</span> ' + t('patientAdd') + '</button>';
+                    html += '<button onclick="showPatientForm()" style="background:#3b82f6;border:none;color:white;width:100%;padding:12px;border-radius:8px;font-weight:500;cursor:pointer;margin-bottom:12px;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;"><span style="font-size:18px;">👤</span> Patient toevoegen</button>';
                 } else {
                     const p = this.data.patient;
-                    const emergency = normalizeEmergencyContact(p.emergencyContact, p.language);
-                    const emergencyLabel = hasEmergencyContact(emergency) ? ' • 🚨 ' + emergency.fullName : ' • 🚨 ' + t('noEmergencyContact');
                     html += '<div style="background:white;border-radius:8px;padding:12px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);border:1px solid #e5e7eb;display:flex;align-items:center;gap:12px;">';
                     if (p.photo) {
                         html += '<img src="' + p.photo + '" style="width:60px;height:60px;border-radius:8px;object-fit:cover;flex-shrink:0;">';
                     } else {
                         html += '<div style="width:60px;height:60px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:24px;">👤</div>';
                     }
-                    html += '<div style="flex:1;"><p style="margin:0;font-size:13px;color:#1f2937;font-weight:600;">' + p.firstName + '</p><small style="font-size:11px;color:#6b7280;">' + p.lastName + ' • ' + formatDate(p.birthDate) + ' • 🌍 ' + getPatientLanguageLabel(p.language || 'nl') + emergencyLabel + '</small></div>';
+                    html += '<div style="flex:1;"><p style="margin:0;font-size:13px;color:#1f2937;font-weight:600;">' + p.firstName + '</p><small style="font-size:11px;color:#6b7280;">' + p.lastName + ' • ' + formatDate(p.birthDate) + ' • 🌍 ' + getPatientLanguageLabel(p.language || 'nl') + '</small></div>';
                     html += '<div style="display:flex;gap:6px;flex-shrink:0;">';
                     html += '<button onclick="showPatientInfoPopup()" style="background:transparent;border:none;color:#6366f1;cursor:pointer;padding:4px;border-radius:4px;font-size:18px;" title="Toon patient info">👁️</button>';
                     html += '<button onclick="showPatientEditForm()" style="background:transparent;border:none;color:#3b82f6;cursor:pointer;padding:4px;border-radius:4px;font-size:18px;">✏️</button>';
@@ -3522,35 +3302,35 @@ class App {
 
                 if (this.showSet) {
                     html += '<div style="background:white;border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';
-                    html += '<h2 style="font-size:14px;font-weight:700;margin-bottom:10px;">💊 ' + t('medications').toUpperCase() + '</h2>';
+                    html += '<h2 style="font-size:14px;font-weight:700;margin-bottom:10px;">💊 MEDICATIES</h2>';
                     for (let med of this.data.meds) {
                         html += '<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
-                        const medTypeLabel = med.type === 'sporadic' ? ' 🔵 ' + t('sporadic') : ' 🟢 ' + t('daily');
+                        const medTypeLabel = med.type === 'sporadic' ? ' 🔵 Sporadisch' : ' 🟢 Dagelijks';
                         const perIntakeLabel = med.type === 'sporadic' ? ' • ' + (parseInt(med.pillsPerIntake) || 1) + ' per inname' : '';
                         html += '<div><div style="font-weight:700;">' + med.icon + ' ' + med.name + '</div><div style="font-size:11px;color:#6b7280;">' + med.dosage + ' • ' + this.getPills(med.id) + '/' + med.pills + medTypeLabel + perIntakeLabel + '</div></div>';
                         html += '<div style="display:flex;gap:6px;">';
-                        html += '<button onclick="app.adjustMedStock(\'' + med.id + '\')" style="background:#3b82f6;color:white;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;">📦 ' + t('stock') + '</button>';
+                        html += '<button onclick="app.adjustMedStock(\'' + med.id + '\')" style="background:#3b82f6;color:white;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;">📦 Voorraad</button>';
                         html += '<button onclick="app.rmMed(\'' + med.id + '\')" style="background:#ef4444;color:white;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;">✕</button>';
                         html += '</div></div>';
                     }
                     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">';
-                    html += '<button onclick="app.addMed(\'daily\')" style="background:#10b981;color:white;border:none;border-radius:8px;padding:8px 8px;width:100%;font-weight:700;cursor:pointer;font-size:12px;">+ ' + t('daily') + '</button>';
-                    html += '<button onclick="app.addMed(\'sporadic\')" style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:8px 8px;width:100%;font-weight:700;cursor:pointer;font-size:12px;">+ ' + t('sporadic') + '</button>';
+                    html += '<button onclick="app.addMed(\'daily\')" style="background:#10b981;color:white;border:none;border-radius:8px;padding:8px 8px;width:100%;font-weight:700;cursor:pointer;font-size:12px;">+ Dagelijkse</button>';
+                    html += '<button onclick="app.addMed(\'sporadic\')" style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:8px 8px;width:100%;font-weight:700;cursor:pointer;font-size:12px;">+ Sporadische</button>';
                     html += '</div>';
                     html += '</div>';
                 }
 
                 if (this.settingsVisible) {
                     html += '<div style="background:white;border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';
-                    html += '<h2 style="font-size:14px;font-weight:700;margin-bottom:10px;">⏰ ' + t('reminderSettings').toUpperCase() + '</h2>';
+                    html += '<h2 style="font-size:14px;font-weight:700;margin-bottom:10px;">⏰ REMINDERS INSTELLINGEN</h2>';
                     
                     html += '<div style="margin-bottom:8px;">';
-                    html += '<label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">' + t('morningDeadline') + '</label>';
+                    html += '<label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Ochtend deadline</label>';
                     html += '<input id="ochtendInput" type="time" value="' + this.settings.ochtendDeadline + '" style="width:35%;padding:6px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;">';
                     html += '</div>';
                     
                     html += '<div style="margin-bottom:8px;">';
-                    html += '<label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">' + t('afternoonDeadline') + '</label>';
+                    html += '<label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Middag deadline</label>';
                     html += '<input id="middagInput" type="time" value="' + this.settings.middagDeadline + '" style="width:35%;padding:6px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;">';
                     html += '</div>';
                     
@@ -3740,13 +3520,13 @@ class App {
             popupHtml += '<div style="text-align:center;margin-bottom:12px;">';
             popupHtml += '<div style="font-size:48px;margin-bottom:8px;">👨‍⚕️</div>';
             popupHtml += '<h2 style="font-size:18px;font-weight:500;margin:0;color:#1f2937;">Dr. Verbesselt Koen</h2>';
-            popupHtml += '<div style="font-size:12px;color:'+(isOpen?'#10b981':'#ef4444')+';margin-top:6px;font-weight:500;letter-spacing:0.5px;">'+(isOpen?'🟢 '+t('opened').toUpperCase():'🔴 '+t('closed').toUpperCase())+'</div>';
+            popupHtml += '<div style="font-size:12px;color:'+(isOpen?'#10b981':'#ef4444')+';margin-top:6px;font-weight:500;letter-spacing:0.5px;">'+(isOpen?'🟢 GEOPEND':'🔴 GESLOTEN')+'</div>';
             popupHtml += '</div>';
             
             if (!isOpen) {
                 popupHtml += '<div style="background:#fef2f2;border-left:4px solid #ef4444;padding:12px;border-radius:6px;margin:16px 0;">';
-                popupHtml += '<div style="font-size:12px;color:#991f1f;font-weight:500;">⚠️ '+t('outsideHours')+'</div>';
-                popupHtml += '<div style="font-size:11px;color:#7f1d1d;margin-top:4px;line-height:1.4;">'+t('onCallActive')+'</div>';
+                popupHtml += '<div style="font-size:12px;color:#991f1f;font-weight:500;">⚠️ Buiten openingsuren</div>';
+                popupHtml += '<div style="font-size:11px;color:#7f1d1d;margin-top:4px;line-height:1.4;">Wachtdienst Midden-Brabant is actief</div>';
                 popupHtml += '</div>';
             }
             
@@ -3770,100 +3550,63 @@ class App {
             
             popupHtml += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
             if (isOpen) {
-                popupHtml += '<button onclick="window.location.href=\'tel:0226912 54\'" style="background:#3b82f6;border:none;color:white;padding:10px;border-radius:6px;font-weight:500;cursor:pointer;font-size:13px;transition:all 0.2s;">📞 '+t('call')+'</button>';
+                popupHtml += '<button onclick="window.location.href=\'tel:0226912 54\'" style="background:#3b82f6;border:none;color:white;padding:10px;border-radius:6px;font-weight:500;cursor:pointer;font-size:13px;transition:all 0.2s;">📞 Bellen</button>';
             } else {
-                popupHtml += '<button onclick="window.location.href=\'tel:1733\'" style="background:#ef4444;border:none;color:white;padding:10px;border-radius:6px;font-weight:500;cursor:pointer;font-size:13px;transition:all 0.2s;">🚑 '+t('onCall')+'</button>';
+                popupHtml += '<button onclick="window.location.href=\'tel:1733\'" style="background:#ef4444;border:none;color:white;padding:10px;border-radius:6px;font-weight:500;cursor:pointer;font-size:13px;transition:all 0.2s;">🚑 Wachtpost</button>';
             }
-            popupHtml += '<button onclick="this.closest(\'div[style*=z-index]\').remove()" style="background:transparent;border:0.5px solid #e5e7eb;color:#1f2937;padding:10px;border-radius:6px;font-weight:500;cursor:pointer;font-size:13px;transition:all 0.2s;">'+t('close')+'</button>';
+            popupHtml += '<button onclick="this.closest(\'div[style*=z-index]\').remove()" style="background:transparent;border:0.5px solid #e5e7eb;color:#1f2937;padding:10px;border-radius:6px;font-weight:500;cursor:pointer;font-size:13px;transition:all 0.2s;">Sluiten</button>';
             popupHtml += '</div>';
             popupHtml += '</div></div>';
             
             document.body.insertAdjacentHTML('beforeend', popupHtml);
-            applyPatientLanguage(document.body.lastElementChild);
-        }
-
-        function renderEmergencyContactFields(contact, patientLanguage) {
-            const c = normalizeEmergencyContact(contact, patientLanguage);
-            const filled = hasEmergencyContact(c);
-            return `
-                        <div style="border-top:1px solid #e5e7eb;margin:18px 0 16px;padding-top:16px;">
-                            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
-                                <h3 style="margin:0;font-size:14px;font-weight:700;color:#1f2937;">🚨 ${t('emergencyContact')}</h3>
-                                ${filled ? `<label style="font-size:11px;color:#ef4444;display:flex;align-items:center;gap:5px;"><input type="checkbox" id="emergency-remove" style="width:14px;height:14px;"> ${t('remove')}</label>` : ''}
-                            </div>
-                            <div style="margin-bottom:12px;">
-                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">${t('fullName')}</label>
-                                <input type="text" id="emergency-name" value="${c.fullName}" placeholder="Naam contactpersoon" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
-                            </div>
-                            <div style="margin-bottom:12px;">
-                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">${t('relationship')}</label>
-                                <select id="emergency-relationship" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;background:white;">
-                                    <option value=""></option>${getRelationshipOptions(c.relationship)}
-                                </select>
-                            </div>
-                            <div style="margin-bottom:12px;">
-                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">${t('email')}</label>
-                                <input type="email" id="emergency-email" value="${c.email}" placeholder="naam@example.com" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
-                            </div>
-                            <div style="margin-bottom:12px;">
-                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">${t('phone')}</label>
-                                <input type="tel" id="emergency-phone" value="${c.phone}" placeholder="+32 ..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
-                            </div>
-                            <div style="margin-bottom:4px;">
-                                <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🌍 ${t('emergencyLanguage')}</label>
-                                <select id="emergency-language" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;background:white;">
-                                    ${buildLanguageOptions(c.language)}
-                                </select>
-                            </div>
-                            <p style="font-size:11px;color:#64748b;line-height:1.35;margin:8px 0 0;">${t('emergencyContact')}: toekomstige alarmrapporten gebruiken deze taal.</p>
-                        </div>`;
         }
         
         function showPatientForm() {
-            const defaultLanguage = getAppLanguage();
             document.body.insertAdjacentHTML('beforeend', `
                 <div id="patient-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target.id==='patient-modal') document.getElementById('patient-modal').remove();">
                     <div style="background:white;border-radius:12px;padding:24px;width:95%;max-width:320px;max-height:85vh;overflow-y:auto;">
-                        <h2 style="margin:0 0 20px 0;font-size:18px;color:#1f2937;font-weight:600;">👤 ${t('patientAdd')}</h2>
+                        <h2 style="margin:0 0 20px 0;font-size:18px;color:#1f2937;font-weight:600;">👤 Patient Toevoegen</h2>
                         <div style="margin-bottom:16px;">
-                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">${t('firstName')} *</label>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Voornaam *</label>
                             <input type="text" id="patient-first" placeholder="Philippe" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
                         </div>
                         <div style="margin-bottom:16px;">
-                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">${t('lastName')} *</label>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Achternaam *</label>
                             <input type="text" id="patient-last" placeholder="De Meersman" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
                         </div>
                         <div style="margin-bottom:16px;">
-                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">${t('birthDate')} *</label>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Geboortedatum *</label>
                             <input type="date" id="patient-birth" value="1970-05-27" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
                         </div>
                         <div style="margin-bottom:16px;">
-                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🌍 ${t('patientLanguage')}</label>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🌍 Taal patiënt</label>
                             <select id="patient-language" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;background:white;">
-                                ${buildLanguageOptions(defaultLanguage)}
+                                <option value="nl" selected>🇳🇱 Nederlands</option>
+                                <option value="fr">🇫🇷 Français</option>
+                                <option value="es">🇪🇸 Español</option>
+                                <option value="en">🇬🇧 English</option>
                             </select>
                         </div>
                         <div style="margin-bottom:16px;">
-                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:8px;">📷 ${t('photo')}</label>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:8px;">📷 Foto (optioneel)</label>
                             <input type="file" id="patient-photo" accept="image/*" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
                             <img id="photo-preview" style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-top:8px;display:none;">
                         </div>
                         <div style="margin-bottom:16px;">
-                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🚫 ${t('allergies')}</label>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🚫 Allergiën</label>
                             <textarea id="patient-allergies" placeholder="bijv. Penicilline, Noten..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;font-family:inherit;min-height:60px;resize:vertical;"></textarea>
                         </div>
                         <div style="margin-bottom:16px;">
-                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🏥 ${t('medicalHistory')}</label>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🏥 Gekende medische historie</label>
                             <textarea id="patient-medical-history" placeholder="bijv. Diabetes, Hypertensie, Hartaandoening..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;font-family:inherit;min-height:60px;resize:vertical;"></textarea>
                         </div>
                         <div style="margin-bottom:16px;">
-                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🚶 ${t('mobility')}</label>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🚶 Mobiliteitstoestand</label>
                             <textarea id="patient-mobility-status" placeholder="bijv. Krukken/Rolstoel, Loopt met hulpmiddel..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;font-family:inherit;min-height:60px;resize:vertical;"></textarea>
                         </div>
-                        ${renderEmergencyContactFields(null, defaultLanguage)}
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px;">
-                            <button style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;padding:11px 16px;border-radius:6px;font-weight:500;cursor:pointer;font-size:14px;" onclick="document.getElementById('patient-modal').remove();">${t('cancel')}</button>
-                            <button style="background:#3b82f6;color:white;border:none;padding:11px 16px;border-radius:6px;font-weight:500;cursor:pointer;font-size:14px;" onclick="savePatientData();">${t('save')}</button>
+                            <button style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;padding:11px 16px;border-radius:6px;font-weight:500;cursor:pointer;font-size:14px;" onclick="document.getElementById('patient-modal').remove();">Annuleren</button>
+                            <button style="background:#3b82f6;color:white;border:none;padding:11px 16px;border-radius:6px;font-weight:500;cursor:pointer;font-size:14px;" onclick="savePatientData();">Opslaan</button>
                         </div>
                     </div>
                 </div>
@@ -3926,15 +3669,18 @@ class App {
         }
         
         function getPatientLanguageLabel(language) {
-            const code = normalizeLangCode(language);
-            const item = LANGUAGE_OPTIONS.find(l => l.code === code) || LANGUAGE_OPTIONS[0];
-            return item.label;
+            const labels = {
+                nl: 'Nederlands',
+                fr: 'Français',
+                es: 'Español',
+                en: 'English'
+            };
+            return labels[language || 'nl'] || labels.nl;
         }
 
         function showPatientInfoPopup() {
             const p = app.data.patient;
             if (!p) return;
-            const emergency = normalizeEmergencyContact(p.emergencyContact, p.language);
             
             const birthYear = parseInt(p.birthDate.split('-')[0]);
             const age = new Date().getFullYear() - birthYear;
@@ -3943,7 +3689,7 @@ class App {
                 <div id="patient-info-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:12px;" onclick="if(event.target.id==='patient-info-modal') document.getElementById('patient-info-modal').remove();">
                     <div style="background:white;border-radius:12px;padding:24px;width:100%;max-width:340px;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                            <h2 style="margin:0;font-size:18px;font-weight:600;color:#1f2937;">👤 ${t('patientInfo')}</h2>
+                            <h2 style="margin:0;font-size:18px;font-weight:600;color:#1f2937;">👤 Patient Info</h2>
                             <button style="background:transparent;border:none;color:#6b7280;font-size:20px;cursor:pointer;padding:0;" onclick="document.getElementById('patient-info-modal').remove();">✕</button>
                         </div>
                         
@@ -3951,28 +3697,19 @@ class App {
                             ${p.photo ? '<img src="' + p.photo + '" style="width:80px;height:80px;border-radius:8px;object-fit:cover;flex-shrink:0;">' : '<div style="width:80px;height:80px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:36px;">👤</div>'}
                             <div style="flex:1;">
                                 <p style="margin:0 0 4px 0;font-size:16px;font-weight:600;color:#1f2937;">${p.firstName} ${p.lastName}</p>
-                                <p style="margin:0;font-size:13px;color:#6b7280;">${t('birthDate')}: ${formatDate(p.birthDate)}</p>
-                                <p style="margin:4px 0 0 0;font-size:12px;color:#6b7280;">${t('age')}: ${age} jaar</p>
-                                <p style="margin:4px 0 0 0;font-size:12px;color:#6b7280;">${t('language')}: ${getPatientLanguageLabel(p.language || 'nl')}</p>
+                                <p style="margin:0;font-size:13px;color:#6b7280;">Geboortedatum: ${formatDate(p.birthDate)}</p>
+                                <p style="margin:4px 0 0 0;font-size:12px;color:#6b7280;">Leeftijd: ${age} jaar</p>
+                                <p style="margin:4px 0 0 0;font-size:12px;color:#6b7280;">Taal: ${getPatientLanguageLabel(p.language || 'nl')}</p>
                             </div>
                         </div>
                         
-                        ${p.allergies ? '<div style="margin-bottom:16px;"><p style="margin:0 0 8px 0;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;">🚫 ' + t('allergies') + '</p><p style="margin:0;font-size:14px;color:#1f2937;line-height:1.5;white-space:pre-wrap;">' + p.allergies + '</p></div>' : ''}
+                        ${p.allergies ? '<div style="margin-bottom:16px;"><p style="margin:0 0 8px 0;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;">🚫 Allergiën</p><p style="margin:0;font-size:14px;color:#1f2937;line-height:1.5;white-space:pre-wrap;">' + p.allergies + '</p></div>' : ''}
                         
-                        ${p.medicalHistory ? '<div style="margin-bottom:16px;"><p style="margin:0 0 8px 0;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;">🏥 ' + t('medicalHistory') + '</p><p style="margin:0;font-size:14px;color:#1f2937;line-height:1.5;white-space:pre-wrap;">' + p.medicalHistory + '</p></div>' : ''}
+                        ${p.medicalHistory ? '<div style="margin-bottom:16px;"><p style="margin:0 0 8px 0;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;">🏥 Medische Historie</p><p style="margin:0;font-size:14px;color:#1f2937;line-height:1.5;white-space:pre-wrap;">' + p.medicalHistory + '</p></div>' : ''}
                         
-                        ${p.mobilityStatus ? '<div style="margin-bottom:16px;"><p style="margin:0 0 8px 0;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;">🚶 ' + t('mobility') + '</p><p style="margin:0;font-size:14px;color:#1f2937;line-height:1.5;white-space:pre-wrap;"><span style="background:#fef3c7;color:#92400e;padding:4px 12px;border-radius:4px;font-weight:500;display:inline-block;">' + p.mobilityStatus + '</span></p></div>' : ''}
-
-                        <div style="margin-bottom:24px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#f8fafc;">
-                            <p style="margin:0 0 8px 0;font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;">🚨 ${t('emergencyContact')}</p>
-                            ${hasEmergencyContact(emergency) ? `
-                                <p style="margin:0 0 4px 0;font-size:14px;color:#1f2937;font-weight:600;">${emergency.fullName}</p>
-                                <p style="margin:0;font-size:12px;color:#6b7280;">${emergency.relationship || '-'} • ${getPatientLanguageLabel(emergency.language)}</p>
-                                <p style="margin:6px 0 0 0;font-size:12px;color:#1f2937;">${emergency.email || '-'}<br>${emergency.phone || '-'}</p>
-                            ` : `<p style="margin:0;font-size:13px;color:#6b7280;">${t('noEmergencyContact')}</p>`}
-                        </div>
+                        ${p.mobilityStatus ? '<div style="margin-bottom:24px;"><p style="margin:0 0 8px 0;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;">🚶 Mobiliteitstoestand</p><p style="margin:0;font-size:14px;color:#1f2937;line-height:1.5;white-space:pre-wrap;"><span style="background:#fef3c7;color:#92400e;padding:4px 12px;border-radius:4px;font-weight:500;display:inline-block;">' + p.mobilityStatus + '</span></p></div>' : ''}
                         
-                        <button onclick="document.getElementById('patient-info-modal').remove()" style="background:#3b82f6;color:white;border:none;width:100%;padding:12px;border-radius:8px;font-weight:500;cursor:pointer;font-size:14px;">${t('close')}</button>
+                        <button onclick="document.getElementById('patient-info-modal').remove()" style="background:#3b82f6;color:white;border:none;width:100%;padding:12px;border-radius:8px;font-weight:500;cursor:pointer;font-size:14px;">Sluiten</button>
                     </div>
                 </div>
             `);
@@ -3981,37 +3718,39 @@ class App {
         function showPatientEditForm() {
             const p = app.data.patient;
             if (!p) return;
-            const patientLanguage = normalizeLangCode(p.language || 'nl');
             
             document.body.insertAdjacentHTML('beforeend', `
                 <div id="patient-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target.id==='patient-modal') document.getElementById('patient-modal').remove();">
                     <div style="background:white;border-radius:12px;padding:24px;width:95%;max-width:320px;max-height:85vh;overflow-y:auto;">
-                        <h2 style="margin:0 0 20px 0;font-size:18px;color:#1f2937;font-weight:600;">✏️ ${t('patientEdit')}</h2>
+                        <h2 style="margin:0 0 20px 0;font-size:18px;color:#1f2937;font-weight:600;">✏️ Patient wijzigen</h2>
                         <div style="margin-bottom:16px;">
-                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">${t('firstName')}</label>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Voornaam</label>
                             <input type="text" id="patient-first" value="${p.firstName}" placeholder="Philippe" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
                         </div>
                         <div style="margin-bottom:16px;">
-                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">${t('lastName')}</label>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Achternaam</label>
                             <input type="text" id="patient-last" value="${p.lastName}" placeholder="De Meersman" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
                         </div>
                         <div style="margin-bottom:16px;">
-                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">${t('birthDate')}</label>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Geboortedatum</label>
                             <input type="date" id="patient-birth" value="${p.birthDate}" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
                         </div>
                         <div style="margin-bottom:16px;">
-                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🌍 ${t('patientLanguage')}</label>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🌍 Taal patiënt</label>
                             <select id="patient-language" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;background:white;">
-                                ${buildLanguageOptions(patientLanguage)}
+                                <option value="nl" ${(p.language || 'nl') === 'nl' ? 'selected' : ''}>🇳🇱 Nederlands</option>
+                                <option value="fr" ${(p.language || 'nl') === 'fr' ? 'selected' : ''}>🇫🇷 Français</option>
+                                <option value="es" ${(p.language || 'nl') === 'es' ? 'selected' : ''}>🇪🇸 Español</option>
+                                <option value="en" ${(p.language || 'nl') === 'en' ? 'selected' : ''}>🇬🇧 English</option>
                             </select>
                         </div>
                         <div style="margin-bottom:16px;">
-                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:8px;">📷 ${t('photo')}</label>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:8px;">📷 Foto (optioneel)</label>
                             <div id="preview-container" style="display:${p.photo ? 'block' : 'none'};margin-bottom:8px;">
                                 <img id="photo-preview" src="${p.photo || ''}" style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-bottom:8px;">
                                 <div style="display:flex;gap:6px;">
-                                    <button type="button" id="change-photo-btn" style="background:#3b82f6;color:white;border:none;padding:6px 12px;border-radius:4px;font-size:11px;cursor:pointer;flex:1;">${t('change')}</button>
-                                    <button type="button" id="remove-photo-btn" style="background:#ef4444;color:white;border:none;padding:6px 12px;border-radius:4px;font-size:11px;cursor:pointer;flex:1;">${t('remove')}</button>
+                                    <button type="button" id="change-photo-btn" style="background:#3b82f6;color:white;border:none;padding:6px 12px;border-radius:4px;font-size:11px;cursor:pointer;flex:1;">Wijzigen</button>
+                                    <button type="button" id="remove-photo-btn" style="background:#ef4444;color:white;border:none;padding:6px 12px;border-radius:4px;font-size:11px;cursor:pointer;flex:1;">Wissen</button>
                                 </div>
                             </div>
                             <div id="upload-area" style="display:${p.photo ? 'none' : 'block'};border:2px dashed #d1d5db;border-radius:8px;padding:16px;text-align:center;cursor:pointer;background:#f9fafb;">
@@ -4021,21 +3760,20 @@ class App {
                             <input type="file" id="patient-photo" accept="image/*" style="display:none;">
                         </div>
                         <div style="margin-bottom:16px;">
-                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🚫 ${t('allergies')}</label>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🚫 Allergiën</label>
                             <textarea id="patient-allergies" placeholder="bijv. Penicilline, Noten..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;font-family:inherit;min-height:60px;resize:vertical;">${p.allergies || ''}</textarea>
                         </div>
                         <div style="margin-bottom:16px;">
-                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🏥 ${t('medicalHistory')}</label>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🏥 Gekende medische historie</label>
                             <textarea id="patient-medical-history" placeholder="bijv. Diabetes, Hypertensie, Hartaandoening..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;font-family:inherit;min-height:60px;resize:vertical;">${p.medicalHistory || ''}</textarea>
                         </div>
                         <div style="margin-bottom:16px;">
-                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🚶 ${t('mobility')}</label>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🚶 Mobiliteitstoestand</label>
                             <textarea id="patient-mobility-status" placeholder="bijv. Krukken/Rolstoel, Loopt met hulpmiddel..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;font-family:inherit;min-height:60px;resize:vertical;">${p.mobilityStatus || ''}</textarea>
                         </div>
-                        ${renderEmergencyContactFields(p.emergencyContact, patientLanguage)}
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px;">
-                            <button style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;padding:11px 16px;border-radius:6px;font-weight:500;cursor:pointer;font-size:14px;" onclick="document.getElementById('patient-modal').remove();">${t('cancel')}</button>
-                            <button style="background:#3b82f6;color:white;border:none;padding:11px 16px;border-radius:6px;font-weight:500;cursor:pointer;font-size:14px;" onclick="savePatientData();">${t('save')}</button>
+                            <button style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;padding:11px 16px;border-radius:6px;font-weight:500;cursor:pointer;font-size:14px;" onclick="document.getElementById('patient-modal').remove();">Annuleren</button>
+                            <button style="background:#3b82f6;color:white;border:none;padding:11px 16px;border-radius:6px;font-weight:500;cursor:pointer;font-size:14px;" onclick="savePatientData();">Opslaan</button>
                         </div>
                     </div>
                 </div>
@@ -4088,14 +3826,6 @@ class App {
             const medicalHistory = document.getElementById('patient-medical-history').value;
             const mobilityStatus = document.getElementById('patient-mobility-status').value;
             const language = document.getElementById('patient-language')?.value || 'nl';
-            const removeEmergency = document.getElementById('emergency-remove')?.checked || false;
-            const emergencyContact = removeEmergency ? createEmptyEmergencyContact(language) : normalizeEmergencyContact({
-                fullName: document.getElementById('emergency-name')?.value || '',
-                relationship: document.getElementById('emergency-relationship')?.value || '',
-                email: document.getElementById('emergency-email')?.value || '',
-                phone: document.getElementById('emergency-phone')?.value || '',
-                language: document.getElementById('emergency-language')?.value || language
-            }, language);
             const preview = document.getElementById('photo-preview');
             
             // Check of foto geldig is (data URL en zichtbaar)
@@ -4103,7 +3833,7 @@ class App {
             const photoBase64 = hasValidPhoto ? preview.src : null;
             
             if (!firstName || !lastName || !birthDate) {
-                alert(t('fillRequired'));
+                alert('Vul voornaam, achternaam en geboortedatum in!');
                 return;
             }
             
@@ -4111,14 +3841,14 @@ class App {
                 if (photoBase64) {
                     compressImage(photoBase64, (compressed) => {
                         if (app && app.savePatient) {
-                            app.savePatient(firstName, lastName, birthDate, compressed, allergies, medicalHistory, mobilityStatus, language, emergencyContact);
+                            app.savePatient(firstName, lastName, birthDate, compressed, allergies, medicalHistory, mobilityStatus, language);
                             const modal = document.getElementById('patient-modal');
                             if (modal) modal.remove();
                         }
                     });
                 } else {
                     if (app && app.savePatient) {
-                        app.savePatient(firstName, lastName, birthDate, null, allergies, medicalHistory, mobilityStatus, language, emergencyContact);
+                        app.savePatient(firstName, lastName, birthDate, null, allergies, medicalHistory, mobilityStatus, language);
                         const modal = document.getElementById('patient-modal');
                         if (modal) modal.remove();
                     }
@@ -4129,8 +3859,7 @@ class App {
             }
         }
         
-        var app = new App();
-        window.app = app;
+        const app = new App();
         app.show();
         
         // Initialize Google Drive
