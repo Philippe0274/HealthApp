@@ -287,7 +287,7 @@
         }
 
         
-const APP_VERSION = '2.0.1';
+const APP_VERSION = '2.0.2';
 const LANGUAGE_OPTIONS = [
  { code:'nl', label:'Nederlands', flag:'🇳🇱' },
  { code:'fr', label:'Français', flag:'🇫🇷' },
@@ -381,6 +381,8 @@ function normalizeLangCode(v){
  return 'nl';
 }
 function getAppLanguage(){
+ const forced = document.documentElement.getAttribute('data-current-language');
+ if (forced) return normalizeLangCode(forced);
  if (window.app && window.app.data && window.app.data.patient && window.app.data.patient.language) {
   return normalizeLangCode(window.app.data.patient.language);
  }
@@ -389,6 +391,14 @@ function getAppLanguage(){
   if (saved && saved.patient && saved.patient.language) return normalizeLangCode(saved.patient.language);
  } catch(e) {}
  return 'nl';
+}
+function setPatientLanguage(language, root){
+ const code = normalizeLangCode(language);
+ document.documentElement.lang = code;
+ document.documentElement.setAttribute('data-current-language', code);
+ document.documentElement.setAttribute('data-app-version', APP_VERSION);
+ translateAppText(root || document.body);
+ return code;
 }
 function t(key, lang){
  const code=normalizeLangCode(lang || getAppLanguage());
@@ -509,7 +519,7 @@ function translateAppText(root){
  });
 }
 function applyPatientLanguage(root){
- translateAppText(root || document.getElementById('app') || document.body);
+ setPatientLanguage(getAppLanguage(), root || document.getElementById('app') || document.body);
 }
 
 class App {
@@ -4193,6 +4203,9 @@ class App {
               }
               if (event.data.type === 'NEW_VERSION_READY') {
                 showUpdateNotice();
+                if (event.data.reload) {
+                  setTimeout(() => window.location.reload(), 350);
+                }
               }
             });
             

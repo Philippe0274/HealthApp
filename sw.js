@@ -1,5 +1,5 @@
-const urlVersion = new URL(self.location.href).searchParams.get('v') || '2.0.1';
-const APP_VERSION = urlVersion;
+const urlVersion = new URL(self.location.href).searchParams.get('v');
+const APP_VERSION = urlVersion || '2.0.2';
 const CACHE_PREFIX = 'health-tracker-cache-';
 const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
 const APP_SHELL = [
@@ -43,7 +43,7 @@ self.addEventListener('activate', (event) => {
     }));
     await self.clients.claim();
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    clients.forEach((client) => client.postMessage({ type: 'NEW_VERSION_READY', version: APP_VERSION }));
+    clients.forEach((client) => client.postMessage({ type: 'NEW_VERSION_READY', version: APP_VERSION, reload: true }));
   })());
 });
 
