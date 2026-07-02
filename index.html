@@ -287,7 +287,7 @@
         }
 
         
-const APP_VERSION = '2.0.2';
+const APP_VERSION = '2.0.3';
 const LANGUAGE_OPTIONS = [
  { code:'nl', label:'Nederlands', flag:'🇳🇱' },
  { code:'fr', label:'Français', flag:'🇫🇷' },
@@ -3462,41 +3462,41 @@ class App {
                 const y = this.month.getFullYear();
                 const m = this.month.getMonth();
                 let html = '<div style="min-height:100vh;background:#f9fafb;padding:12px;">';
-                html += '<div style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);color:white;border-radius:16px;padding:12px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px;">';
+                html += '<div style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);color:white;border-radius:16px;padding:12px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;overflow:hidden;">';
                 
                 // LEFT: Logo + Title
-                html += '<div style="display:flex;gap:8px;align-items:center;flex:1;">';
+                html += '<div style="display:flex;gap:8px;align-items:center;flex:1;min-width:0;">';
                 html += '<img src="./logo.png" style="width:48px;height:48px;border-radius:8px;background:white;padding:3px;flex-shrink:0;">';
                 html += '<div style="min-width:0;"><h1 style="font-size:13px;font-weight:700;margin:0;">' + t('appTitle') + '</h1><p style="font-size:9px;opacity:0.9;margin:2px 0 0 0;">' + t('appSubtitle') + ' (' + this.data.meds.length + ' meds) • v' + APP_VERSION + '</p></div>';
                 html += '</div>';
                 
-                // RIGHT: 13 buttons in a compact phone grid
-                html += '<div style="display:grid;grid-template-columns:repeat(4, 40px);gap:6px;flex-shrink:0;">';
+                // RIGHT: compact phone grid. Keep 3 columns so tap targets never overlap the title.
+                html += '<div style="display:grid;grid-template-columns:repeat(3, 40px);gap:6px;flex:0 0 132px;width:132px;">';
                 
                 // ROW 1: Telegram, Pillen, Uur
-                html += '<button onclick="app.openTg()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./telegram.png" style="width:24px;height:24px;"></button>';
-                html += '<button onclick="app.showSet=!app.showSet;app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./drugs.png" style="width:24px;height:24px;"></button>';
-                html += '<button onclick="app.showSettings()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./24-hours.png" style="width:24px;height:24px;"></button>';
+                html += '<button onclick="window.app.openTg()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./telegram.png" style="width:24px;height:24px;pointer-events:none;"></button>';
+                html += '<button onclick="window.app.showSet=!window.app.showSet;window.app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./drugs.png" style="width:24px;height:24px;pointer-events:none;"></button>';
+                html += '<button onclick="window.app.showSettings()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./24-hours.png" style="width:24px;height:24px;pointer-events:none;"></button>';
                 
                 // ROW 2: BackupDownload, Rapport, BackupUpload
-                html += '<button onclick="app.downloadBackup()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./recovery.png" style="width:24px;height:24px;"></button>';
-                html += '<button onclick="app.openReport()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./folder.png" style="width:24px;height:24px;"></button>';
-                html += '<button onclick="app.uploadBackup()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./database-management.png" style="width:24px;height:24px;"></button>';
+                html += '<button onclick="window.app.downloadBackup()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./recovery.png" style="width:24px;height:24px;pointer-events:none;"></button>';
+                html += '<button onclick="window.app.openReport()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./folder.png" style="width:24px;height:24px;pointer-events:none;"></button>';
+                html += '<button onclick="window.app.uploadBackup()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./database-management.png" style="width:24px;height:24px;pointer-events:none;"></button>';
                 
                 // ROW 3: Kalender (FIXED!), LoginGoogle, BackupSend
-                html += '<button onclick="app.view=\'cal\';app.month=new Date();app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./event.png" style="width:24px;height:24px;"></button>';
+                html += '<button onclick="window.app.view=\'cal\';window.app.month=new Date();window.app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./event.png" style="width:24px;height:24px;pointer-events:none;"></button>';
                 html += '<button onclick="handleSyncAction()" style="background:' + (isGTokenValid() ? '#10b981' : '#6b7280') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;">☁️</button>';
                 html += '<button onclick="driveSync()" style="background:' + (isGTokenValid() ? '#3b82f6' : '#9ca3af') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;" ' + (isGTokenValid() ? '' : 'disabled') + '>⬆️</button>';
                 
                 // ROW 4: BackupRestore, Arts (NEW), Telefoon (NEW)
                 html += '<button onclick="driveRestore()" style="background:' + (isGTokenValid() ? '#8b5cf6' : '#9ca3af') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;" ' + (isGTokenValid() ? '' : 'disabled') + '>⬇️</button>';
                 html += '<button onclick="showDoctorPopup()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;">👨‍⚕️</button>';
-                html += '<button onclick="app.showEditDoctorForm()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;" title="Arts wijzigen">✏️</button>';
+                html += '<button onclick="window.app.showEditDoctorForm()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;" title="Arts wijzigen">✏️</button>';
                 html += '<button onclick="window.location.href=\'tel:0226912 54\'" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;">📞</button>';
                 
                 // ROW 5: Emails (NEW) + spacer
                 html += '<button onclick="showEmailManager()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;">📧</button>';
-                html += '<div></div><div></div><div></div>';
+                html += '<div></div><div></div>';
                 
                 html += '</div>';
                 html += '</div>';

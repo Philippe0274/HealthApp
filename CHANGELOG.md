@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.3 - 2026-07-02
+
+- Headerlayout op telefoon hersteld naar compact 3-koloms raster.
+- Headerknoppen gebruiken expliciet `window.app` waar nodig.
+- Iconen in headerknoppen krijgen geen eigen pointer events meer, zodat taps op de knop landen.
+- `APP_VERSION` en service-worker fallback verhoogd naar 2.0.3.
+
 ## 2.0.1 - 2026-07-02
 
 - PWA-updateflow hersteld zodat nieuwe GitHub-versies automatisch op smartphones actief worden.
