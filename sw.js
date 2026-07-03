@@ -1,5 +1,5 @@
 const urlVersion = new URL(self.location.href).searchParams.get('v');
-const APP_VERSION = urlVersion || '2.0.4';
+const APP_VERSION = urlVersion || '2.0.5';
 const CACHE_PREFIX = 'health-tracker-cache-';
 const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
 const APP_SHELL = [

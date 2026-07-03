@@ -184,36 +184,25 @@
         function buildDriveBackupPanel() {
           const info = getDriveStatusInfo();
           const primaryAction = info.connected ? 'driveSync()' : 'handleSyncAction()';
-          const primaryText = info.connected ? 'Synchroniseren naar Google Drive' : 'Google Drive verbinden';
+          const primaryText = info.connected ? 'Synchroniseren' : 'Verbinden';
           const restoreDisabled = info.connected ? '' : ' disabled';
           const restoreStyle = info.connected ? '#f97316' : '#9ca3af';
-          const warning = info.localNewer
-            ? '<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:10px;margin:12px 0;font-size:12px;line-height:1.35;font-weight:700;">⚠ Je lokale gegevens zijn recenter dan de Google Drive-back-up.<br><span style="font-weight:600;">Synchroniseren wordt aanbevolen.</span></div>'
-            : '';
+          const connectedLabel = info.connected ? '🟢 Verbonden' : '⚪ Niet verbonden';
+          const statusLabel = info.localNewer ? '🟡 Lokale wijzigingen' : (info.connected && info.driveTs ? '🟢 Alles gesynchroniseerd' : '⚪ Geen backup');
 
-          const manualBackupButton = '<button onclick="window.app.downloadBackup()" style="width:100%;background:white;color:#334155;border:1px solid #cbd5e1;border-radius:9px;padding:10px 12px;cursor:pointer;text-align:left;margin-top:10px;"><div style="font-size:13px;font-weight:900;">📦 Lokale backup downloaden</div><div style="font-size:11px;line-height:1.35;color:#64748b;margin-top:3px;">Maakt een JSON-kopie van de huidige gegevens op dit toestel.</div></button>';
-          const manualRestoreButton = '<button onclick="window.app.uploadBackup()" style="width:100%;background:white;color:#334155;border:1px solid #cbd5e1;border-radius:9px;padding:10px 12px;cursor:pointer;text-align:left;margin-top:8px;"><div style="font-size:13px;font-weight:900;">📥 Lokale backup kiezen</div><div style="font-size:11px;line-height:1.35;color:#64748b;margin-top:3px;">Herstelt gegevens uit een eerder gedownload JSON-bestand.</div></button>';
-
-          return '<div id="drive-backup-panel" style="background:white;border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.05);border:1px solid #e5e7eb;">' +
-            '<div style="font-size:13px;font-weight:900;color:#1f2937;margin-bottom:10px;">☁️ Google Drive backup</div>' +
-            '<button onclick="' + primaryAction + '" style="width:100%;background:#2563eb;color:white;border:none;border-radius:10px;padding:14px 12px;cursor:pointer;text-align:left;box-shadow:0 8px 18px rgba(37,99,235,.22);">' +
-              '<div style="font-size:18px;font-weight:900;line-height:1.2;">☁️⬆️ ' + primaryText + '</div>' +
-              '<div style="font-size:12px;line-height:1.35;opacity:.95;margin-top:4px;">Slaat alle huidige gegevens veilig op in Google Drive.</div>' +
-            '</button>' +
-            '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:10px;margin:12px 0;">' +
-              '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
-                '<div style="background:white;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><div style="font-size:10px;color:#64748b;font-weight:800;">📱 Lokale gegevens</div><div style="font-size:12px;color:#111827;font-weight:900;margin-top:3px;">' + info.local.date + '</div><div style="font-size:11px;color:#475569;">' + info.local.time + '</div></div>' +
-                '<div style="background:white;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><div style="font-size:10px;color:#64748b;font-weight:800;">☁️ Google Drive</div><div style="font-size:12px;color:#111827;font-weight:900;margin-top:3px;">' + info.drive.date + '</div><div style="font-size:11px;color:#475569;">' + info.drive.time + '</div></div>' +
-              '</div>' +
-              '<div style="margin-top:8px;background:white;border-radius:8px;padding:9px;border:1px solid #eef2f7;font-size:12px;color:' + (info.localNewer ? '#9a3412' : '#166534') + ';font-weight:800;line-height:1.35;">' + (info.localNewer ? '⚠ ' : '✓ ') + info.status + '</div>' +
+          return '<div id="drive-backup-panel" style="background:white;border-radius:8px;padding:10px;margin:10px 0 12px 0;box-shadow:0 1px 3px rgba(0,0,0,0.05);border:1px solid #e5e7eb;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">' +
+              '<div style="font-size:13px;font-weight:900;color:#1f2937;">☁️ Google Drive</div>' +
+              '<div style="font-size:11px;font-weight:800;color:' + (info.connected ? '#166534' : '#64748b') + ';">' + connectedLabel + '</div>' +
             '</div>' +
-            warning +
-            '<button onclick="showDriveRestoreConfirm()" style="width:100%;background:' + restoreStyle + ';color:white;border:none;border-radius:9px;padding:11px 12px;cursor:pointer;text-align:left;"' + restoreDisabled + '>' +
-              '<div style="font-size:15px;font-weight:900;">☁️⬇️ Herstellen vanuit Google Drive</div>' +
-              '<div style="font-size:11px;line-height:1.35;opacity:.96;margin-top:3px;">Vervangt de huidige lokale gegevens door de gegevens uit Google Drive.</div>' +
-            '</button>' +
-            manualBackupButton +
-            manualRestoreButton +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:9px;">' +
+              '<div style="background:#f8fafc;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><div style="font-size:10px;color:#64748b;font-weight:800;">Laatste synchronisatie</div><div style="font-size:12px;color:#111827;font-weight:900;margin-top:2px;">' + info.drive.date + '</div><div style="font-size:11px;color:#64748b;">' + info.drive.time + '</div></div>' +
+              '<div style="background:#f8fafc;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><div style="font-size:10px;color:#64748b;font-weight:800;">Status</div><div style="font-size:12px;color:' + (info.localNewer ? '#9a3412' : '#166534') + ';font-weight:900;margin-top:2px;">' + statusLabel + '</div></div>' +
+            '</div>' +
+            '<div style="display:flex;gap:8px;align-items:center;">' +
+              '<button onclick="' + primaryAction + '" style="flex:1;background:#2563eb;color:white;border:none;border-radius:8px;padding:10px 8px;min-height:42px;cursor:pointer;font-size:12px;font-weight:900;">☁️ ' + primaryText + '</button>' +
+              '<button onclick="showDriveRestoreConfirm()" style="flex:1;background:' + restoreStyle + ';color:white;border:none;border-radius:8px;padding:10px 8px;min-height:42px;cursor:pointer;font-size:12px;font-weight:900;"' + restoreDisabled + '>☁️ Herstellen</button>' +
+            '</div>' +
           '</div>';
         }
 
@@ -429,7 +418,7 @@
         }
 
         
-const APP_VERSION = '2.0.4';
+const APP_VERSION = '2.0.5';
 const LANGUAGE_OPTIONS = [
  { code:'nl', label:'Nederlands', flag:'🇳🇱' },
  { code:'fr', label:'Français', flag:'🇫🇷' },
@@ -3635,8 +3624,6 @@ class App {
                 
                 html += '<button onclick="app.showEditAlarmSettings()" style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);border:2px solid #ef4444;color:white;width:100%;padding:12px;border-radius:8px;font-weight:700;cursor:pointer;margin-bottom:12px;font-size:16px;"><span style="font-size:20px;">🚨</span> ' + t('alarmSettings').toUpperCase() + '</button>';
 
-                html += buildDriveBackupPanel();
-
                 // PATIENT SECTION - Vóór kalender
                 if (!this.data.patient) {
                     html += '<button onclick="showPatientForm()" style="background:#3b82f6;border:none;color:white;width:100%;padding:12px;border-radius:8px;font-weight:500;cursor:pointer;margin-bottom:12px;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;"><span style="font-size:18px;">👤</span> ' + t('patientAdd') + '</button>';
@@ -3663,6 +3650,8 @@ class App {
 
                 // KALENDER - tussen patiëntgegevens en medicatie
                 html += this.buildCalendarHtml();
+
+                html += buildDriveBackupPanel();
 
                 if (this.showSet) {
                     html += '<div style="background:white;border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.5 - 2026-07-03
+
+- Google Drive-kaart visueel compacter gemaakt voor smartphonegebruik.
+- Google Drive-kaart lager geplaatst zodat patiëntgegevens, opvolging en kalender opnieuw centraal staan.
+- Geen wijzigingen aan OAuth, Google Drive API, synchronisatie, restore, localStorage of medische functies.
+
 ## 2.0.4 - 2026-07-03
 
 - Header gecontroleerd: Google Drive-, backup-, synchronisatie- en restoreknoppen staan niet meer in de rode header.
