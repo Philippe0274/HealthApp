@@ -4,6 +4,16 @@ on:
   schedule:
     - cron: '0 6,7,8,9,11,12,20,21 * * *' # Covers 08:00, 10:00, 13:00, 22:00 Europe/Brussels across DST
   workflow_dispatch:
+    inputs:
+      test_hour:
+        description: 'Optioneel: simuleer Brussels uur voor handmatige test (8, 10, 13 of 22)'
+        required: false
+        default: ''
+      send_test_telegram:
+        description: 'Stuur bij handmatige run direct een Telegram-testbericht'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
   check-and-alert:
@@ -21,6 +31,8 @@ jobs:
           CHAT_ID: 8526489078
           DRIVE_FOLDER_ID: 1flE6MFq5be0xCPpPJbyozIVTIZOhzu0X
           DRIVE_FILE_NAME: healthapp-backup.json
+          TEST_HOUR: ${{ github.event.inputs.test_hour }}
+          SEND_TEST_TELEGRAM: ${{ github.event.inputs.send_test_telegram }}
         run: |
           node << 'NODEJS_EOF'
           const crypto = require('crypto');
@@ -31,6 +43,8 @@ jobs:
           const GOOGLE_SERVICE_ACCOUNT_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
           const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
           const CHAT_ID = process.env.CHAT_ID;
+          const TEST_HOUR = process.env.TEST_HOUR;
+          const SEND_TEST_TELEGRAM = process.env.SEND_TEST_TELEGRAM === 'true';
 
           function base64Url(input) {
             return Buffer.from(input)
@@ -245,9 +259,20 @@ jobs:
 
           (async () => {
           try {
-            const { today, hour, time } = getBrusselsParts();
+            const parts = getBrusselsParts();
+            const today = parts.today;
+            const time = parts.time;
+            let hour = parts.hour;
+            if (TEST_HOUR && ['8', '10', '13', '22'].includes(TEST_HOUR)) {
+              hour = Number(TEST_HOUR);
+              console.log(`Manual test hour override active: ${hour}:00 Brussels`);
+            }
             console.log('Workflow started: Smart Daily Health Checks');
             console.log(`Brussels date/time: ${today} ${time}`);
+            if (SEND_TEST_TELEGRAM) {
+              sendTelegram(`✅ TEST HEALTH CHECKS%0AGitHub Actions Telegram test werkt.%0ABrussels tijd: ${today} ${time}`);
+              console.log('Telegram test message sent');
+            }
 
             const backup = await loadBackup();
             const meds = Array.isArray(backup.meds) ? backup.meds : [];
