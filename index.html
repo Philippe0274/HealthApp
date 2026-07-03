@@ -149,7 +149,9 @@
             ? { bg: '#fff7ed', border: '#fed7aa', title: '#9a3412', text: '#7c2d12' }
             : tone === 'error'
               ? { bg: '#fef2f2', border: '#fecaca', title: '#991b1b', text: '#7f1d1d' }
-              : { bg: '#ecfdf5', border: '#bbf7d0', title: '#166534', text: '#14532d' };
+              : tone === 'info'
+                ? { bg: '#eff6ff', border: '#bfdbfe', title: '#1d4ed8', text: '#1e3a8a' }
+                : { bg: '#ecfdf5', border: '#bbf7d0', title: '#166534', text: '#14532d' };
           const box = document.createElement('div');
           box.id = 'drive-notice-toast';
           box.style.cssText = 'position:fixed;left:12px;right:12px;bottom:16px;z-index:10000;background:' + colors.bg + ';border:1px solid ' + colors.border + ';border-radius:12px;padding:12px 14px;box-shadow:0 12px 28px rgba(15,23,42,.18);max-width:420px;margin:0 auto;';
@@ -362,6 +364,7 @@
           }
           gSyncing = true;
           try {
+            if (auto) showDriveNotice('☁️ Synchroniseren...', 'Google Drive wordt bijgewerkt.', 'info');
             const backup = {
               meds: app.data.meds,
               intakes: app.data.intakes,
@@ -409,10 +412,12 @@
               app.sendTg('☁️ Backup gestuurd!');
               showDriveNotice('Synchronisatie voltooid', 'Google Drive bevat nu de nieuwste gegevens.', 'success');
               app.show();
+            } else {
+              showDriveNotice('✓ Gesynchroniseerd met Google Drive', 'De nieuwste gegevens staan veilig in Google Drive.', 'success');
             }
           } catch(e) {
             console.error('Sync error:', e);
-            if (!auto) showDriveNotice('Synchronisatie mislukt', e.message, 'error');
+            showDriveNotice(auto ? '⚠ Synchronisatie mislukt' : 'Synchronisatie mislukt', e.message, 'error');
           } finally {
             gSyncing = false;
             if (gSyncQueued) {
@@ -479,7 +484,7 @@
         }
 
         
-const APP_VERSION = '2.0.6';
+const APP_VERSION = '2.0.7';
 const LANGUAGE_OPTIONS = [
  { code:'nl', label:'Nederlands', flag:'🇳🇱' },
  { code:'fr', label:'Français', flag:'🇫🇷' },

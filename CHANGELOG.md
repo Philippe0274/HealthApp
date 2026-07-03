@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.7 - 2026-07-03
+
+- Auto-sync feedback toegevoegd: tijdens automatische Google Drive-sync verschijnt een compacte statusmelding.
+- Na succesvolle automatische upload verschijnt een bevestiging dat Google Drive gesynchroniseerd is.
+- Bij automatische syncfouten verschijnt dezelfde nette in-app foutmelding als bij handmatige sync.
+- Auto-connect, OAuth, tokenbeheer, restore, backupformaat en Google Drive API-logica blijven ongewijzigd.
+
 ## 2.0.6 - 2026-07-03
 
 - Google Drive-verbinding blijft als verbindingswens bewaard en probeert bij opstart stil opnieuw te verbinden volgens de bestaande Google Identity Services-tokenflow.
