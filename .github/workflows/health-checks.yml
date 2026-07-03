@@ -2,10 +2,7 @@ name: Smart Daily Health Checks
 
 on:
   schedule:
-    - cron: '0 8 * * *'   # 08:00 UTC
-    - cron: '0 10 * * *'  # 10:00 UTC
-    - cron: '0 13 * * *'  # 13:00 UTC
-    - cron: '0 22 * * *'  # 22:00 UTC
+    - cron: '0 6,7,8,9,11,12,20,21 * * *' # Covers 08:00, 10:00, 13:00, 22:00 Europe/Brussels across DST
   workflow_dispatch:
 
 jobs:
@@ -22,114 +19,225 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: 8526489078
           DRIVE_FILE_ID: 1W1Hfm2x0Ybr4GVsUfXKPHepQ8bKBxDHW
+          DRIVE_FOLDER_ID: 1flE6MFq5be0xCPpPJbyozIVTIZOhzu0X
+          DRIVE_FILE_NAME: healthapp-backup.json
         run: |
           node << 'NODEJS_EOF'
-          const fs = require('fs');
-          const { execSync } = require('child_process');
-          
+          const { execFileSync } = require('child_process');
+
           const DRIVE_FILE_ID = process.env.DRIVE_FILE_ID;
+          const DRIVE_FOLDER_ID = process.env.DRIVE_FOLDER_ID;
+          const DRIVE_FILE_NAME = process.env.DRIVE_FILE_NAME || 'healthapp-backup.json';
           const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
           const CHAT_ID = process.env.CHAT_ID;
-          
-          try {
-            // Download file from Google Drive using export=download (no auth needed)
-            const downloadUrl = `https://drive.google.com/uc?export=download&confirm=no&id=${DRIVE_FILE_ID}`;
-            const fileContent = execSync(`curl -L "${downloadUrl}" 2>/dev/null`).toString();
-            
-            // Validate the download
+
+          function curl(url) {
+            return execFileSync('curl', ['-fsSL', url], {
+              encoding: 'utf8',
+              maxBuffer: 20 * 1024 * 1024
+            });
+          }
+
+          function getBrusselsParts() {
+            const parts = new Intl.DateTimeFormat('en-CA', {
+              timeZone: 'Europe/Brussels',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false
+            }).formatToParts(new Date()).reduce((acc, part) => {
+              acc[part.type] = part.value;
+              return acc;
+            }, {});
+
+            return {
+              today: `${parts.year}-${parts.month}-${parts.day}`,
+              hour: Number(parts.hour),
+              time: `${parts.hour}:${parts.minute}:${parts.second}`
+            };
+          }
+
+          function parseBackup(fileContent, sourceLabel) {
             if (!fileContent || fileContent.trim().length === 0) {
-              throw new Error('Downloaded file is empty - check DRIVE_FILE_ID');
+              throw new Error(`${sourceLabel} is empty`);
             }
-            
-            // Parse JSON
-            let backup;
+
             try {
-              backup = JSON.parse(fileContent);
+              return JSON.parse(fileContent);
             } catch (parseError) {
-              console.error('JSON Parse Error:', parseError.message);
+              console.error(`JSON Parse Error from ${sourceLabel}:`, parseError.message);
               console.error('Downloaded content preview:', fileContent.substring(0, 200));
-              process.exit(1);
+              throw parseError;
             }
-            
-            const today = new Date().toISOString().split('T')[0];
-            const hour = new Date().getHours();
-            
-            console.log(`Checking date: ${today}, Hour: ${hour}`);
-            
-            let alerts = [];
-            
-            // 08:00 - Ochtend bloedwaarden
-            if (hour === 8) {
-              console.log('Checking: Ochtend bloedwaarden');
-              const ochtend = backup.measures?.[today]?.ochtend || {};
-              let missing = [];
-              if (!ochtend.sys) missing.push('Systolisch');
-              if (!ochtend.dia) missing.push('Diastolisch');
-              if (!ochtend.hr) missing.push('Hartslag');
-              if (missing.length > 0) {
-                alerts.push(`❌ OCHTEND BLOEDWAARDEN MISSEN!%0AOntbreekt: ${missing.join(', ')}`);
+          }
+
+          function downloadDriveFile(fileId) {
+            const downloadUrl = `https://drive.google.com/uc?export=download&confirm=no&id=${encodeURIComponent(fileId)}`;
+            return curl(downloadUrl);
+          }
+
+          function findDriveFileIdsInFolder() {
+            if (!DRIVE_FOLDER_ID) return [];
+
+            const folderUrl = `https://drive.google.com/drive/folders/${encodeURIComponent(DRIVE_FOLDER_ID)}`;
+            const html = curl(folderUrl);
+            const ids = new Set();
+            const patterns = [
+              /\/file\/d\/([a-zA-Z0-9_-]{20,})/g,
+              /["']([a-zA-Z0-9_-]{20,})["'][^<]{0,120}healthapp-backup\.json/g
+            ];
+
+            for (const pattern of patterns) {
+              let match;
+              while ((match = pattern.exec(html)) !== null) {
+                ids.add(match[1]);
               }
             }
-            
-            // 10:00 - Medicatie
+
+            return [...ids];
+          }
+
+          function loadBackup() {
+            const candidates = [];
+            try {
+              const folderIds = findDriveFileIdsInFolder();
+              folderIds.forEach(id => candidates.push({ id, source: `Drive folder ${DRIVE_FOLDER_ID}` }));
+              console.log(`Drive search: found ${folderIds.length} candidate file(s) in folder for ${DRIVE_FILE_NAME}`);
+            } catch (e) {
+              console.log(`Drive search by folder failed: ${e.message}`);
+            }
+
+            if (DRIVE_FILE_ID && !candidates.some(c => c.id === DRIVE_FILE_ID)) {
+              candidates.push({ id: DRIVE_FILE_ID, source: 'fallback DRIVE_FILE_ID' });
+            }
+
+            const loaded = [];
+            let lastError = null;
+            for (const candidate of candidates) {
+              try {
+                const content = downloadDriveFile(candidate.id);
+                const backup = parseBackup(content, candidate.source);
+                const timestampMs = backup.timestamp ? Date.parse(backup.timestamp) : 0;
+                loaded.push({ backup, candidate, timestampMs: Number.isFinite(timestampMs) ? timestampMs : 0 });
+                console.log(`Backup candidate loaded from ${candidate.source}; file id: ${candidate.id}; timestamp: ${backup.timestamp || 'not available'}`);
+              } catch (e) {
+                lastError = e;
+                console.log(`Candidate failed (${candidate.source}; file id: ${candidate.id}): ${e.message}`);
+              }
+            }
+
+            if (loaded.length > 0) {
+              loaded.sort((a, b) => b.timestampMs - a.timestampMs);
+              const selected = loaded[0];
+              console.log(`Selected backup file id: ${selected.candidate.id}; source: ${selected.candidate.source}; timestamp: ${selected.backup.timestamp || 'not available'}`);
+              return selected.backup;
+            }
+
+            throw lastError || new Error('No Google Drive backup candidate found');
+          }
+
+          function hasMeasurement(measurement) {
+            return !!(measurement && measurement.sys && measurement.dia && measurement.hr);
+          }
+
+          function describeMissingMeasurement(measurement) {
+            const missing = [];
+            if (!measurement || !measurement.sys) missing.push('Systolisch');
+            if (!measurement || !measurement.dia) missing.push('Diastolisch');
+            if (!measurement || !measurement.hr) missing.push('Hartslag');
+            return missing;
+          }
+
+          function sendTelegram(text) {
+            if (!TELEGRAM_TOKEN || !CHAT_ID) {
+              throw new Error('Telegram token or chat id missing');
+            }
+
+            execFileSync('curl', [
+              '-fsS',
+              '-X', 'POST',
+              `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`,
+              '-d', `chat_id=${CHAT_ID}`,
+              '-d', `text=${text}`
+            ], { encoding: 'utf8' });
+          }
+
+          try {
+            const { today, hour, time } = getBrusselsParts();
+            console.log('Workflow started: Smart Daily Health Checks');
+            console.log(`Brussels date/time: ${today} ${time}`);
+
+            const backup = loadBackup();
+            const meds = Array.isArray(backup.meds) ? backup.meds : [];
+            const intakesToday = backup.intakes?.[today] || {};
+            const measuresToday = backup.measures?.[today] || {};
+
+            console.log(`Backup timestamp: ${backup.timestamp || 'not available'}`);
+            console.log(`Medication count: ${meds.length}`);
+            console.log(`Measurements today: ${Object.keys(measuresToday).filter(key => hasMeasurement(measuresToday[key])).length}`);
+
+            const alerts = [];
+
+            const measurementChecks = {
+              8: { key: 'ochtend', label: 'OCHTEND BLOEDWAARDEN MISSEN', log: 'Ochtend bloedwaarden' },
+              13: { key: 'middag', label: 'MIDDAG BLOEDWAARDEN MISSEN', log: 'Middag bloedwaarden' },
+              22: { key: 'avond', label: 'AVOND BLOEDWAARDEN MISSEN', log: 'Avond bloedwaarden' }
+            };
+
+            if (measurementChecks[hour]) {
+              const check = measurementChecks[hour];
+              const measurement = measuresToday[check.key] || {};
+              const missing = describeMissingMeasurement(measurement);
+              console.log(`Checking measurement: ${check.log}`);
+              if (missing.length > 0) {
+                console.log(`Missing measurement fields for ${check.key}: ${missing.join(', ')}`);
+                alerts.push(`❌ ${check.label}!%0AOntbreekt: ${missing.join(', ')}`);
+              } else {
+                console.log(`Measurement ${check.key}: complete`);
+              }
+            }
+
             if (hour === 10) {
               console.log('Checking: Medicatie');
-              const intakes = backup.intakes || {};
-              const meds = backup.data?.meds || []; // Lees medicaties uit app!
-              let missing = [];
-              
-              // Check ELKE medicatie die in de app staat
-              for (let med of meds) {
-                const medName = med.name.toLowerCase();
-                if (!intakes[medName]?.[today]?.ochtend) {
-                  missing.push(med.name);
+              const missingMeds = [];
+
+              for (const med of meds) {
+                if (!med || !med.id) {
+                  console.log(`Skipping medication without id: ${med && med.name ? med.name : 'unknown'}`);
+                  continue;
+                }
+
+                const takenAt = intakesToday[med.id];
+                if (!takenAt) {
+                  missingMeds.push(med.name || med.id);
+                } else {
+                  console.log(`Medication taken: ${med.name || med.id} at ${takenAt}`);
                 }
               }
-              
-              if (missing.length > 0) {
-                alerts.push(`❌ MEDICATIE NIET INGENOMEN!%0AOntbreekt: ${missing.join(', ')}`);
+
+              if (missingMeds.length > 0) {
+                console.log(`Missing medication: ${missingMeds.join(', ')}`);
+                alerts.push(`❌ MEDICATIE NIET INGENOMEN!%0AOntbreekt: ${missingMeds.join(', ')}`);
+              } else {
+                console.log('Medication check: all medication taken or no medication configured');
               }
             }
-            
-            // 13:00 - Middag bloedwaarden
-            if (hour === 13) {
-              console.log('Checking: Middag bloedwaarden');
-              const middag = backup.measures?.[today]?.middag || {};
-              let missing = [];
-              if (!middag.sys) missing.push('Systolisch');
-              if (!middag.dia) missing.push('Diastolisch');
-              if (!middag.hr) missing.push('Hartslag');
-              if (missing.length > 0) {
-                alerts.push(`❌ MIDDAG BLOEDWAARDEN MISSEN!%0AOntbreekt: ${missing.join(', ')}`);
-              }
+
+            if (![8, 10, 13, 22].includes(hour)) {
+              console.log(`No check configured for Brussels hour ${hour}`);
             }
-            
-            // 22:00 - Avond bloedwaarden
-            if (hour === 22) {
-              console.log('Checking: Avond bloedwaarden');
-              const avond = backup.measures?.[today]?.avond || {};
-              let missing = [];
-              if (!avond.sys) missing.push('Systolisch');
-              if (!avond.dia) missing.push('Diastolisch');
-              if (!avond.hr) missing.push('Hartslag');
-              if (missing.length > 0) {
-                alerts.push(`❌ AVOND BLOEDWAARDEN MISSEN!%0AOntbreekt: ${missing.join(', ')}`);
-              }
-            }
-            
-            // Send Telegram alerts
+
             if (alerts.length > 0) {
-              alerts.forEach(alert => {
-                const cmd = `curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" -d "chat_id=${CHAT_ID}" -d "text=${alert}"`;
-                try {
-                  execSync(cmd);
-                  console.log(`✅ Sent: ${alert.substring(0, 30)}...`);
-                } catch (e) {
-                  console.error('Telegram error:', e.message);
-                }
-              });
+              console.log(`Telegram alerts to send: ${alerts.length}`);
+              for (const alert of alerts) {
+                sendTelegram(alert);
+                console.log(`Telegram sent: ${alert.substring(0, 60)}...`);
+              }
             } else {
-              console.log('✅ Alles OK - geen bericht gestuurd');
+              console.log('No Telegram sent: no alerts for this run');
             }
           } catch (e) {
             console.error('Error:', e.message);
