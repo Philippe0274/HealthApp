@@ -90,7 +90,7 @@
         // GOOGLE DRIVE - GLOBALE VARIABLES & FUNCTIES
         // ══════════════════════════════════════════════════════════
         const GDRIVE_CLIENT_ID = '333079195698-gt6gm0ra37e53ujd782424nea5e9iiqq.apps.googleusercontent.com';
-        const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.profile'; // Full drive access!
+        const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile';
         const GDRIVE_FOLDER_ID = '1flE6MFq5be0xCPpPJbyozIVTIZOhzu0X'; // SyncHealthapp folder
         const GDRIVE_FILE_NAME = 'healthapp-backup.json';
 
@@ -106,6 +106,145 @@
           if (!gAccessToken || gAccessToken === 'null' || gAccessToken === '') return false;
           if (!gTokenExpiry || gTokenExpiry <= 0) return false;
           return Date.now() < gTokenExpiry - 60000;
+        }
+
+        function showDriveNotice(title, message, tone = 'success') {
+          const old = document.getElementById('drive-notice-toast');
+          if (old) old.remove();
+          const colors = tone === 'warning'
+            ? { bg: '#fff7ed', border: '#fed7aa', title: '#9a3412', text: '#7c2d12' }
+            : tone === 'error'
+              ? { bg: '#fef2f2', border: '#fecaca', title: '#991b1b', text: '#7f1d1d' }
+              : { bg: '#ecfdf5', border: '#bbf7d0', title: '#166534', text: '#14532d' };
+          const box = document.createElement('div');
+          box.id = 'drive-notice-toast';
+          box.style.cssText = 'position:fixed;left:12px;right:12px;bottom:16px;z-index:10000;background:' + colors.bg + ';border:1px solid ' + colors.border + ';border-radius:12px;padding:12px 14px;box-shadow:0 12px 28px rgba(15,23,42,.18);max-width:420px;margin:0 auto;';
+          box.innerHTML = '<div style="font-size:14px;font-weight:900;color:' + colors.title + ';margin-bottom:3px;">' + title + '</div><div style="font-size:12px;line-height:1.35;color:' + colors.text + ';">' + message + '</div>';
+          document.body.appendChild(box);
+          setTimeout(() => { if (box.parentNode) box.remove(); }, 3800);
+        }
+
+        function formatDriveDateTime(value) {
+          const ts = Number(value || 0);
+          if (!ts) return { date: 'Nog niet beschikbaar', time: '-' };
+          const d = new Date(ts);
+          if (isNaN(d.getTime())) return { date: 'Nog niet beschikbaar', time: '-' };
+          return {
+            date: d.toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            time: d.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' })
+          };
+        }
+
+        function parseLocalDateTime(date, time) {
+          if (!date) return 0;
+          const safeTime = time && String(time).trim() ? String(time).trim() : '23:59';
+          const ts = new Date(date + 'T' + safeTime).getTime();
+          return isNaN(ts) ? 0 : ts;
+        }
+
+        function getLocalActivityTimestamp() {
+          if (!window.app || !app.data) return 0;
+          let latest = 0;
+          const measures = app.data.measures || {};
+          Object.keys(measures).forEach(date => {
+            const day = measures[date] || {};
+            ['ochtend', 'middag', 'avond'].forEach(moment => {
+              const m = day[moment] || {};
+              latest = Math.max(latest, parseLocalDateTime(date, m.time));
+            });
+          });
+          const intakes = app.data.intakes || {};
+          Object.keys(intakes).forEach(date => {
+            const day = intakes[date] || {};
+            Object.keys(day).forEach(id => {
+              latest = Math.max(latest, parseLocalDateTime(date, day[id]));
+            });
+          });
+          const reports = app.data.rapportages || {};
+          Object.keys(reports).forEach(date => {
+            latest = Math.max(latest, parseLocalDateTime(date));
+          });
+          return latest;
+        }
+
+        function getDriveStatusInfo() {
+          const driveTs = Number(localStorage.getItem('gdrive_last_sync') || gLastSync || 0);
+          const localTs = getLocalActivityTimestamp();
+          const local = formatDriveDateTime(localTs);
+          const drive = formatDriveDateTime(driveTs);
+          const connected = isGTokenValid();
+          const localNewer = connected && localTs && driveTs && localTs > driveTs + 60000;
+          let status = 'Google Drive is nog niet verbonden.';
+          if (connected && !driveTs) status = 'Er is nog geen Google Drive-back-up geregistreerd.';
+          if (connected && driveTs && !localNewer) status = 'Google Drive is volledig bijgewerkt.';
+          if (localNewer) status = 'Lokale gegevens zijn recenter dan Google Drive. Synchroniseren wordt aanbevolen.';
+          return { connected, localTs, driveTs, local, drive, localNewer, status };
+        }
+
+        function buildDriveBackupPanel() {
+          const info = getDriveStatusInfo();
+          const primaryAction = info.connected ? 'driveSync()' : 'handleSyncAction()';
+          const primaryText = info.connected ? 'Synchroniseren naar Google Drive' : 'Google Drive verbinden';
+          const restoreDisabled = info.connected ? '' : ' disabled';
+          const restoreStyle = info.connected ? '#f97316' : '#9ca3af';
+          const warning = info.localNewer
+            ? '<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:10px;margin:12px 0;font-size:12px;line-height:1.35;font-weight:700;">⚠ Je lokale gegevens zijn recenter dan de Google Drive-back-up.<br><span style="font-weight:600;">Synchroniseren wordt aanbevolen.</span></div>'
+            : '';
+
+          const manualBackupButton = '<button onclick="window.app.downloadBackup()" style="width:100%;background:white;color:#334155;border:1px solid #cbd5e1;border-radius:9px;padding:10px 12px;cursor:pointer;text-align:left;margin-top:10px;"><div style="font-size:13px;font-weight:900;">📦 Lokale backup downloaden</div><div style="font-size:11px;line-height:1.35;color:#64748b;margin-top:3px;">Maakt een JSON-kopie van de huidige gegevens op dit toestel.</div></button>';
+          const manualRestoreButton = '<button onclick="window.app.uploadBackup()" style="width:100%;background:white;color:#334155;border:1px solid #cbd5e1;border-radius:9px;padding:10px 12px;cursor:pointer;text-align:left;margin-top:8px;"><div style="font-size:13px;font-weight:900;">📥 Lokale backup kiezen</div><div style="font-size:11px;line-height:1.35;color:#64748b;margin-top:3px;">Herstelt gegevens uit een eerder gedownload JSON-bestand.</div></button>';
+
+          return '<div id="drive-backup-panel" style="background:white;border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.05);border:1px solid #e5e7eb;">' +
+            '<div style="font-size:13px;font-weight:900;color:#1f2937;margin-bottom:10px;">☁️ Google Drive backup</div>' +
+            '<button onclick="' + primaryAction + '" style="width:100%;background:#2563eb;color:white;border:none;border-radius:10px;padding:14px 12px;cursor:pointer;text-align:left;box-shadow:0 8px 18px rgba(37,99,235,.22);">' +
+              '<div style="font-size:18px;font-weight:900;line-height:1.2;">☁️⬆️ ' + primaryText + '</div>' +
+              '<div style="font-size:12px;line-height:1.35;opacity:.95;margin-top:4px;">Slaat alle huidige gegevens veilig op in Google Drive.</div>' +
+            '</button>' +
+            '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:10px;margin:12px 0;">' +
+              '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+                '<div style="background:white;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><div style="font-size:10px;color:#64748b;font-weight:800;">📱 Lokale gegevens</div><div style="font-size:12px;color:#111827;font-weight:900;margin-top:3px;">' + info.local.date + '</div><div style="font-size:11px;color:#475569;">' + info.local.time + '</div></div>' +
+                '<div style="background:white;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><div style="font-size:10px;color:#64748b;font-weight:800;">☁️ Google Drive</div><div style="font-size:12px;color:#111827;font-weight:900;margin-top:3px;">' + info.drive.date + '</div><div style="font-size:11px;color:#475569;">' + info.drive.time + '</div></div>' +
+              '</div>' +
+              '<div style="margin-top:8px;background:white;border-radius:8px;padding:9px;border:1px solid #eef2f7;font-size:12px;color:' + (info.localNewer ? '#9a3412' : '#166534') + ';font-weight:800;line-height:1.35;">' + (info.localNewer ? '⚠ ' : '✓ ') + info.status + '</div>' +
+            '</div>' +
+            warning +
+            '<button onclick="showDriveRestoreConfirm()" style="width:100%;background:' + restoreStyle + ';color:white;border:none;border-radius:9px;padding:11px 12px;cursor:pointer;text-align:left;"' + restoreDisabled + '>' +
+              '<div style="font-size:15px;font-weight:900;">☁️⬇️ Herstellen vanuit Google Drive</div>' +
+              '<div style="font-size:11px;line-height:1.35;opacity:.96;margin-top:3px;">Vervangt de huidige lokale gegevens door de gegevens uit Google Drive.</div>' +
+            '</button>' +
+            manualBackupButton +
+            manualRestoreButton +
+          '</div>';
+        }
+
+        function showDriveRestoreConfirm() {
+          if (!isGTokenValid()) {
+            showDriveNotice('Google Drive niet verbonden', 'Verbind eerst met Google Drive voordat je gegevens herstelt.', 'warning');
+            return;
+          }
+          const existing = document.getElementById('drive-restore-modal');
+          if (existing) existing.remove();
+          const info = getDriveStatusInfo();
+          const modal = document.createElement('div');
+          modal.id = 'drive-restore-modal';
+          modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+          modal.innerHTML = '<div style="background:white;border-radius:14px;max-width:420px;width:100%;padding:18px;box-shadow:0 22px 50px rgba(15,23,42,.28);">' +
+            '<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;"><div style="font-size:28px;line-height:1;">⚠</div><div><h2 style="margin:0;color:#9a3412;font-size:18px;font-weight:900;">LET OP</h2><p style="margin:4px 0 0 0;color:#374151;font-size:13px;line-height:1.45;">Je staat op het punt de lokale gegevens op dit toestel te vervangen door de gegevens uit Google Drive.</p></div></div>' +
+            '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px;margin-bottom:12px;">' +
+              '<div style="font-size:11px;color:#9a3412;font-weight:900;margin-bottom:6px;">☁️ Google Drive-back-up</div>' +
+              '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"><div><div style="font-size:10px;color:#9ca3af;font-weight:700;">Datum</div><div style="font-size:13px;color:#111827;font-weight:900;">' + info.drive.date + '</div></div><div><div style="font-size:10px;color:#9ca3af;font-weight:700;">Uur</div><div style="font-size:13px;color:#111827;font-weight:900;">' + info.drive.time + '</div></div></div>' +
+            '</div>' +
+            '<p style="margin:0 0 14px 0;color:#7c2d12;font-size:13px;line-height:1.45;font-weight:700;">Lokale wijzigingen na deze datum gaan verloren.</p>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+              '<button id="drive-restore-cancel" onclick="document.getElementById(\'drive-restore-modal\').remove()" style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:9px;padding:12px;font-weight:900;cursor:pointer;">Annuleren</button>' +
+              '<button onclick="document.getElementById(\'drive-restore-modal\').remove();driveRestore(true)" style="background:#f97316;color:white;border:none;border-radius:9px;padding:12px;font-weight:900;cursor:pointer;">Herstellen</button>' +
+            '</div>' +
+          '</div>';
+          document.body.appendChild(modal);
+          setTimeout(() => {
+            const cancel = document.getElementById('drive-restore-cancel');
+            if (cancel) cancel.focus();
+          }, 0);
         }
 
         function initGoogleDrive() {
@@ -128,7 +267,7 @@
             scope: GDRIVE_SCOPE,
             callback: async (resp) => {
               if (resp.error) {
-                alert('❌ Google login: ' + resp.error);
+                showDriveNotice('Google login mislukt', resp.error, 'error');
                 return;
               }
               gAccessToken = resp.access_token;
@@ -137,7 +276,7 @@
               localStorage.setItem('gdrive_token_expiry', String(gTokenExpiry));
               await fetchGUserInfo();
               app.sendTg('✅ Google Drive verbonden!');
-              alert('✅ Google Drive verbonden!');
+              showDriveNotice('Google Drive verbonden', 'Je kunt nu veilig synchroniseren of herstellen.', 'success');
               app.show();
             }
           });
@@ -165,16 +304,17 @@
             localStorage.removeItem('gdrive_token');
             localStorage.removeItem('gdrive_token_expiry');
             localStorage.removeItem('gdrive_user_name');
-            alert('✅ Google Drive ontkoppeld');
+            showDriveNotice('Google Drive ontkoppeld', 'De koppeling met Google Drive is gestopt.', 'success');
             app.show();
           } else {
-            if (!gTokenClient) { alert('Google laden...'); return; }
-            gTokenClient.requestAccessToken({ prompt: gUserName ? '' : 'consent' });
+            if (!gTokenClient) { showDriveNotice('Google Drive wordt geladen', 'Probeer het over enkele seconden opnieuw.', 'warning'); return; }
+            if (gUserName) gTokenClient.requestAccessToken();
+            else gTokenClient.requestAccessToken({ prompt: 'consent' });
           }
         }
 
         async function driveSync() {
-          if (!isGTokenValid()) { alert('Niet verbonden met Google Drive'); return; }
+          if (!isGTokenValid()) { showDriveNotice('Google Drive niet verbonden', 'Verbind eerst met Google Drive voordat je synchroniseert.', 'warning'); return; }
           if (gSyncing) return;
           gSyncing = true;
           try {
@@ -222,17 +362,19 @@
             localStorage.setItem('gdrive_last_sync', String(gLastSync));
             
             app.sendTg('☁️ Backup gestuurd!');
-            alert('✅ Backup gestuurd!');
+            showDriveNotice('Synchronisatie voltooid', 'Google Drive bevat nu de nieuwste gegevens.', 'success');
+            app.show();
           } catch(e) {
             console.error('Sync error:', e);
-            alert('❌ Error: ' + e.message);
+            showDriveNotice('Synchronisatie mislukt', e.message, 'error');
           } finally {
             gSyncing = false;
           }
         }
 
-        async function driveRestore() {
-          if (!isGTokenValid()) { alert('Niet verbonden met Google Drive'); return; }
+        async function driveRestore(confirmed = false) {
+          if (!confirmed) { showDriveRestoreConfirm(); return; }
+          if (!isGTokenValid()) { showDriveNotice('Google Drive niet verbonden', 'Verbind eerst met Google Drive voordat je herstelt.', 'warning'); return; }
           if (gSyncing) return;
           gSyncing = true;
           try {
@@ -245,7 +387,7 @@
             const searchData = await searchRes.json();
             
             if (!searchData.files || searchData.files.length === 0) {
-              alert('❌ Backup bestand niet gevonden in Google Drive!');
+              showDriveNotice('Geen backup gevonden', 'Er werd geen Google Drive-back-up gevonden.', 'error');
               gSyncing = false;
               return;
             }
@@ -270,7 +412,7 @@
             app.save(); // CORRECT methode!
             
             app.sendTg('☁️ Backup hersteld van Google Drive!');
-            alert('✅ Backup hersteld van Google Drive!');
+            showDriveNotice('Gegevens succesvol hersteld', 'De gegevens zijn hersteld vanuit Google Drive.', 'success');
             
             // Open folder in new window
             setTimeout(() => {
@@ -280,7 +422,7 @@
             app.show();
           } catch(e) {
             console.error('Drive restore error:', e);
-            alert('❌ Restore error: ' + e.message);
+            showDriveNotice('Herstellen mislukt', e.message, 'error');
           } finally {
             gSyncing = false;
           }
@@ -3478,30 +3620,22 @@ class App {
                 html += '<button onclick="window.app.showSet=!window.app.showSet;window.app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./drugs.png" style="width:24px;height:24px;pointer-events:none;"></button>';
                 html += '<button onclick="window.app.showSettings()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./24-hours.png" style="width:24px;height:24px;pointer-events:none;"></button>';
                 
-                // ROW 2: BackupDownload, Rapport, BackupUpload
-                html += '<button onclick="window.app.downloadBackup()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./recovery.png" style="width:24px;height:24px;pointer-events:none;"></button>';
+                // ROW 2: Rapport, Kalender, Arts
                 html += '<button onclick="window.app.openReport()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./folder.png" style="width:24px;height:24px;pointer-events:none;"></button>';
-                html += '<button onclick="window.app.uploadBackup()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./database-management.png" style="width:24px;height:24px;pointer-events:none;"></button>';
-                
-                // ROW 3: Kalender (FIXED!), LoginGoogle, BackupSend
                 html += '<button onclick="window.app.view=\'cal\';window.app.month=new Date();window.app.show()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;"><img src="./event.png" style="width:24px;height:24px;pointer-events:none;"></button>';
-                html += '<button onclick="handleSyncAction()" style="background:' + (isGTokenValid() ? '#10b981' : '#6b7280') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;">☁️</button>';
-                html += '<button onclick="driveSync()" style="background:' + (isGTokenValid() ? '#3b82f6' : '#9ca3af') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;" ' + (isGTokenValid() ? '' : 'disabled') + '>⬆️</button>';
-                
-                // ROW 4: BackupRestore, Arts (NEW), Telefoon (NEW)
-                html += '<button onclick="driveRestore()" style="background:' + (isGTokenValid() ? '#8b5cf6' : '#9ca3af') + ';border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;" ' + (isGTokenValid() ? '' : 'disabled') + '>⬇️</button>';
                 html += '<button onclick="showDoctorPopup()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;">👨‍⚕️</button>';
+
+                // ROW 3: Arts wijzigen, Telefoon, Emails
                 html += '<button onclick="window.app.showEditDoctorForm()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;" title="Arts wijzigen">✏️</button>';
                 html += '<button onclick="window.location.href=\'tel:0226912 54\'" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;">📞</button>';
-                
-                // ROW 5: Emails (NEW) + spacer
                 html += '<button onclick="showEmailManager()" style="background:rgba(255,255,255,0.2);border:none;color:white;cursor:pointer;padding:6px;border-radius:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;">📧</button>';
-                html += '<div></div><div></div>';
                 
                 html += '</div>';
                 html += '</div>';
                 
                 html += '<button onclick="app.showEditAlarmSettings()" style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);border:2px solid #ef4444;color:white;width:100%;padding:12px;border-radius:8px;font-weight:700;cursor:pointer;margin-bottom:12px;font-size:16px;"><span style="font-size:20px;">🚨</span> ' + t('alarmSettings').toUpperCase() + '</button>';
+
+                html += buildDriveBackupPanel();
 
                 // PATIENT SECTION - Vóór kalender
                 if (!this.data.patient) {
