@@ -17,25 +17,88 @@ jobs:
       - name: Download backup and check
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           CHAT_ID: 8526489078
-          DRIVE_FILE_ID: 1W1Hfm2x0Ybr4GVsUfXKPHepQ8bKBxDHW
           DRIVE_FOLDER_ID: 1flE6MFq5be0xCPpPJbyozIVTIZOhzu0X
           DRIVE_FILE_NAME: healthapp-backup.json
         run: |
           node << 'NODEJS_EOF'
+          const crypto = require('crypto');
           const { execFileSync } = require('child_process');
 
-          const DRIVE_FILE_ID = process.env.DRIVE_FILE_ID;
           const DRIVE_FOLDER_ID = process.env.DRIVE_FOLDER_ID;
           const DRIVE_FILE_NAME = process.env.DRIVE_FILE_NAME || 'healthapp-backup.json';
+          const GOOGLE_SERVICE_ACCOUNT_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
           const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
           const CHAT_ID = process.env.CHAT_ID;
 
-          function curl(url) {
-            return execFileSync('curl', ['-fsSL', url], {
-              encoding: 'utf8',
-              maxBuffer: 20 * 1024 * 1024
+          function base64Url(input) {
+            return Buffer.from(input)
+              .toString('base64')
+              .replace(/=/g, '')
+              .replace(/\+/g, '-')
+              .replace(/\//g, '_');
+          }
+
+          function escapeDriveQueryValue(value) {
+            return String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+          }
+
+          async function readResponseText(response, label) {
+            const text = await response.text();
+            if (!response.ok) {
+              throw new Error(`${label} failed: ${response.status} ${text.substring(0, 200)}`);
+            }
+            return text;
+          }
+
+          async function getGoogleAccessToken() {
+            if (!GOOGLE_SERVICE_ACCOUNT_JSON) {
+              throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON secret is missing');
+            }
+
+            let serviceAccount;
+            try {
+              serviceAccount = JSON.parse(GOOGLE_SERVICE_ACCOUNT_JSON);
+            } catch (e) {
+              throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON');
+            }
+
+            if (!serviceAccount.client_email || !serviceAccount.private_key) {
+              throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON must contain client_email and private_key');
+            }
+
+            const tokenUri = serviceAccount.token_uri || 'https://oauth2.googleapis.com/token';
+            const now = Math.floor(Date.now() / 1000);
+            const header = { alg: 'RS256', typ: 'JWT' };
+            const claim = {
+              iss: serviceAccount.client_email,
+              scope: 'https://www.googleapis.com/auth/drive.readonly',
+              aud: tokenUri,
+              iat: now,
+              exp: now + 3600
+            };
+            const unsignedJwt = `${base64Url(JSON.stringify(header))}.${base64Url(JSON.stringify(claim))}`;
+            const signature = crypto
+              .createSign('RSA-SHA256')
+              .update(unsignedJwt)
+              .sign(serviceAccount.private_key);
+            const assertion = `${unsignedJwt}.${base64Url(signature)}`;
+
+            const response = await fetch(tokenUri, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams({
+                grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                assertion
+              })
             });
+            const text = await readResponseText(response, 'Google OAuth token request');
+            const tokenData = JSON.parse(text);
+            if (!tokenData.access_token) {
+              throw new Error('Google OAuth token response did not contain access_token');
+            }
+            return tokenData.access_token;
           }
 
           function getBrusselsParts() {
@@ -69,70 +132,85 @@ jobs:
               return JSON.parse(fileContent);
             } catch (parseError) {
               console.error(`JSON Parse Error from ${sourceLabel}:`, parseError.message);
-              console.error('Downloaded content preview:', fileContent.substring(0, 200));
               throw parseError;
             }
           }
 
-          function downloadDriveFile(fileId) {
-            const downloadUrl = `https://drive.google.com/uc?export=download&confirm=no&id=${encodeURIComponent(fileId)}`;
-            return curl(downloadUrl);
+          async function listDriveBackupCandidates(accessToken) {
+            if (!DRIVE_FOLDER_ID) throw new Error('DRIVE_FOLDER_ID is missing');
+            const query = `name = '${escapeDriveQueryValue(DRIVE_FILE_NAME)}' and '${escapeDriveQueryValue(DRIVE_FOLDER_ID)}' in parents and trashed = false`;
+            const params = new URLSearchParams({
+              q: query,
+              spaces: 'drive',
+              fields: 'files(id,name,modifiedTime,size,mimeType)',
+              orderBy: 'modifiedTime desc',
+              pageSize: '10',
+              supportsAllDrives: 'true',
+              includeItemsFromAllDrives: 'true'
+            });
+            const searchUrl = `https://www.googleapis.com/drive/v3/files?${params.toString()}`;
+            console.log('Drive API search started');
+            console.log(`Drive folder ID: ${DRIVE_FOLDER_ID}`);
+            console.log(`Drive file name: ${DRIVE_FILE_NAME}`);
+            console.log(`Drive query: ${query}`);
+
+            const response = await fetch(searchUrl, {
+              headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            const text = await readResponseText(response, 'Drive files.list');
+            const data = JSON.parse(text);
+            const candidates = Array.isArray(data.files) ? data.files : [];
+            console.log(`Drive API search: found ${candidates.length} candidate file(s)`);
+            candidates.forEach((file, index) => {
+              console.log(`Candidate ${index + 1}: id=${file.id}; name=${file.name}; modifiedTime=${file.modifiedTime || 'not available'}; size=${file.size || 'unknown'}; mimeType=${file.mimeType || 'unknown'}`);
+            });
+            return candidates;
           }
 
-          function findDriveFileIdsInFolder() {
-            if (!DRIVE_FOLDER_ID) return [];
-
-            const folderUrl = `https://drive.google.com/drive/folders/${encodeURIComponent(DRIVE_FOLDER_ID)}`;
-            const html = curl(folderUrl);
-            const ids = new Set();
-            const patterns = [
-              /\/file\/d\/([a-zA-Z0-9_-]{20,})/g,
-              /["']([a-zA-Z0-9_-]{20,})["'][^<]{0,120}healthapp-backup\.json/g
-            ];
-
-            for (const pattern of patterns) {
-              let match;
-              while ((match = pattern.exec(html)) !== null) {
-                ids.add(match[1]);
-              }
-            }
-
-            return [...ids];
+          async function downloadDriveFile(accessToken, fileId) {
+            const downloadUrl = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`;
+            const response = await fetch(downloadUrl, {
+              headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            return readResponseText(response, `Drive files.get media ${fileId}`);
           }
 
-          function loadBackup() {
-            const candidates = [];
-            try {
-              const folderIds = findDriveFileIdsInFolder();
-              folderIds.forEach(id => candidates.push({ id, source: `Drive folder ${DRIVE_FOLDER_ID}` }));
-              console.log(`Drive search: found ${folderIds.length} candidate file(s) in folder for ${DRIVE_FILE_NAME}`);
-            } catch (e) {
-              console.log(`Drive search by folder failed: ${e.message}`);
-            }
-
-            if (DRIVE_FILE_ID && !candidates.some(c => c.id === DRIVE_FILE_ID)) {
-              candidates.push({ id: DRIVE_FILE_ID, source: 'fallback DRIVE_FILE_ID' });
+          async function loadBackup() {
+            const accessToken = await getGoogleAccessToken();
+            const candidates = await listDriveBackupCandidates(accessToken);
+            if (candidates.length === 0) {
+              throw new Error(`No Google Drive backup found for ${DRIVE_FILE_NAME} in folder ${DRIVE_FOLDER_ID}`);
             }
 
             const loaded = [];
             let lastError = null;
             for (const candidate of candidates) {
               try {
-                const content = downloadDriveFile(candidate.id);
-                const backup = parseBackup(content, candidate.source);
-                const timestampMs = backup.timestamp ? Date.parse(backup.timestamp) : 0;
-                loaded.push({ backup, candidate, timestampMs: Number.isFinite(timestampMs) ? timestampMs : 0 });
-                console.log(`Backup candidate loaded from ${candidate.source}; file id: ${candidate.id}; timestamp: ${backup.timestamp || 'not available'}`);
+                const content = await downloadDriveFile(accessToken, candidate.id);
+                const backup = parseBackup(content, `Drive API file ${candidate.id}`);
+                const backupTimestampMs = backup.timestamp ? Date.parse(backup.timestamp) : 0;
+                const modifiedTimeMs = candidate.modifiedTime ? Date.parse(candidate.modifiedTime) : 0;
+                loaded.push({
+                  backup,
+                  candidate,
+                  backupTimestampMs: Number.isFinite(backupTimestampMs) ? backupTimestampMs : 0,
+                  modifiedTimeMs: Number.isFinite(modifiedTimeMs) ? modifiedTimeMs : 0
+                });
+                console.log(`Backup candidate parsed: id=${candidate.id}; name=${candidate.name}; modifiedTime=${candidate.modifiedTime || 'not available'}; backup.timestamp=${backup.timestamp || 'not available'}; meds=${Array.isArray(backup.meds) ? backup.meds.length : 0}; measureDays=${backup.measures ? Object.keys(backup.measures).length : 0}`);
               } catch (e) {
                 lastError = e;
-                console.log(`Candidate failed (${candidate.source}; file id: ${candidate.id}): ${e.message}`);
+                console.log(`Candidate failed (Drive API; file id: ${candidate.id}; name=${candidate.name}): ${e.message}`);
               }
             }
 
             if (loaded.length > 0) {
-              loaded.sort((a, b) => b.timestampMs - a.timestampMs);
+              loaded.sort((a, b) => {
+                const byBackupTimestamp = b.backupTimestampMs - a.backupTimestampMs;
+                if (byBackupTimestamp !== 0) return byBackupTimestamp;
+                return b.modifiedTimeMs - a.modifiedTimeMs;
+              });
               const selected = loaded[0];
-              console.log(`Selected backup file id: ${selected.candidate.id}; source: ${selected.candidate.source}; timestamp: ${selected.backup.timestamp || 'not available'}`);
+              console.log(`Selected backup: id=${selected.candidate.id}; name=${selected.candidate.name}; modifiedTime=${selected.candidate.modifiedTime || 'not available'}; backup.timestamp=${selected.backup.timestamp || 'not available'}`);
               return selected.backup;
             }
 
@@ -165,12 +243,13 @@ jobs:
             ], { encoding: 'utf8' });
           }
 
+          (async () => {
           try {
             const { today, hour, time } = getBrusselsParts();
             console.log('Workflow started: Smart Daily Health Checks');
             console.log(`Brussels date/time: ${today} ${time}`);
 
-            const backup = loadBackup();
+            const backup = await loadBackup();
             const meds = Array.isArray(backup.meds) ? backup.meds : [];
             const intakesToday = backup.intakes?.[today] || {};
             const measuresToday = backup.measures?.[today] || {};
@@ -243,4 +322,5 @@ jobs:
             console.error('Error:', e.message);
             process.exit(1);
           }
+          })();
           NODEJS_EOF
