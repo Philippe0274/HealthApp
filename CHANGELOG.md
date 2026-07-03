@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.4 - 2026-07-03
+
+- Header gecontroleerd: Google Drive-, backup-, synchronisatie- en restoreknoppen staan niet meer in de rode header.
+- Google Drive-interface staat uitsluitend nog in de Google Drive-kaart.
+- `APP_VERSION` en service-worker fallback verhoogd naar 2.0.4 zodat smartphones geen oudere 2.0.3-header blijven tonen.
+
 ## 2.0.3 - 2026-07-02
 
 - Headerlayout op telefoon hersteld naar compact 3-koloms raster.
