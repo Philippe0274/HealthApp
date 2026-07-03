@@ -322,6 +322,14 @@ jobs:
               remaining: getRemainingPills(med, allIntakes)
             }));
             const lowStock = dailyStock.filter(item => item.remaining <= 3);
+            let medicationStatusLine = 'Er is geen dagelijkse medicatie ingesteld in de backup.';
+            if (dailyMeds.length > 0 && missingDailyMeds.length === 0) {
+              medicationStatusLine = 'Top: Medicatie is correct ingenomen.';
+            } else if (dailyMeds.length > 0 && takenDailyMeds.length === 0) {
+              medicationStatusLine = 'Foei! Je hebt je medicatie niet ingenomen!';
+            } else if (dailyMeds.length > 0) {
+              medicationStatusLine = `${takenDailyMedNames.join(', ')} ${takenDailyMedNames.length === 1 ? 'is' : 'zijn'} ingenomen, maar ${missingDailyMedNames.join(', ')} niet.`;
+            }
 
             const analysis = [];
             if (completeMeasurements.length === 0) {
@@ -341,15 +349,6 @@ jobs:
             } else if (completeMeasurements.length > 0) {
               analysis.push('De geregistreerde bloeddrukwaarden liggen vandaag binnen de streefzone.');
             }
-            if (dailyMeds.length > 0 && missingDailyMeds.length === 0) {
-              analysis.push('Top: Medicatie is correct ingenomen.');
-            } else if (dailyMeds.length > 0 && takenDailyMeds.length === 0) {
-              analysis.push('Foei! Je hebt je medicatie niet ingenomen!');
-            } else if (dailyMeds.length > 0) {
-              analysis.push(`${takenDailyMedNames.join(', ')} ${takenDailyMedNames.length === 1 ? 'is' : 'zijn'} ingenomen, maar ${missingDailyMedNames.join(', ')} niet.`);
-            } else {
-              analysis.push('Er is geen dagelijkse medicatie ingesteld in de backup.');
-            }
             if (lowStock.length > 0) {
               analysis.push('Een of meer dagelijkse medicaties staan op lage voorraad en moeten worden bijgevraagd.');
             }
@@ -367,6 +366,7 @@ jobs:
               '💊 Dagelijkse medicatie',
               `Ingenomen: ${takenDailyMeds.length}/${dailyMeds.length}`,
               missingDailyMeds.length > 0 ? `Ontbreekt: ${missingDailyMedNames.join(', ')}` : 'Ontbreekt: geen',
+              medicationStatusLine,
               '',
               '📦 Voorraad dagelijkse medicatie',
               ...(dailyStock.length > 0
