@@ -3,14 +3,20 @@ name: Smart Daily Health Checks
 on:
   schedule:
     - cron: '0 6,7,8,9,11,12,20,21 * * *' # Covers 08:00, 10:00, 13:00, 22:00 Europe/Brussels across DST
+    - cron: '59 21,22 * * *' # Daily summary around 23:59 Europe/Brussels across DST
   workflow_dispatch:
     inputs:
       test_hour:
-        description: 'Optioneel: simuleer Brussels uur voor handmatige test (8, 10, 13 of 22)'
+        description: 'Optioneel: simuleer Brussels uur voor handmatige test (8, 10, 13, 22 of 23)'
         required: false
         default: ''
       send_test_telegram:
         description: 'Stuur bij handmatige run direct een Telegram-testbericht'
+        required: false
+        default: 'false'
+        type: boolean
+      send_daily_summary:
+        description: 'Stuur bij handmatige run direct het dagelijkse overzicht'
         required: false
         default: 'false'
         type: boolean
@@ -33,6 +39,7 @@ jobs:
           DRIVE_FILE_NAME: healthapp-backup.json
           TEST_HOUR: ${{ github.event.inputs.test_hour }}
           SEND_TEST_TELEGRAM: ${{ github.event.inputs.send_test_telegram }}
+          SEND_DAILY_SUMMARY: ${{ github.event.inputs.send_daily_summary }}
         run: |
           node << 'NODEJS_EOF'
           const crypto = require('crypto');
@@ -45,6 +52,7 @@ jobs:
           const CHAT_ID = process.env.CHAT_ID;
           const TEST_HOUR = process.env.TEST_HOUR;
           const SEND_TEST_TELEGRAM = process.env.SEND_TEST_TELEGRAM === 'true';
+          const SEND_DAILY_SUMMARY = process.env.SEND_DAILY_SUMMARY === 'true';
 
           function base64Url(input) {
             return Buffer.from(input)
@@ -133,6 +141,7 @@ jobs:
             return {
               today: `${parts.year}-${parts.month}-${parts.day}`,
               hour: Number(parts.hour),
+              minute: Number(parts.minute),
               time: `${parts.hour}:${parts.minute}:${parts.second}`
             };
           }
@@ -243,6 +252,99 @@ jobs:
             return missing;
           }
 
+          function formatMeasurement(label, measurement) {
+            if (!hasMeasurement(measurement)) return `${label}: ontbreekt`;
+            const time = measurement.time ? ` (${measurement.time})` : '';
+            return `${label}: ${measurement.sys}/${measurement.dia} - HR ${measurement.hr}${time}`;
+          }
+
+          function classifyBloodPressure(measurement) {
+            if (!hasMeasurement(measurement)) return null;
+            const sys = Number(measurement.sys);
+            const dia = Number(measurement.dia);
+            if (sys >= 180 || dia >= 110) return 'ernstig verhoogd';
+            if (sys >= 160 || dia >= 100) return 'duidelijk verhoogd';
+            if (sys >= 140 || dia >= 90) return 'verhoogd';
+            if (sys >= 130 || dia >= 85) return 'hoog-normaal';
+            return 'binnen streefzone';
+          }
+
+          function buildDailySummary(backup, today) {
+            const meds = Array.isArray(backup.meds) ? backup.meds : [];
+            const intakesToday = backup.intakes?.[today] || {};
+            const measuresToday = backup.measures?.[today] || {};
+            const patientName = backup.patient?.name || backup.patient?.firstName || 'Patient';
+            const moments = [
+              { key: 'ochtend', label: 'Ochtend' },
+              { key: 'middag', label: 'Middag' },
+              { key: 'avond', label: 'Avond' }
+            ];
+
+            const completeMeasurements = moments
+              .map(moment => ({ ...moment, measurement: measuresToday[moment.key] || {} }))
+              .filter(item => hasMeasurement(item.measurement));
+            const missingMeasurements = moments
+              .filter(moment => !hasMeasurement(measuresToday[moment.key] || {}))
+              .map(moment => moment.label.toLowerCase());
+            const classifications = completeMeasurements
+              .map(item => ({ label: item.label, status: classifyBloodPressure(item.measurement) }))
+              .filter(item => item.status);
+            const severe = classifications.filter(item => item.status === 'ernstig verhoogd');
+            const elevated = classifications.filter(item => ['verhoogd', 'duidelijk verhoogd'].includes(item.status));
+            const highNormal = classifications.filter(item => item.status === 'hoog-normaal');
+
+            const takenMeds = meds.filter(med => med && med.id && intakesToday[med.id]);
+            const missingMeds = meds.filter(med => med && med.id && !intakesToday[med.id]);
+
+            const analysis = [];
+            if (completeMeasurements.length === 0) {
+              analysis.push('Er zijn vandaag geen volledige bloeddrukmetingen geregistreerd. Een dagtrend kan daardoor niet beoordeeld worden.');
+            } else {
+              analysis.push(`${completeMeasurements.length}/3 bloeddrukmoment(en) volledig geregistreerd.`);
+            }
+            if (missingMeasurements.length > 0) {
+              analysis.push(`Ontbrekende meetmomenten: ${missingMeasurements.join(', ')}.`);
+            }
+            if (severe.length > 0) {
+              analysis.push('Minstens een meting is ernstig verhoogd. Bij klachten of aanhoudend hoge waarden is medisch contact aangewezen.');
+            } else if (elevated.length > 0) {
+              analysis.push('Er zijn verhoogde bloeddrukwaarden geregistreerd. Volg de trend verder op en bespreek aanhoudende verhoging met de arts.');
+            } else if (highNormal.length > 0) {
+              analysis.push('De bloeddruk was deels hoog-normaal. Verdere opvolging blijft nuttig.');
+            } else if (completeMeasurements.length > 0) {
+              analysis.push('De geregistreerde bloeddrukwaarden liggen vandaag binnen de streefzone.');
+            }
+            if (missingMeds.length > 0) {
+              analysis.push('Niet alle medicatie staat als ingenomen geregistreerd. Controleer of dit werkelijk gemist is of enkel niet aangeduid werd.');
+            } else if (meds.length > 0) {
+              analysis.push('Alle geregistreerde medicatie staat vandaag als ingenomen.');
+            } else {
+              analysis.push('Er is geen medicatie ingesteld in de backup.');
+            }
+
+            const lines = [
+              `📋 DAGOVERZICHT HEALTH APP`,
+              `Datum: ${today}`,
+              `Patient: ${patientName}`,
+              '',
+              '🩺 Bloeddruk',
+              formatMeasurement('Ochtend', measuresToday.ochtend || {}),
+              formatMeasurement('Middag', measuresToday.middag || {}),
+              formatMeasurement('Avond', measuresToday.avond || {}),
+              '',
+              '💊 Medicatie',
+              `Ingenomen: ${takenMeds.length}/${meds.length}`,
+              missingMeds.length > 0 ? `Ontbreekt: ${missingMeds.map(med => med.name || med.id).join(', ')}` : 'Ontbreekt: geen',
+              '',
+              '📊 Analyse',
+              ...analysis,
+              '',
+              'ℹ️ Dit is een automatische opvolging op basis van geregistreerde gegevens, geen diagnose.'
+            ];
+
+            return lines.join('%0A');
+          }
+
           function sendTelegram(text) {
             if (!TELEGRAM_TOKEN || !CHAT_ID) {
               throw new Error('Telegram token or chat id missing');
@@ -263,7 +365,8 @@ jobs:
             const today = parts.today;
             const time = parts.time;
             let hour = parts.hour;
-            if (TEST_HOUR && ['8', '10', '13', '22'].includes(TEST_HOUR)) {
+            const minute = parts.minute;
+            if (TEST_HOUR && ['8', '10', '13', '22', '23'].includes(TEST_HOUR)) {
               hour = Number(TEST_HOUR);
               console.log(`Manual test hour override active: ${hour}:00 Brussels`);
             }
@@ -284,6 +387,13 @@ jobs:
             console.log(`Measurements today: ${Object.keys(measuresToday).filter(key => hasMeasurement(measuresToday[key])).length}`);
 
             const alerts = [];
+            const shouldSendDailySummary = SEND_DAILY_SUMMARY || (hour === 23 && minute >= 55);
+
+            if (shouldSendDailySummary) {
+              console.log('Daily summary check active');
+              sendTelegram(buildDailySummary(backup, today));
+              console.log('Daily summary sent');
+            }
 
             const measurementChecks = {
               8: { key: 'ochtend', label: 'OCHTEND BLOEDWAARDEN MISSEN', log: 'Ochtend bloedwaarden' },
@@ -330,7 +440,7 @@ jobs:
               }
             }
 
-            if (![8, 10, 13, 22].includes(hour)) {
+            if (![8, 10, 13, 22].includes(hour) && !shouldSendDailySummary) {
               console.log(`No check configured for Brussels hour ${hour}`);
             }
 
