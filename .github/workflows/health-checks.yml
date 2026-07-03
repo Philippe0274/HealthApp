@@ -269,8 +269,20 @@ jobs:
             return 'binnen streefzone';
           }
 
+          function getRemainingPills(med, allIntakes) {
+            if (!med || !med.id) return 0;
+            const totalPills = parseInt(med.pills, 10) || 0;
+            const perIntake = med.type === 'sporadic' ? (parseInt(med.pillsPerIntake, 10) || 1) : 1;
+            let used = 0;
+            Object.values(allIntakes || {}).forEach(day => {
+              if (day && day[med.id]) used += perIntake;
+            });
+            return Math.max(0, totalPills - used);
+          }
+
           function buildDailySummary(backup, today) {
             const meds = Array.isArray(backup.meds) ? backup.meds : [];
+            const allIntakes = backup.intakes || {};
             const intakesToday = backup.intakes?.[today] || {};
             const measuresToday = backup.measures?.[today] || {};
             const patientName = backup.patient?.name || backup.patient?.firstName || 'Patient';
@@ -293,8 +305,15 @@ jobs:
             const elevated = classifications.filter(item => ['verhoogd', 'duidelijk verhoogd'].includes(item.status));
             const highNormal = classifications.filter(item => item.status === 'hoog-normaal');
 
-            const takenMeds = meds.filter(med => med && med.id && intakesToday[med.id]);
-            const missingMeds = meds.filter(med => med && med.id && !intakesToday[med.id]);
+            const dailyMeds = meds.filter(med => med && med.id && med.type !== 'sporadic');
+            const sporadicTakenToday = meds.filter(med => med && med.id && med.type === 'sporadic' && intakesToday[med.id]);
+            const takenDailyMeds = dailyMeds.filter(med => intakesToday[med.id]);
+            const missingDailyMeds = dailyMeds.filter(med => !intakesToday[med.id]);
+            const dailyStock = dailyMeds.map(med => ({
+              med,
+              remaining: getRemainingPills(med, allIntakes)
+            }));
+            const lowStock = dailyStock.filter(item => item.remaining <= 3);
 
             const analysis = [];
             if (completeMeasurements.length === 0) {
@@ -314,12 +333,15 @@ jobs:
             } else if (completeMeasurements.length > 0) {
               analysis.push('De geregistreerde bloeddrukwaarden liggen vandaag binnen de streefzone.');
             }
-            if (missingMeds.length > 0) {
+            if (missingDailyMeds.length > 0) {
               analysis.push('Niet alle medicatie staat als ingenomen geregistreerd. Controleer of dit werkelijk gemist is of enkel niet aangeduid werd.');
-            } else if (meds.length > 0) {
-              analysis.push('Alle geregistreerde medicatie staat vandaag als ingenomen.');
+            } else if (dailyMeds.length > 0) {
+              analysis.push('Alle dagelijkse medicatie staat vandaag als ingenomen.');
             } else {
-              analysis.push('Er is geen medicatie ingesteld in de backup.');
+              analysis.push('Er is geen dagelijkse medicatie ingesteld in de backup.');
+            }
+            if (lowStock.length > 0) {
+              analysis.push('Een of meer dagelijkse medicaties staan op lage voorraad en moeten worden bijgevraagd.');
             }
 
             const lines = [
@@ -332,9 +354,20 @@ jobs:
               formatMeasurement('Middag', measuresToday.middag || {}),
               formatMeasurement('Avond', measuresToday.avond || {}),
               '',
-              '💊 Medicatie',
-              `Ingenomen: ${takenMeds.length}/${meds.length}`,
-              missingMeds.length > 0 ? `Ontbreekt: ${missingMeds.map(med => med.name || med.id).join(', ')}` : 'Ontbreekt: geen',
+              '💊 Dagelijkse medicatie',
+              `Ingenomen: ${takenDailyMeds.length}/${dailyMeds.length}`,
+              missingDailyMeds.length > 0 ? `Ontbreekt: ${missingDailyMeds.map(med => med.name || med.id).join(', ')}` : 'Ontbreekt: geen',
+              '',
+              '📦 Voorraad dagelijkse medicatie',
+              ...(dailyStock.length > 0
+                ? dailyStock.map(item => `${item.med.name || item.med.id}: ${item.remaining}/${parseInt(item.med.pills, 10) || 0}${item.remaining <= 3 ? ' ⚠️ bijvragen' : ''}`)
+                : ['Geen dagelijkse medicatie ingesteld']),
+              ...(sporadicTakenToday.length > 0
+                ? ['', '🔵 Sporadisch ingenomen vandaag', ...sporadicTakenToday.map(med => `${med.name || med.id}: ${intakesToday[med.id]}`)]
+                : []),
+              ...(lowStock.length > 0
+                ? ['', '⚠️ Medicatie bijvragen', ...lowStock.map(item => `${item.med.name || item.med.id} dient te worden bijgevraagd aan de huisarts.`)]
+                : []),
               '',
               '📊 Analyse',
               ...analysis,
