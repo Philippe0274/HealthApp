@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.6 - 2026-07-03
+
+- Google Drive-verbinding blijft als verbindingswens bewaard en probeert bij opstart stil opnieuw te verbinden volgens de bestaande Google Identity Services-tokenflow.
+- Lokale saves plannen automatisch een bestaande Google Drive-synchronisatie wanneer Google Drive verbonden is.
+- Synchronisatie gebruikt een korte wachtrij/debounce zodat meerdere saves niet tegelijk uploaden.
+- Restore, backupformaat, Google Drive API-pad, patientgegevens, metingen, medicatie, rapporten, alarmen, Telegram en workflowlogica blijven ongewijzigd.
+
 ## 2.0.5 - 2026-07-03
 
 - Google Drive-kaart visueel compacter gemaakt voor smartphonegebruik.

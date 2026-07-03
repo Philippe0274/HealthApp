@@ -95,17 +95,51 @@
         const GDRIVE_FILE_NAME = 'healthapp-backup.json';
 
         let gTokenClient = null;
-        let gAccessToken = null; // ALTIJD null bij start - localStorage negeren!
+        let gAccessToken = null;
         let gTokenExpiry = 0;
         let gFileId = null;
         let gUserName = null;
         let gSyncing = false;
         let gLastSync = 0;
+        let gAutoConnectTried = false;
+        let gSilentAuthInProgress = false;
+        let gSyncQueued = false;
+        let gSyncTimer = null;
 
         function isGTokenValid() {
           if (!gAccessToken || gAccessToken === 'null' || gAccessToken === '') return false;
           if (!gTokenExpiry || gTokenExpiry <= 0) return false;
           return Date.now() < gTokenExpiry - 60000;
+        }
+
+        function wantsGoogleDriveConnection() {
+          return localStorage.getItem('gdrive_auto_connect') === '1' || !!localStorage.getItem('gdrive_user_name');
+        }
+
+        function queueDriveAutoSync(reason = 'local-save') {
+          if (!wantsGoogleDriveConnection() || !isGTokenValid()) return;
+          if (gSyncing) {
+            gSyncQueued = true;
+            return;
+          }
+          if (gSyncTimer) clearTimeout(gSyncTimer);
+          gSyncTimer = setTimeout(() => {
+            gSyncTimer = null;
+            driveSync({ auto: true, reason });
+          }, 900);
+        }
+
+        function requestSilentGoogleReconnect() {
+          if (gAutoConnectTried || isGTokenValid() || !wantsGoogleDriveConnection() || !gTokenClient) return;
+          gAutoConnectTried = true;
+          gSilentAuthInProgress = true;
+          try {
+            const hint = localStorage.getItem('gdrive_user_name') || undefined;
+            gTokenClient.requestAccessToken({ prompt: 'none', login_hint: hint });
+          } catch (e) {
+            gSilentAuthInProgress = false;
+            console.warn('Silent Google reconnect failed:', e);
+          }
         }
 
         function showDriveNotice(title, message, tone = 'success') {
@@ -187,8 +221,8 @@
           const primaryText = info.connected ? 'Synchroniseren' : 'Verbinden';
           const restoreDisabled = info.connected ? '' : ' disabled';
           const restoreStyle = info.connected ? '#f97316' : '#9ca3af';
-          const connectedLabel = info.connected ? '🟢 Verbonden' : '⚪ Niet verbonden';
-          const statusLabel = info.localNewer ? '🟡 Lokale wijzigingen' : (info.connected && info.driveTs ? '🟢 Alles gesynchroniseerd' : '⚪ Geen backup');
+          const connectedLabel = info.connected ? '🟢 Verbonden' : (wantsGoogleDriveConnection() ? '🟡 Opnieuw verbinden' : '⚪ Niet verbonden');
+          const statusLabel = info.localNewer ? '🟡 Lokale wijzigingen' : (info.connected && info.driveTs ? '🟢 Alles gesynchroniseerd' : '🟡 Niet gesynchroniseerd');
 
           return '<div id="drive-backup-panel" style="background:white;border-radius:8px;padding:10px;margin:10px 0 12px 0;box-shadow:0 1px 3px rgba(0,0,0,0.05);border:1px solid #e5e7eb;">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">' +
@@ -237,14 +271,17 @@
         }
 
         function initGoogleDrive() {
-          // Clean invalid tokens at startup
-          if (!gAccessToken || gAccessToken === 'null' || gAccessToken === '') {
+          const storedToken = localStorage.getItem('gdrive_token');
+          const storedExpiry = Number(localStorage.getItem('gdrive_token_expiry') || 0);
+          gUserName = localStorage.getItem('gdrive_user_name') || null;
+          if (storedToken && storedToken !== 'null' && storedToken !== '' && storedExpiry && Date.now() < storedExpiry - 60000) {
+            gAccessToken = storedToken;
+            gTokenExpiry = storedExpiry;
+          } else {
             localStorage.removeItem('gdrive_token');
             localStorage.removeItem('gdrive_token_expiry');
-            localStorage.removeItem('gdrive_user_name');
             gAccessToken = null;
             gTokenExpiry = 0;
-            gUserName = null;
           }
           
           if (typeof google === 'undefined' || !google.accounts) {
@@ -255,22 +292,32 @@
             client_id: GDRIVE_CLIENT_ID,
             scope: GDRIVE_SCOPE,
             callback: async (resp) => {
+              const wasSilent = gSilentAuthInProgress;
+              gSilentAuthInProgress = false;
               if (resp.error) {
-                showDriveNotice('Google login mislukt', resp.error, 'error');
+                if (!wasSilent) showDriveNotice('Google login mislukt', resp.error, 'error');
+                if (window.app) app.show();
                 return;
               }
               gAccessToken = resp.access_token;
-              gTokenExpiry = Date.now() + (resp.expires_in * 1000);
+              gTokenExpiry = Date.now() + ((resp.expires_in || 3600) * 1000);
               localStorage.setItem('gdrive_token', gAccessToken);
               localStorage.setItem('gdrive_token_expiry', String(gTokenExpiry));
+              localStorage.setItem('gdrive_auto_connect', '1');
               await fetchGUserInfo();
-              app.sendTg('✅ Google Drive verbonden!');
-              showDriveNotice('Google Drive verbonden', 'Je kunt nu veilig synchroniseren of herstellen.', 'success');
+              if (!wasSilent) {
+                app.sendTg('✅ Google Drive verbonden!');
+                showDriveNotice('Google Drive verbonden', 'Je kunt nu veilig synchroniseren of herstellen.', 'success');
+              } else {
+                queueDriveAutoSync('silent-reconnect');
+              }
               app.show();
             }
           });
           if (isGTokenValid()) {
             app.show();
+          } else {
+            requestSilentGoogleReconnect();
           }
         }
 
@@ -293,18 +340,26 @@
             localStorage.removeItem('gdrive_token');
             localStorage.removeItem('gdrive_token_expiry');
             localStorage.removeItem('gdrive_user_name');
+            localStorage.removeItem('gdrive_auto_connect');
             showDriveNotice('Google Drive ontkoppeld', 'De koppeling met Google Drive is gestopt.', 'success');
             app.show();
           } else {
             if (!gTokenClient) { showDriveNotice('Google Drive wordt geladen', 'Probeer het over enkele seconden opnieuw.', 'warning'); return; }
-            if (gUserName) gTokenClient.requestAccessToken();
+            if (gUserName) gTokenClient.requestAccessToken({ prompt: '' });
             else gTokenClient.requestAccessToken({ prompt: 'consent' });
           }
         }
 
-        async function driveSync() {
-          if (!isGTokenValid()) { showDriveNotice('Google Drive niet verbonden', 'Verbind eerst met Google Drive voordat je synchroniseert.', 'warning'); return; }
-          if (gSyncing) return;
+        async function driveSync(options = {}) {
+          const auto = !!(options && options.auto);
+          if (!isGTokenValid()) {
+            if (!auto) showDriveNotice('Google Drive niet verbonden', 'Verbind eerst met Google Drive voordat je synchroniseert.', 'warning');
+            return;
+          }
+          if (gSyncing) {
+            if (auto) gSyncQueued = true;
+            return;
+          }
           gSyncing = true;
           try {
             const backup = {
@@ -350,14 +405,20 @@
             gLastSync = Date.now();
             localStorage.setItem('gdrive_last_sync', String(gLastSync));
             
-            app.sendTg('☁️ Backup gestuurd!');
-            showDriveNotice('Synchronisatie voltooid', 'Google Drive bevat nu de nieuwste gegevens.', 'success');
-            app.show();
+            if (!auto) {
+              app.sendTg('☁️ Backup gestuurd!');
+              showDriveNotice('Synchronisatie voltooid', 'Google Drive bevat nu de nieuwste gegevens.', 'success');
+              app.show();
+            }
           } catch(e) {
             console.error('Sync error:', e);
-            showDriveNotice('Synchronisatie mislukt', e.message, 'error');
+            if (!auto) showDriveNotice('Synchronisatie mislukt', e.message, 'error');
           } finally {
             gSyncing = false;
+            if (gSyncQueued) {
+              gSyncQueued = false;
+              queueDriveAutoSync('queued-save');
+            }
           }
         }
 
@@ -418,7 +479,7 @@
         }
 
         
-const APP_VERSION = '2.0.5';
+const APP_VERSION = '2.0.6';
 const LANGUAGE_OPTIONS = [
  { code:'nl', label:'Nederlands', flag:'🇳🇱' },
  { code:'fr', label:'Français', flag:'🇫🇷' },
@@ -712,6 +773,7 @@ class App {
 
             save() {
                 localStorage.setItem('data', JSON.stringify(this.data));
+                queueDriveAutoSync('data-save');
             }
 
             today() {
@@ -1115,6 +1177,7 @@ class App {
                 this.settings.medicatieCheck = document.getElementById('medicatieInput').value;
                 this.settings.rapportCheck = document.getElementById('rapportInput').value;
                 localStorage.setItem('settings', JSON.stringify(this.settings));
+                queueDriveAutoSync('settings-save');
                 
                 const msg = '⏰ INSTELLINGEN OPGESLAGEN\n\nOchtend: ' + this.settings.ochtendDeadline + '\nMiddag: ' + this.settings.middagDeadline + '\nAvond: ' + this.settings.avondDeadline + '\nMedicatie check: ' + this.settings.medicatieCheck + '\nRapport: ' + this.settings.rapportCheck;
                 this.sendTg(msg);
@@ -1135,6 +1198,7 @@ class App {
                 
                 this.doctor = { name, address, phone, hours: this.doctor.hours };
                 localStorage.setItem('doctor', JSON.stringify(this.doctor));
+                queueDriveAutoSync('doctor-save');
                 this.sendTg('✅ Huisarts gegevens bijgewerkt:\n' + name + '\n' + address + '\n' + phone);
                 document.getElementById('doctor-modal').remove();
                 this.show();
@@ -1166,6 +1230,7 @@ class App {
                 localStorage.setItem('alarm_hr_groen_min', hr_groen_min);
                 localStorage.setItem('alarm_hr_groen_max', hr_groen_max);
                 localStorage.setItem('alarm_hr_geel_max', hr_geel_max);
+                queueDriveAutoSync('alarm-settings-save');
                 
                 this.sendTg('✅ Alarm instellingen opgeslagen!');
                 document.getElementById('alarm-modal').remove();
@@ -4320,8 +4385,8 @@ class App {
             navigator.serviceWorker.addEventListener('message', (event) => {
               if (event.data.type === 'PERFORM_SYNC') {
                 console.log('Auto-sync triggered:', event.data.tag);
-                if (isGTokenValid() && typeof driveSync === 'function') {
-                  driveSync();
+                if (isGTokenValid() && typeof queueDriveAutoSync === 'function') {
+                  queueDriveAutoSync('service-worker');
                 }
               }
               if (event.data.type === 'NEW_VERSION_READY') {
