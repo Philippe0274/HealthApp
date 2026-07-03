@@ -280,6 +280,12 @@ jobs:
             return Math.max(0, totalPills - used);
           }
 
+          function formatDisplayDate(dateValue) {
+            const [year, month, day] = String(dateValue || '').split('-');
+            if (!year || !month || !day) return dateValue;
+            return `${day}-${month}-${year}`;
+          }
+
           function buildDailySummary(backup, today) {
             const meds = Array.isArray(backup.meds) ? backup.meds : [];
             const allIntakes = backup.intakes || {};
@@ -309,6 +315,8 @@ jobs:
             const sporadicTakenToday = meds.filter(med => med && med.id && med.type === 'sporadic' && intakesToday[med.id]);
             const takenDailyMeds = dailyMeds.filter(med => intakesToday[med.id]);
             const missingDailyMeds = dailyMeds.filter(med => !intakesToday[med.id]);
+            const takenDailyMedNames = takenDailyMeds.map(med => med.name || med.id);
+            const missingDailyMedNames = missingDailyMeds.map(med => med.name || med.id);
             const dailyStock = dailyMeds.map(med => ({
               med,
               remaining: getRemainingPills(med, allIntakes)
@@ -333,10 +341,12 @@ jobs:
             } else if (completeMeasurements.length > 0) {
               analysis.push('De geregistreerde bloeddrukwaarden liggen vandaag binnen de streefzone.');
             }
-            if (missingDailyMeds.length > 0) {
-              analysis.push('Niet alle medicatie staat als ingenomen geregistreerd. Controleer of dit werkelijk gemist is of enkel niet aangeduid werd.');
+            if (dailyMeds.length > 0 && missingDailyMeds.length === 0) {
+              analysis.push('Top: Medicatie is correct ingenomen.');
+            } else if (dailyMeds.length > 0 && takenDailyMeds.length === 0) {
+              analysis.push('Foei! Je hebt je medicatie niet ingenomen!');
             } else if (dailyMeds.length > 0) {
-              analysis.push('Alle dagelijkse medicatie staat vandaag als ingenomen.');
+              analysis.push(`${takenDailyMedNames.join(', ')} ${takenDailyMedNames.length === 1 ? 'is' : 'zijn'} ingenomen, maar ${missingDailyMedNames.join(', ')} niet.`);
             } else {
               analysis.push('Er is geen dagelijkse medicatie ingesteld in de backup.');
             }
@@ -346,7 +356,7 @@ jobs:
 
             const lines = [
               `📋 DAGOVERZICHT HEALTH APP`,
-              `Datum: ${today}`,
+              `Datum: ${formatDisplayDate(today)}`,
               `Patient: ${patientName}`,
               '',
               '🩺 Bloeddruk',
@@ -356,7 +366,7 @@ jobs:
               '',
               '💊 Dagelijkse medicatie',
               `Ingenomen: ${takenDailyMeds.length}/${dailyMeds.length}`,
-              missingDailyMeds.length > 0 ? `Ontbreekt: ${missingDailyMeds.map(med => med.name || med.id).join(', ')}` : 'Ontbreekt: geen',
+              missingDailyMeds.length > 0 ? `Ontbreekt: ${missingDailyMedNames.join(', ')}` : 'Ontbreekt: geen',
               '',
               '📦 Voorraad dagelijkse medicatie',
               ...(dailyStock.length > 0
