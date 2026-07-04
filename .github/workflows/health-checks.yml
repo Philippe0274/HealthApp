@@ -488,8 +488,10 @@ jobs:
             if (hour === 10) {
               console.log('Checking: Medicatie');
               const missingMeds = [];
+              const dailyMedsForAlert = meds.filter(med => med && med.id && med.type !== 'sporadic');
+              console.log(`Daily medication count for alert: ${dailyMedsForAlert.length}`);
 
-              for (const med of meds) {
+              for (const med of dailyMedsForAlert) {
                 if (!med || !med.id) {
                   console.log(`Skipping medication without id: ${med && med.name ? med.name : 'unknown'}`);
                   continue;
