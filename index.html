@@ -91,6 +91,7 @@
         // ══════════════════════════════════════════════════════════
         const GDRIVE_CLIENT_ID = '333079195698-gt6gm0ra37e53ujd782424nea5e9iiqq.apps.googleusercontent.com';
         const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile';
+        const GDRIVE_ACCOUNT_HINT = 'philippe.demeersman1970@gmail.com';
         const GDRIVE_FOLDER_ID = '1flE6MFq5be0xCPpPJbyozIVTIZOhzu0X'; // SyncHealthapp folder
         const GDRIVE_FILE_NAME = 'healthapp-backup.json';
 
@@ -117,7 +118,12 @@
         }
 
         function queueDriveAutoSync(reason = 'local-save') {
-          if (!wantsGoogleDriveConnection() || !isGTokenValid()) return;
+          if (!wantsGoogleDriveConnection()) return;
+          if (!isGTokenValid()) {
+            gSyncQueued = true;
+            requestSilentGoogleReconnect({ force: true });
+            return;
+          }
           if (gSyncing) {
             gSyncQueued = true;
             return;
@@ -129,17 +135,23 @@
           }, 900);
         }
 
-        function requestSilentGoogleReconnect() {
-          if (gAutoConnectTried || isGTokenValid() || !wantsGoogleDriveConnection() || !gTokenClient) return;
+        function requestSilentGoogleReconnect(options = {}) {
+          const force = !!(options && options.force);
+          if ((!force && gAutoConnectTried) || isGTokenValid() || !wantsGoogleDriveConnection() || !gTokenClient) return;
           gAutoConnectTried = true;
           gSilentAuthInProgress = true;
           try {
-            const hint = localStorage.getItem('gdrive_user_name') || undefined;
+            const hint = GDRIVE_ACCOUNT_HINT || localStorage.getItem('gdrive_user_name') || undefined;
             gTokenClient.requestAccessToken({ prompt: 'none', login_hint: hint });
           } catch (e) {
             gSilentAuthInProgress = false;
             console.warn('Silent Google reconnect failed:', e);
           }
+        }
+
+        function refreshGoogleDriveConnection(reason = 'app-resume') {
+          if (!wantsGoogleDriveConnection() || isGTokenValid()) return;
+          requestSilentGoogleReconnect({ force: true, reason });
         }
 
         function showDriveNotice(title, message, tone = 'success') {
@@ -210,7 +222,9 @@
           const drive = formatDriveDateTime(driveTs);
           const connected = isGTokenValid();
           const localNewer = connected && localTs && driveTs && localTs > driveTs + 60000;
-          let status = 'Google Drive is nog niet verbonden.';
+          let status = wantsGoogleDriveConnection()
+            ? 'Google Drive-koppeling is bewaard. De app probeert automatisch opnieuw te verbinden.'
+            : 'Google Drive is nog niet verbonden.';
           if (connected && !driveTs) status = 'Er is nog geen Google Drive-back-up geregistreerd.';
           if (connected && driveTs && !localNewer) status = 'Google Drive is volledig bijgewerkt.';
           if (localNewer) status = 'Lokale gegevens zijn recenter dan Google Drive. Synchroniseren wordt aanbevolen.';
@@ -224,7 +238,7 @@
           const restoreDisabled = info.connected ? '' : ' disabled';
           const restoreStyle = info.connected ? '#f97316' : '#9ca3af';
           const connectedLabel = info.connected ? '🟢 Verbonden' : (wantsGoogleDriveConnection() ? '🟡 Opnieuw verbinden' : '⚪ Niet verbonden');
-          const statusLabel = info.localNewer ? '🟡 Lokale wijzigingen' : (info.connected && info.driveTs ? '🟢 Alles gesynchroniseerd' : '🟡 Niet gesynchroniseerd');
+          const statusLabel = info.localNewer ? '🟡 Lokale wijzigingen' : (info.connected && info.driveTs ? '🟢 Alles gesynchroniseerd' : (wantsGoogleDriveConnection() ? '🟡 Opnieuw verbinden' : '🟡 Niet gesynchroniseerd'));
 
           return '<div id="drive-backup-panel" style="background:white;border-radius:8px;padding:10px;margin:10px 0 12px 0;box-shadow:0 1px 3px rgba(0,0,0,0.05);border:1px solid #e5e7eb;">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">' +
@@ -347,15 +361,27 @@
             app.show();
           } else {
             if (!gTokenClient) { showDriveNotice('Google Drive wordt geladen', 'Probeer het over enkele seconden opnieuw.', 'warning'); return; }
-            if (gUserName) gTokenClient.requestAccessToken({ prompt: '' });
-            else gTokenClient.requestAccessToken({ prompt: 'consent' });
+            if (gUserName) gTokenClient.requestAccessToken({ prompt: '', login_hint: GDRIVE_ACCOUNT_HINT });
+            else gTokenClient.requestAccessToken({ prompt: 'consent', login_hint: GDRIVE_ACCOUNT_HINT });
           }
         }
 
         async function driveSync(options = {}) {
           const auto = !!(options && options.auto);
           if (!isGTokenValid()) {
-            if (!auto) showDriveNotice('Google Drive niet verbonden', 'Verbind eerst met Google Drive voordat je synchroniseert.', 'warning');
+            if (wantsGoogleDriveConnection()) {
+              gSyncQueued = true;
+              if (auto) {
+                requestSilentGoogleReconnect({ force: true });
+              } else if (gTokenClient) {
+                showDriveNotice('Google Drive opnieuw verbinden', 'De koppeling wordt vernieuwd. Synchronisatie start daarna automatisch.', 'info');
+                gTokenClient.requestAccessToken({ prompt: gUserName ? '' : 'consent', login_hint: GDRIVE_ACCOUNT_HINT });
+              } else {
+                showDriveNotice('Google Drive wordt geladen', 'Probeer het over enkele seconden opnieuw.', 'warning');
+              }
+            } else if (!auto) {
+              showDriveNotice('Google Drive niet verbonden', 'Verbind eerst met Google Drive voordat je synchroniseert.', 'warning');
+            }
             return;
           }
           if (gSyncing) {
@@ -484,7 +510,7 @@
         }
 
         
-const APP_VERSION = '2.0.7';
+const APP_VERSION = '2.0.9';
 const LANGUAGE_OPTIONS = [
  { code:'nl', label:'Nederlands', flag:'🇳🇱' },
  { code:'fr', label:'Français', flag:'🇫🇷' },
@@ -4344,6 +4370,14 @@ class App {
             console.error('Google init error:', err);
           }
         })();
+
+        window.addEventListener('focus', () => {
+          refreshGoogleDriveConnection('window-focus');
+        });
+
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) refreshGoogleDriveConnection('visibilitychange');
+        });
 
         function showUpdateNotice() {
             if (document.getElementById('pwa-update-notice')) return;
