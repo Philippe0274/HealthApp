@@ -510,7 +510,7 @@
         }
 
         
-const APP_VERSION = '2.0.9';
+const APP_VERSION = '2.1.1';
 const LANGUAGE_OPTIONS = [
  { code:'nl', label:'Nederlands', flag:'🇳🇱' },
  { code:'fr', label:'Français', flag:'🇫🇷' },
@@ -812,15 +812,44 @@ class App {
                 return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
             }
 
+            getMedTotalAmount(med) {
+                if (!med) return 0;
+                const value = med.stockAmount !== undefined ? med.stockAmount : med.pills;
+                return parseFloat(value) || 0;
+            }
+
+            getMedUnit(med) {
+                return (med && med.stockUnit) ? med.stockUnit : 'pillen';
+            }
+
+            getMedDoseAmount(med) {
+                if (!med) return 1;
+                if (med.doseAmount !== undefined) return parseFloat(med.doseAmount) || 1;
+                return med.type === 'sporadic' ? (parseFloat(med.pillsPerIntake) || 1) : 1;
+            }
+
+            formatMedAmount(value) {
+                const rounded = Math.round((parseFloat(value) || 0) * 10) / 10;
+                return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+            }
+
+            formatMedQuantity(med, value) {
+                return this.formatMedAmount(value) + ' ' + this.getMedUnit(med);
+            }
+
+            formatMedStock(med) {
+                return this.formatMedQuantity(med, this.getPills(med.id)) + '/' + this.formatMedQuantity(med, this.getMedTotalAmount(med));
+            }
+
             getPills(id) {
                 let count = 0;
                 const med = this.data.meds.find(m => m.id === id);
                 if (!med) return 0;
-                const perIntake = med.type === 'sporadic' ? (parseInt(med.pillsPerIntake) || 1) : 1;
+                const perIntake = this.getMedDoseAmount(med);
                 for (let day in this.data.intakes) {
                     if (this.data.intakes[day][id]) count += perIntake;
                 }
-                return Math.max(0, med.pills - count);
+                return Math.max(0, this.getMedTotalAmount(med) - count);
             }
 
             addMed(type = 'daily') {
@@ -829,13 +858,22 @@ class App {
                 if (!name) return;
                 const dosage = prompt('Dosage:');
                 if (!dosage) return;
-                const p = parseInt(prompt('Pillen (1-70):') || '0');
-                if (p < 1 || p > 70) { alert('1-70!'); return; }
+                const unitInput = prompt('Voorraadeenheid (pillen, g of ml):', name.toLowerCase().includes('optifibre') ? 'g' : 'pillen');
+                if (!unitInput) return;
+                const stockUnit = unitInput.trim().toLowerCase();
+                if (!['pillen', 'g', 'ml'].includes(stockUnit)) { alert('Gebruik pillen, g of ml.'); return; }
+                const defaultStock = stockUnit === 'g' && name.toLowerCase().includes('optifibre') ? '250' : '49';
+                const p = parseFloat(prompt('Totale voorraad in ' + stockUnit + ':', defaultStock) || '0');
+                if (p <= 0 || p > 5000) { alert('Voorraad moet tussen 1 en 5000 liggen!'); return; }
                 
-                let pillsPerIntake = 1;
+                let doseAmount = 1;
                 if (isSporadic) {
-                    pillsPerIntake = parseInt(prompt('Aantal pillen per inname:', '1') || '0');
-                    if (pillsPerIntake < 1 || pillsPerIntake > p) { alert('Aantal per inname moet tussen 1 en ' + p + ' zijn!'); return; }
+                    doseAmount = parseFloat(prompt('Hoeveel ' + stockUnit + ' per inname:', '1') || '0');
+                    if (doseAmount <= 0 || doseAmount > p) { alert('Aantal per inname moet tussen 0 en ' + p + ' zijn!'); return; }
+                } else if (stockUnit !== 'pillen') {
+                    const defaultDose = stockUnit === 'g' && name.toLowerCase().includes('optifibre') ? '5' : '1';
+                    doseAmount = parseFloat(prompt('Dagelijkse dosis in ' + stockUnit + ':', defaultDose) || '0');
+                    if (doseAmount <= 0 || doseAmount > p) { alert('Dagelijkse dosis moet tussen 0 en ' + p + ' liggen!'); return; }
                 }
                 
                 const med = {
@@ -843,10 +881,14 @@ class App {
                     name: name,
                     dosage: dosage,
                     pills: p,
+                    stockAmount: p,
+                    stockUnit: stockUnit,
+                    doseAmount: doseAmount,
+                    doseUnit: stockUnit,
                     type: isSporadic ? 'sporadic' : 'daily',
-                    pillsPerIntake: isSporadic ? pillsPerIntake : 1,
+                    pillsPerIntake: isSporadic ? doseAmount : 1,
                     color: MEDS_COLORS[this.data.meds.length % 5],
-                    icon: MEDS_ICONS[this.data.meds.length % 5]
+                    icon: stockUnit === 'g' ? '🥄' : MEDS_ICONS[this.data.meds.length % 5]
                 };
                 this.data.meds.push(med);
                 this.save();
@@ -854,14 +896,15 @@ class App {
                     this.sendTg(`${med.icon} <b>${med.name}</b> TOEGEVOEGD!
 ├─ 🔵 Sporadische medicatie
 ├─ ${med.dosage}
-├─ ${med.pills} pillen voorraad
-├─ 💊 ${med.pillsPerIntake} pillen per inname
+├─ ${this.formatMedQuantity(med, med.pills)} voorraad
+├─ 💊 ${this.formatMedQuantity(med, this.getMedDoseAmount(med))} per inname
 └─ ✅`);
                 } else {
                     this.sendTg(`${med.icon} <b>${med.name}</b> TOEGEVOEGD!
 ├─ 🟢 Dagelijkse medicatie
 ├─ ${med.dosage}
-├─ ${med.pills} pillen
+├─ ${this.formatMedQuantity(med, med.pills)} voorraad
+├─ Dagelijkse dosis: ${this.formatMedQuantity(med, this.getMedDoseAmount(med))}
 └─ ✅`);
                 }
                 this.show();
@@ -883,52 +926,59 @@ class App {
 
                 const current = this.getPills(id);
                 const typeLabel = med.type === 'sporadic' ? '🔵 Sporadische medicatie' : '🟢 Dagelijkse medicatie';
+                const unit = this.getMedUnit(med);
                 const choice = prompt(
                     `${med.name} - Voorraad aanpassen\n\n` +
-                    `Huidige voorraad: ${current}/${med.pills}\n\n` +
+                    `Huidige voorraad: ${this.formatMedStock(med)}\n\n` +
                     `Kies een optie:\n` +
-                    `1 = ➕ Pillen toevoegen\n` +
-                    `2 = ➖ Pillen verwijderen\n` +
+                    `1 = ➕ ${unit} toevoegen\n` +
+                    `2 = ➖ ${unit} verwijderen\n` +
                     `3 = 📦 Nieuwe verpakking toevoegen`
                 );
                 if (!choice) return;
 
                 if (choice === '1') {
-                    const qty = parseInt(prompt('Hoeveel pillen toevoegen?', '1') || '0');
-                    if (qty < 1 || qty > 500) { alert('Aantal moet tussen 1 en 500 zijn!'); return; }
+                    const qty = parseFloat(prompt('Hoeveel ' + unit + ' toevoegen?', '1') || '0');
+                    if (qty <= 0 || qty > 5000) { alert('Aantal moet tussen 0 en 5000 zijn!'); return; }
                     const oldCurrent = this.getPills(id);
-                    med.pills = (parseInt(med.pills) || 0) + qty;
+                    const newTotal = this.getMedTotalAmount(med) + qty;
+                    med.pills = newTotal;
+                    med.stockAmount = newTotal;
                     const newCurrent = this.getPills(id);
                     this.save();
-                    this.sendTg(`📦 <b>${med.name}</b> - VOORRAAD AANGEPAST\n├─ ${typeLabel}\n├─ ➕ ${qty} pillen toegevoegd\n├─ ${oldCurrent} → ${newCurrent}\n└─ ✅`);
+                    this.sendTg(`📦 <b>${med.name}</b> - VOORRAAD AANGEPAST\n├─ ${typeLabel}\n├─ ➕ ${this.formatMedQuantity(med, qty)} toegevoegd\n├─ ${this.formatMedQuantity(med, oldCurrent)} → ${this.formatMedQuantity(med, newCurrent)}\n└─ ✅`);
                     this.show();
                     return;
                 }
 
                 if (choice === '2') {
-                    const qty = parseInt(prompt('Hoeveel pillen verwijderen?', '1') || '0');
-                    if (qty < 1 || qty > 500) { alert('Aantal moet tussen 1 en 500 zijn!'); return; }
+                    const qty = parseFloat(prompt('Hoeveel ' + unit + ' verwijderen?', '1') || '0');
+                    if (qty <= 0 || qty > 5000) { alert('Aantal moet tussen 0 en 5000 zijn!'); return; }
                     const oldCurrent = this.getPills(id);
                     if (qty > oldCurrent) {
-                        alert(`Je kan geen ${qty} pillen verwijderen.\nHuidige voorraad = ${oldCurrent}.`);
+                        alert(`Je kan geen ${this.formatMedQuantity(med, qty)} verwijderen.\nHuidige voorraad = ${this.formatMedQuantity(med, oldCurrent)}.`);
                         return;
                     }
-                    med.pills = (parseInt(med.pills) || 0) - qty;
+                    const newTotal = this.getMedTotalAmount(med) - qty;
+                    med.pills = newTotal;
+                    med.stockAmount = newTotal;
                     const newCurrent = this.getPills(id);
                     this.save();
-                    this.sendTg(`📦 <b>${med.name}</b> - VOORRAAD AANGEPAST\n├─ ${typeLabel}\n├─ ➖ ${qty} pillen verwijderd\n├─ ${oldCurrent} → ${newCurrent}\n└─ ✅`);
+                    this.sendTg(`📦 <b>${med.name}</b> - VOORRAAD AANGEPAST\n├─ ${typeLabel}\n├─ ➖ ${this.formatMedQuantity(med, qty)} verwijderd\n├─ ${this.formatMedQuantity(med, oldCurrent)} → ${this.formatMedQuantity(med, newCurrent)}\n└─ ✅`);
                     this.show();
                     return;
                 }
 
                 if (choice === '3') {
-                    const qty = parseInt(prompt('Hoeveel pillen zitten er in de nieuwe verpakking?', '28') || '0');
-                    if (qty < 1 || qty > 500) { alert('Aantal moet tussen 1 en 500 zijn!'); return; }
+                    const qty = parseFloat(prompt('Hoeveel ' + unit + ' zit er in de nieuwe verpakking?', unit === 'g' ? '250' : '28') || '0');
+                    if (qty <= 0 || qty > 5000) { alert('Aantal moet tussen 0 en 5000 zijn!'); return; }
                     const oldCurrent = this.getPills(id);
-                    med.pills = (parseInt(med.pills) || 0) + qty;
+                    const newTotal = this.getMedTotalAmount(med) + qty;
+                    med.pills = newTotal;
+                    med.stockAmount = newTotal;
                     const newCurrent = this.getPills(id);
                     this.save();
-                    this.sendTg(`📦 <b>${med.name}</b> - NIEUWE VERPAKKING\n├─ ${typeLabel}\n├─ 📦 Nieuwe verpakking: ${qty} pillen\n├─ ${oldCurrent} → ${newCurrent}\n└─ ✅`);
+                    this.sendTg(`📦 <b>${med.name}</b> - NIEUWE VERPAKKING\n├─ ${typeLabel}\n├─ 📦 Nieuwe verpakking: ${this.formatMedQuantity(med, qty)}\n├─ ${this.formatMedQuantity(med, oldCurrent)} → ${this.formatMedQuantity(med, newCurrent)}\n└─ ✅`);
                     this.show();
                     return;
                 }
@@ -940,31 +990,34 @@ class App {
                 if (!this.data.intakes[this.date]) this.data.intakes[this.date] = {};
                 const med = this.data.meds.find(m => m.id === id);
                 const isSporadic = med?.type === 'sporadic';
-                const perIntake = isSporadic ? (parseInt(med.pillsPerIntake) || 1) : 1;
+                const perIntake = this.getMedDoseAmount(med);
                 if (time) {
                     this.data.intakes[this.date][id] = time;
                     if (isSporadic) {
                         this.sendTg(`✅ <b>${med.icon} ${med.name}</b> INGENOMEN!
 ├─ 🔵 Sporadische medicatie
 ├─ ⏰ ${time}
-├─ 💊 Verbruikt: ${perIntake} pillen
-├─ 📦 Voorraad: ${this.getPills(id)}/${med.pills}
+├─ 💊 Verbruikt: ${this.formatMedQuantity(med, perIntake)}
+├─ 📦 Voorraad: ${this.formatMedStock(med)}
 └─ ✅`);
                     } else {
                         this.sendTg(`✅ <b>${med.icon} ${med.name}</b> INGENOMEN!
 ├─ ⏰ ${time}
-├─ 📊 ${this.getPills(id)}/${med.pills}
+├─ 📊 ${this.formatMedStock(med)}
 └─ ✅`);
                     }
-                    if (this.getPills(id) < 5) {
+                    const remaining = this.getPills(id);
+                    const remainingDays = med.type !== 'sporadic' ? Math.floor(remaining / Math.max(1, this.getMedDoseAmount(med))) : remaining;
+                    if ((med.type !== 'sporadic' && remainingDays <= 3) || (med.type === 'sporadic' && remaining < 5)) {
                         if (isSporadic) {
                             this.sendTg(`⚠️ <b>${med.name}</b> - WAARSCHUWING!
 ├─ 🔵 Sporadische medicatie
-├─ ${this.getPills(id)} pillen over
+├─ ${this.formatMedQuantity(med, remaining)} over
 └─ 🚨 BESTELLEN!`);
                         } else {
                             this.sendTg(`⚠️ <b>${med.name}</b> - WAARSCHUWING!
-├─ ${this.getPills(id)} pillen
+├─ ${this.formatMedQuantity(med, remaining)} over
+├─ Nog ongeveer ${remainingDays} dag(en) voorraad
 └─ 🚨 BESTELLEN!`);
                         }
                     }
@@ -974,12 +1027,12 @@ class App {
                         this.sendTg(`❌ <b>${med.icon} ${med.name}</b> VERWIJDERD
 ├─ 🔵 Sporadische medicatie
 ├─ Inname uit ${this.date}
-├─ ➕ ${perIntake} pillen terug in voorraad
-└─ 📦 Voorraad: ${this.getPills(id)}/${med.pills}`);
+├─ ➕ ${this.formatMedQuantity(med, perIntake)} terug in voorraad
+└─ 📦 Voorraad: ${this.formatMedStock(med)}`);
                     } else {
                         this.sendTg(`❌ <b>${med.icon} ${med.name}</b> VERWIJDERD
 ├─ Inname uit ${this.date}
-└─ 📊 ${this.getPills(id)}/${med.pills}`);
+└─ 📊 ${this.formatMedStock(med)}`);
                     }
                 }
                 this.save();
@@ -2389,7 +2442,7 @@ class App {
                 const renderSporadicMedCard = (med) => {
                     const last = getLastMedIntake(med.id);
                     const totalIntakes = countMedIntakes(med.id);
-                    const perIntake = parseInt(med.pillsPerIntake) || 1;
+                    const perIntake = this.getMedDoseAmount(med);
                     const usagePoints = getSporadicUsagePoints(med);
                     let usageChartHtml = '';
                     if (usagePoints.length >= 1) {
@@ -2416,7 +2469,7 @@ class App {
                                 <div class="med-status">${getMedStatus(med)}</div>
                             </div>
                             <div class="sporadic-summary-grid">
-                                <div><span>Standaard</span><strong>${perIntake} ${perIntake === 1 ? 'pil' : 'pillen'} / inname</strong></div>
+                                <div><span>Standaard</span><strong>${this.formatMedQuantity(med, perIntake)} / inname</strong></div>
                                 <div><span>Aantal innames</span><strong>${totalIntakes}</strong></div>
                                 <div><span>Laatste gebruik</span><strong>${last.date ? `${formatShortReportDate(last.date)} ${last.time || ''}` : 'Niet geregistreerd'}</strong></div>
                             </div>
@@ -3065,10 +3118,7 @@ class App {
 
                 let medicationsHtml = '';
                 this.data.meds.forEach(med => {
-                    const pills = this.getPills(med.id);
-                    const taken = med.pills - pills;
-                    const rate = med.pills > 0 ? Math.round((taken / med.pills) * 100) : 0;
-                    const typeInfo = med.type === 'sporadic' ? ` - 🔵 sporadisch (${parseInt(med.pillsPerIntake) || 1} per inname)` : ' - 🟢 dagelijks';
+                    const typeInfo = med.type === 'sporadic' ? ` - 🔵 sporadisch (${this.formatMedQuantity(med, this.getMedDoseAmount(med))} per inname)` : ' - 🟢 dagelijks';
                     medicationsHtml += `<div class="med-item">${med.icon} <b>${med.name}</b> (${med.dosage})${typeInfo}</div>`;
                 });
 
@@ -3452,11 +3502,12 @@ class App {
 
                 let medicationsHtml = '';
                 this.data.meds.forEach(med => {
-                    const pills = this.getPills(med.id);
-                    const taken = med.pills - pills;
-                    const rate = med.pills > 0 ? Math.round((taken / med.pills) * 100) : 0;
-                    const typeInfo = med.type === 'sporadic' ? ` - 🔵 sporadisch (${parseInt(med.pillsPerIntake) || 1} per inname)` : ' - 🟢 dagelijks';
-                    medicationsHtml += `<div class="med-item">${med.icon} <b>${med.name}</b> (${med.dosage})${typeInfo} - ${rate}% • ${pills} pillen over</div>`;
+                    const total = this.getMedTotalAmount(med);
+                    const remaining = this.getPills(med.id);
+                    const used = total - remaining;
+                    const rate = total > 0 ? Math.round((used / total) * 100) : 0;
+                    const typeInfo = med.type === 'sporadic' ? ` - 🔵 sporadisch (${this.formatMedQuantity(med, this.getMedDoseAmount(med))} per inname)` : ' - 🟢 dagelijks';
+                    medicationsHtml += `<div class="med-item">${med.icon} <b>${med.name}</b> (${med.dosage})${typeInfo} - ${rate}% • ${this.formatMedQuantity(med, remaining)} over</div>`;
                 });
 
                 return {
@@ -3755,8 +3806,8 @@ class App {
                     for (let med of this.data.meds) {
                         html += '<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
                         const medTypeLabel = med.type === 'sporadic' ? ' 🔵 ' + t('sporadic') : ' 🟢 ' + t('daily');
-                        const perIntakeLabel = med.type === 'sporadic' ? ' • ' + (parseInt(med.pillsPerIntake) || 1) + ' per inname' : '';
-                        html += '<div><div style="font-weight:700;">' + med.icon + ' ' + med.name + '</div><div style="font-size:11px;color:#6b7280;">' + med.dosage + ' • ' + this.getPills(med.id) + '/' + med.pills + medTypeLabel + perIntakeLabel + '</div></div>';
+                        const perIntakeLabel = med.type === 'sporadic' ? ' • ' + this.formatMedQuantity(med, this.getMedDoseAmount(med)) + ' per inname' : (this.getMedDoseAmount(med) !== 1 ? ' • ' + this.formatMedQuantity(med, this.getMedDoseAmount(med)) + ' per dag' : '');
+                        html += '<div><div style="font-weight:700;">' + med.icon + ' ' + med.name + '</div><div style="font-size:11px;color:#6b7280;">' + med.dosage + ' • ' + this.formatMedStock(med) + medTypeLabel + perIntakeLabel + '</div></div>';
                         html += '<div style="display:flex;gap:6px;">';
                         html += '<button onclick="app.adjustMedStock(\'' + med.id + '\')" style="background:#3b82f6;color:white;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;">📦 ' + t('stock') + '</button>';
                         html += '<button onclick="app.rmMed(\'' + med.id + '\')" style="background:#ef4444;color:white;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;">✕</button>';
@@ -3804,17 +3855,27 @@ class App {
 
                 for (let med of this.data.meds) {
                     const remaining = this.getPills(med.id);
-                    const pct = remaining > (med.pills / 10) ? '#10b981' : remaining >= 5 ? '#f59e0b' : '#ef4444';
+                    const totalAmount = this.getMedTotalAmount(med);
+                    const doseAmount = this.getMedDoseAmount(med);
+                    const daysLeft = med.type !== 'sporadic' ? Math.floor(remaining / Math.max(1, doseAmount)) : remaining;
+                    const pct = med.type !== 'sporadic'
+                        ? (daysLeft > 7 ? '#10b981' : daysLeft > 3 ? '#f59e0b' : '#ef4444')
+                        : (remaining > (totalAmount / 10) ? '#10b981' : remaining >= 5 ? '#f59e0b' : '#ef4444');
                     html += '<div style="background:white;border-radius:12px;padding:8px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';
                     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
                     const isSporadicMed = med.type === 'sporadic';
                     const typeBadge = isSporadicMed ? ' <span style="font-size:9px;background:#dbeafe;color:#1d4ed8;border-radius:10px;padding:1px 5px;">Sporadisch</span>' : '';
                     html += '<h2 style="font-size:12px;font-weight:700;margin:0;color:' + med.color + ';">' + med.icon + ' ' + med.name + typeBadge + '</h2>';
-                    html += '<div style="font-size:11px;font-weight:600;color:' + pct + ';">' + (remaining > (med.pills / 10) ? '✅' : remaining >= 5 ? '⚠️' : '🚨') + ' ' + remaining + '/' + med.pills + '</div>';
+                    html += '<div style="font-size:11px;font-weight:600;color:' + pct + ';">' + (pct === '#10b981' ? '✅' : pct === '#f59e0b' ? '⚠️' : '🚨') + ' ' + this.formatMedStock(med) + '</div>';
                     html += '</div>';
-                    html += '<div style="background:' + med.color + '33;border-radius:8px;padding:8px;display:grid;gap:3px;grid-template-columns:repeat(' + Math.min(10, med.pills) + ',1fr);">';
-                    for (let i = 0; i < med.pills; i++) {
-                        html += '<div style="font-size:16px;opacity:' + (i >= remaining ? '0.3' : '1') + ';filter:' + (i >= remaining ? 'grayscale(100%)' : 'none') + ';">' + med.icon + '</div>';
+                    const doseForVisual = Math.max(0.0001, doseAmount || 1);
+                    const visualDoseTotal = med.type !== 'sporadic' ? (totalAmount / doseForVisual) : totalAmount;
+                    const visualDoseRemaining = med.type !== 'sporadic' ? (remaining / doseForVisual) : remaining;
+                    const visualUnits = Math.min(70, Math.max(1, Math.round(visualDoseTotal)));
+                    const visualRemaining = visualDoseTotal > 0 ? Math.round((visualDoseRemaining / visualDoseTotal) * visualUnits) : 0;
+                    html += '<div style="background:' + med.color + '33;border-radius:8px;padding:8px;display:grid;gap:3px;grid-template-columns:repeat(' + Math.min(10, visualUnits) + ',1fr);">';
+                    for (let i = 0; i < visualUnits; i++) {
+                        html += '<div style="font-size:16px;opacity:' + (i >= visualRemaining ? '0.3' : '1') + ';filter:' + (i >= visualRemaining ? 'grayscale(100%)' : 'none') + ';">' + med.icon + '</div>';
                     }
                     html += '</div></div>';
                 }
@@ -3845,9 +3906,9 @@ class App {
                     html += '<div style="background:white;border-radius:10px;padding:6px;margin-bottom:6px;box-shadow:0 1px 2px rgba(0,0,0,0.03);border-left:4px solid ' + med.color + ';">';
                     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:6px;">';
                     const dayTypeBadge = med.type === 'sporadic' ? ' <span style="font-size:8px;background:#dbeafe;color:#1d4ed8;border-radius:8px;padding:1px 4px;">Sporadisch</span>' : '';
-                    const dayPerIntake = med.type === 'sporadic' ? ' • ' + (parseInt(med.pillsPerIntake) || 1) + ' per inname' : '';
+                    const dayPerIntake = med.type === 'sporadic' ? ' • ' + this.formatMedQuantity(med, this.getMedDoseAmount(med)) + ' per inname' : (this.getMedDoseAmount(med) !== 1 ? ' • ' + this.formatMedQuantity(med, this.getMedDoseAmount(med)) + ' per dag' : '');
                     html += '<div style="flex:1;min-width:0;"><h2 style="font-size:11px;font-weight:700;margin:0;color:' + med.color + ';">' + med.icon + ' ' + med.name + dayTypeBadge + '</h2><div style="font-size:9px;color:#6b7280;">' + med.dosage + dayPerIntake + '</div></div>';
-                    html += '<span style="background:' + med.color + ';color:white;padding:2px 6px;border-radius:10px;font-weight:600;font-size:10px;flex-shrink:0;white-space:nowrap;">' + this.getPills(med.id) + '/' + med.pills + '</span>';
+                    html += '<span style="background:' + med.color + ';color:white;padding:2px 6px;border-radius:10px;font-weight:600;font-size:10px;flex-shrink:0;white-space:nowrap;">' + this.formatMedStock(med) + '</span>';
                     html += '</div>';
                     html += time ? '<div style="background:#d1fae5;border-radius:6px;padding:4px;margin-bottom:4px;font-size:10px;color:#065f46;font-weight:600;">✅ ' + time + '</div>' : '<div style="background:#fef3c7;border-radius:6px;padding:4px;margin-bottom:4px;font-size:10px;color:#92400e;font-weight:600;">⏰ Niet ingevuld</div>';
                     html += '<div style="display:flex;gap:3px;">';
