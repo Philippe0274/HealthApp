@@ -1,0 +1,573 @@
+name: Smart Daily Health Checks
+
+on:
+  schedule:
+    - cron: '0 6,7,8,9,11,12,20,21 * * *' # Covers 08:00, 10:00, 13:00, 22:00 Europe/Brussels across DST
+    - cron: '59 21 * * *' # Daily summary at 23:59 Europe/Brussels during DST
+    - cron: '59 22 * * *' # Daily summary at 23:59 Europe/Brussels during standard time
+  workflow_dispatch:
+    inputs:
+      test_hour:
+        description: 'Optioneel: simuleer Brussels uur voor handmatige test (8, 10, 13, 22 of 23)'
+        required: false
+        default: ''
+      send_test_telegram:
+        description: 'Stuur bij handmatige run direct een Telegram-testbericht'
+        required: false
+        default: 'false'
+        type: boolean
+      send_daily_summary:
+        description: 'Stuur bij handmatige run direct het dagelijkse overzicht'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  check-and-alert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Download backup and check
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          CHAT_ID: 8526489078
+          DRIVE_FOLDER_ID: 1flE6MFq5be0xCPpPJbyozIVTIZOhzu0X
+          DRIVE_FILE_NAME: healthapp-backup.json
+          TEST_HOUR: ${{ github.event.inputs.test_hour }}
+          SEND_TEST_TELEGRAM: ${{ github.event.inputs.send_test_telegram }}
+          SEND_DAILY_SUMMARY: ${{ github.event.inputs.send_daily_summary }}
+          WORKFLOW_SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          node << 'NODEJS_EOF'
+          const crypto = require('crypto');
+          const { execFileSync } = require('child_process');
+
+          const DRIVE_FOLDER_ID = process.env.DRIVE_FOLDER_ID;
+          const DRIVE_FILE_NAME = process.env.DRIVE_FILE_NAME || 'healthapp-backup.json';
+          const GOOGLE_SERVICE_ACCOUNT_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+          const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
+          const CHAT_ID = process.env.CHAT_ID;
+          const TEST_HOUR = process.env.TEST_HOUR;
+          const SEND_TEST_TELEGRAM = process.env.SEND_TEST_TELEGRAM === 'true';
+          const SEND_DAILY_SUMMARY = process.env.SEND_DAILY_SUMMARY === 'true';
+          const WORKFLOW_SCHEDULE = process.env.WORKFLOW_SCHEDULE || '';
+
+          function base64Url(input) {
+            return Buffer.from(input)
+              .toString('base64')
+              .replace(/=/g, '')
+              .replace(/\+/g, '-')
+              .replace(/\//g, '_');
+          }
+
+          function escapeDriveQueryValue(value) {
+            return String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+          }
+
+          async function readResponseText(response, label) {
+            const text = await response.text();
+            if (!response.ok) {
+              throw new Error(`${label} failed: ${response.status} ${text.substring(0, 200)}`);
+            }
+            return text;
+          }
+
+          async function getGoogleAccessToken() {
+            if (!GOOGLE_SERVICE_ACCOUNT_JSON) {
+              throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON secret is missing');
+            }
+
+            let serviceAccount;
+            try {
+              serviceAccount = JSON.parse(GOOGLE_SERVICE_ACCOUNT_JSON);
+            } catch (e) {
+              throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON');
+            }
+
+            if (!serviceAccount.client_email || !serviceAccount.private_key) {
+              throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON must contain client_email and private_key');
+            }
+
+            const tokenUri = serviceAccount.token_uri || 'https://oauth2.googleapis.com/token';
+            const now = Math.floor(Date.now() / 1000);
+            const header = { alg: 'RS256', typ: 'JWT' };
+            const claim = {
+              iss: serviceAccount.client_email,
+              scope: 'https://www.googleapis.com/auth/drive.readonly',
+              aud: tokenUri,
+              iat: now,
+              exp: now + 3600
+            };
+            const unsignedJwt = `${base64Url(JSON.stringify(header))}.${base64Url(JSON.stringify(claim))}`;
+            const signature = crypto
+              .createSign('RSA-SHA256')
+              .update(unsignedJwt)
+              .sign(serviceAccount.private_key);
+            const assertion = `${unsignedJwt}.${base64Url(signature)}`;
+
+            const response = await fetch(tokenUri, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams({
+                grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                assertion
+              })
+            });
+            const text = await readResponseText(response, 'Google OAuth token request');
+            const tokenData = JSON.parse(text);
+            if (!tokenData.access_token) {
+              throw new Error('Google OAuth token response did not contain access_token');
+            }
+            return tokenData.access_token;
+          }
+
+          function getBrusselsParts(date = new Date()) {
+            const parts = new Intl.DateTimeFormat('en-CA', {
+              timeZone: 'Europe/Brussels',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false
+            }).formatToParts(date).reduce((acc, part) => {
+              acc[part.type] = part.value;
+              return acc;
+            }, {});
+
+            return {
+              today: `${parts.year}-${parts.month}-${parts.day}`,
+              hour: Number(parts.hour),
+              minute: Number(parts.minute),
+              time: `${parts.hour}:${parts.minute}:${parts.second}`
+            };
+          }
+
+          function getScheduledDailySummaryDate(scheduleExpression, now = new Date()) {
+            const match = String(scheduleExpression || '').match(/^59 (21|22) \* \* \*$/);
+            if (!match) return null;
+
+            const scheduledUtcHour = Number(match[1]);
+            const scheduledUtcDate = new Date(Date.UTC(
+              now.getUTCFullYear(),
+              now.getUTCMonth(),
+              now.getUTCDate(),
+              scheduledUtcHour,
+              59,
+              0
+            ));
+            const scheduledBrusselsParts = getBrusselsParts(scheduledUtcDate);
+
+            if (scheduledBrusselsParts.hour !== 23 || scheduledBrusselsParts.minute !== 59) {
+              return null;
+            }
+
+            return scheduledBrusselsParts.today;
+          }
+
+          function parseBackup(fileContent, sourceLabel) {
+            if (!fileContent || fileContent.trim().length === 0) {
+              throw new Error(`${sourceLabel} is empty`);
+            }
+
+            try {
+              return JSON.parse(fileContent);
+            } catch (parseError) {
+              console.error(`JSON Parse Error from ${sourceLabel}:`, parseError.message);
+              throw parseError;
+            }
+          }
+
+          async function listDriveBackupCandidates(accessToken) {
+            if (!DRIVE_FOLDER_ID) throw new Error('DRIVE_FOLDER_ID is missing');
+            const query = `name = '${escapeDriveQueryValue(DRIVE_FILE_NAME)}' and '${escapeDriveQueryValue(DRIVE_FOLDER_ID)}' in parents and trashed = false`;
+            const params = new URLSearchParams({
+              q: query,
+              spaces: 'drive',
+              fields: 'files(id,name,modifiedTime,size,mimeType)',
+              orderBy: 'modifiedTime desc',
+              pageSize: '10',
+              supportsAllDrives: 'true',
+              includeItemsFromAllDrives: 'true'
+            });
+            const searchUrl = `https://www.googleapis.com/drive/v3/files?${params.toString()}`;
+            console.log('Drive API search started');
+            console.log(`Drive folder ID: ${DRIVE_FOLDER_ID}`);
+            console.log(`Drive file name: ${DRIVE_FILE_NAME}`);
+            console.log(`Drive query: ${query}`);
+
+            const response = await fetch(searchUrl, {
+              headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            const text = await readResponseText(response, 'Drive files.list');
+            const data = JSON.parse(text);
+            const candidates = Array.isArray(data.files) ? data.files : [];
+            console.log(`Drive API search: found ${candidates.length} candidate file(s)`);
+            candidates.forEach((file, index) => {
+              console.log(`Candidate ${index + 1}: id=${file.id}; name=${file.name}; modifiedTime=${file.modifiedTime || 'not available'}; size=${file.size || 'unknown'}; mimeType=${file.mimeType || 'unknown'}`);
+            });
+            return candidates;
+          }
+
+          async function downloadDriveFile(accessToken, fileId) {
+            const downloadUrl = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`;
+            const response = await fetch(downloadUrl, {
+              headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            return readResponseText(response, `Drive files.get media ${fileId}`);
+          }
+
+          async function loadBackup() {
+            const accessToken = await getGoogleAccessToken();
+            const candidates = await listDriveBackupCandidates(accessToken);
+            if (candidates.length === 0) {
+              throw new Error(`No Google Drive backup found for ${DRIVE_FILE_NAME} in folder ${DRIVE_FOLDER_ID}`);
+            }
+
+            const loaded = [];
+            let lastError = null;
+            for (const candidate of candidates) {
+              try {
+                const content = await downloadDriveFile(accessToken, candidate.id);
+                const backup = parseBackup(content, `Drive API file ${candidate.id}`);
+                const backupTimestampMs = backup.timestamp ? Date.parse(backup.timestamp) : 0;
+                const modifiedTimeMs = candidate.modifiedTime ? Date.parse(candidate.modifiedTime) : 0;
+                loaded.push({
+                  backup,
+                  candidate,
+                  backupTimestampMs: Number.isFinite(backupTimestampMs) ? backupTimestampMs : 0,
+                  modifiedTimeMs: Number.isFinite(modifiedTimeMs) ? modifiedTimeMs : 0
+                });
+                console.log(`Backup candidate parsed: id=${candidate.id}; name=${candidate.name}; modifiedTime=${candidate.modifiedTime || 'not available'}; backup.timestamp=${backup.timestamp || 'not available'}; meds=${Array.isArray(backup.meds) ? backup.meds.length : 0}; measureDays=${backup.measures ? Object.keys(backup.measures).length : 0}`);
+              } catch (e) {
+                lastError = e;
+                console.log(`Candidate failed (Drive API; file id: ${candidate.id}; name=${candidate.name}): ${e.message}`);
+              }
+            }
+
+            if (loaded.length > 0) {
+              loaded.sort((a, b) => {
+                const byBackupTimestamp = b.backupTimestampMs - a.backupTimestampMs;
+                if (byBackupTimestamp !== 0) return byBackupTimestamp;
+                return b.modifiedTimeMs - a.modifiedTimeMs;
+              });
+              const selected = loaded[0];
+              console.log(`Selected backup: id=${selected.candidate.id}; name=${selected.candidate.name}; modifiedTime=${selected.candidate.modifiedTime || 'not available'}; backup.timestamp=${selected.backup.timestamp || 'not available'}`);
+              return selected.backup;
+            }
+
+            throw lastError || new Error('No Google Drive backup candidate found');
+          }
+
+          function hasMeasurement(measurement) {
+            return !!(measurement && measurement.sys && measurement.dia && measurement.hr);
+          }
+
+          function describeMissingMeasurement(measurement) {
+            const missing = [];
+            if (!measurement || !measurement.sys) missing.push('Systolisch');
+            if (!measurement || !measurement.dia) missing.push('Diastolisch');
+            if (!measurement || !measurement.hr) missing.push('Hartslag');
+            return missing;
+          }
+
+          function formatMeasurement(label, measurement) {
+            if (!hasMeasurement(measurement)) return `${label}: ontbreekt`;
+            const time = measurement.time ? ` (${measurement.time})` : '';
+            return `${label}: ${measurement.sys}/${measurement.dia} - HR ${measurement.hr}${time}`;
+          }
+
+          function classifyBloodPressure(measurement) {
+            if (!hasMeasurement(measurement)) return null;
+            const sys = Number(measurement.sys);
+            const dia = Number(measurement.dia);
+            if (sys >= 180 || dia >= 110) return 'ernstig verhoogd';
+            if (sys >= 160 || dia >= 100) return 'duidelijk verhoogd';
+            if (sys >= 140 || dia >= 90) return 'verhoogd';
+            if (sys >= 130 || dia >= 85) return 'hoog-normaal';
+            return 'binnen streefzone';
+          }
+
+          function getMedTotalAmount(med) {
+            if (!med) return 0;
+            const value = med.stockAmount !== undefined ? med.stockAmount : med.pills;
+            return parseFloat(value) || 0;
+          }
+
+          function getMedUnit(med) {
+            return med && med.stockUnit ? med.stockUnit : 'pillen';
+          }
+
+          function getMedDoseAmount(med) {
+            if (!med) return 1;
+            if (med.doseAmount !== undefined) return parseFloat(med.doseAmount) || 1;
+            return med.type === 'sporadic' ? (parseFloat(med.pillsPerIntake) || 1) : 1;
+          }
+
+          function formatMedAmount(value) {
+            const rounded = Math.round((parseFloat(value) || 0) * 10) / 10;
+            return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+          }
+
+          function formatMedQuantity(med, value) {
+            return `${formatMedAmount(value)} ${getMedUnit(med)}`;
+          }
+
+          function getRemainingMedicationAmount(med, allIntakes) {
+            if (!med || !med.id) return 0;
+            const totalAmount = getMedTotalAmount(med);
+            const perIntake = getMedDoseAmount(med);
+            let used = 0;
+            Object.values(allIntakes || {}).forEach(day => {
+              if (day && day[med.id]) used += perIntake;
+            });
+            return Math.max(0, totalAmount - used);
+          }
+
+          function getRemainingMedicationDays(med, remaining) {
+            if (!med || med.type === 'sporadic') return null;
+            const dose = getMedDoseAmount(med);
+            if (!dose) return null;
+            return Math.floor(remaining / dose);
+          }
+
+          function formatDisplayDate(dateValue) {
+            const [year, month, day] = String(dateValue || '').split('-');
+            if (!year || !month || !day) return dateValue;
+            return `${day}-${month}-${year}`;
+          }
+
+          function buildDailySummary(backup, today) {
+            const meds = Array.isArray(backup.meds) ? backup.meds : [];
+            const allIntakes = backup.intakes || {};
+            const intakesToday = backup.intakes?.[today] || {};
+            const measuresToday = backup.measures?.[today] || {};
+            const patientName = backup.patient?.name || backup.patient?.firstName || 'Patient';
+            const moments = [
+              { key: 'ochtend', label: 'Ochtend' },
+              { key: 'middag', label: 'Middag' },
+              { key: 'avond', label: 'Avond' }
+            ];
+
+            const completeMeasurements = moments
+              .map(moment => ({ ...moment, measurement: measuresToday[moment.key] || {} }))
+              .filter(item => hasMeasurement(item.measurement));
+            const missingMeasurements = moments
+              .filter(moment => !hasMeasurement(measuresToday[moment.key] || {}))
+              .map(moment => moment.label.toLowerCase());
+            const classifications = completeMeasurements
+              .map(item => ({ label: item.label, status: classifyBloodPressure(item.measurement) }))
+              .filter(item => item.status);
+            const severe = classifications.filter(item => item.status === 'ernstig verhoogd');
+            const elevated = classifications.filter(item => ['verhoogd', 'duidelijk verhoogd'].includes(item.status));
+            const highNormal = classifications.filter(item => item.status === 'hoog-normaal');
+
+            const dailyMeds = meds.filter(med => med && med.id && med.type !== 'sporadic');
+            const sporadicTakenToday = meds.filter(med => med && med.id && med.type === 'sporadic' && intakesToday[med.id]);
+            const takenDailyMeds = dailyMeds.filter(med => intakesToday[med.id]);
+            const missingDailyMeds = dailyMeds.filter(med => !intakesToday[med.id]);
+            const takenDailyMedNames = takenDailyMeds.map(med => med.name || med.id);
+            const missingDailyMedNames = missingDailyMeds.map(med => med.name || med.id);
+            const dailyStock = dailyMeds.map(med => ({
+              med,
+              remaining: getRemainingMedicationAmount(med, allIntakes)
+            }));
+            const lowStock = dailyStock.filter(item => {
+              const days = getRemainingMedicationDays(item.med, item.remaining);
+              return days !== null && days <= 3;
+            });
+            let medicationStatusLine = 'Er is geen dagelijkse medicatie ingesteld in de backup.';
+            if (dailyMeds.length > 0 && missingDailyMeds.length === 0) {
+              medicationStatusLine = 'Top: Medicatie is correct ingenomen.';
+            } else if (dailyMeds.length > 0 && takenDailyMeds.length === 0) {
+              medicationStatusLine = 'Foei! Je hebt je medicatie niet ingenomen!';
+            } else if (dailyMeds.length > 0) {
+              medicationStatusLine = `${takenDailyMedNames.join(', ')} ${takenDailyMedNames.length === 1 ? 'is' : 'zijn'} ingenomen, maar ${missingDailyMedNames.join(', ')} niet.`;
+            }
+
+            const analysis = [];
+            if (completeMeasurements.length === 0) {
+              analysis.push('Er zijn vandaag geen volledige bloeddrukmetingen geregistreerd. Een dagtrend kan daardoor niet beoordeeld worden.');
+            } else {
+              analysis.push(`${completeMeasurements.length}/3 bloeddrukmoment(en) volledig geregistreerd.`);
+            }
+            if (missingMeasurements.length > 0) {
+              analysis.push(`Ontbrekende meetmomenten: ${missingMeasurements.join(', ')}.`);
+            }
+            if (severe.length > 0) {
+              analysis.push('Minstens een meting is ernstig verhoogd. Bij klachten of aanhoudend hoge waarden is medisch contact aangewezen.');
+            } else if (elevated.length > 0) {
+              analysis.push('Er zijn verhoogde bloeddrukwaarden geregistreerd. Volg de trend verder op en bespreek aanhoudende verhoging met de arts.');
+            } else if (highNormal.length > 0) {
+              analysis.push('De bloeddruk was deels hoog-normaal. Verdere opvolging blijft nuttig.');
+            } else if (completeMeasurements.length > 0) {
+              analysis.push('De geregistreerde bloeddrukwaarden liggen vandaag binnen de streefzone.');
+            }
+            if (lowStock.length > 0) {
+              analysis.push('Een of meer dagelijkse medicaties staan op lage voorraad en moeten worden bijgevraagd.');
+            }
+
+            const lines = [
+              `📋 DAGOVERZICHT HEALTH APP`,
+              `Datum: ${formatDisplayDate(today)}`,
+              `Patient: ${patientName}`,
+              '',
+              '🩺 Bloeddruk',
+              formatMeasurement('Ochtend', measuresToday.ochtend || {}),
+              formatMeasurement('Middag', measuresToday.middag || {}),
+              formatMeasurement('Avond', measuresToday.avond || {}),
+              '',
+              '💊 Dagelijkse medicatie',
+              `Ingenomen: ${takenDailyMeds.length}/${dailyMeds.length}`,
+              missingDailyMeds.length > 0 ? `Ontbreekt: ${missingDailyMedNames.join(', ')}` : 'Ontbreekt: geen',
+              medicationStatusLine,
+              '',
+              '📦 Voorraad dagelijkse medicatie',
+              ...(dailyStock.length > 0
+                ? dailyStock.map(item => {
+                    const days = getRemainingMedicationDays(item.med, item.remaining);
+                    const total = getMedTotalAmount(item.med);
+                    return `${item.med.name || item.med.id}: ${formatMedQuantity(item.med, item.remaining)}/${formatMedQuantity(item.med, total)}${days !== null ? ` (${days} dag(en))` : ''}${days !== null && days <= 3 ? ' ⚠️ bijvragen' : ''}`;
+                  })
+                : ['Geen dagelijkse medicatie ingesteld']),
+              ...(sporadicTakenToday.length > 0
+                ? ['', '🔵 Sporadisch ingenomen vandaag', ...sporadicTakenToday.map(med => `${med.name || med.id}: ${intakesToday[med.id]}`)]
+                : []),
+              ...(lowStock.length > 0
+                ? ['', '⚠️ Medicatie bijvragen', ...lowStock.map(item => `${item.med.name || item.med.id} dient te worden bijgevraagd aan de huisarts. Nog ongeveer ${getRemainingMedicationDays(item.med, item.remaining)} dag(en) voorraad.`)]
+                : []),
+              '',
+              '📊 Analyse',
+              ...analysis,
+              '',
+              'ℹ️ Dit is een automatische opvolging op basis van geregistreerde gegevens, geen diagnose.'
+            ];
+
+            return lines.join('%0A');
+          }
+
+          function sendTelegram(text) {
+            if (!TELEGRAM_TOKEN || !CHAT_ID) {
+              throw new Error('Telegram token or chat id missing');
+            }
+
+            execFileSync('curl', [
+              '-fsS',
+              '-X', 'POST',
+              `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`,
+              '-d', `chat_id=${CHAT_ID}`,
+              '-d', `text=${text}`
+            ], { encoding: 'utf8' });
+          }
+
+          (async () => {
+          try {
+            const parts = getBrusselsParts();
+            const today = parts.today;
+            const time = parts.time;
+            let hour = parts.hour;
+            const minute = parts.minute;
+            const scheduledDailySummaryDate = getScheduledDailySummaryDate(WORKFLOW_SCHEDULE);
+            if (TEST_HOUR && ['8', '10', '13', '22', '23'].includes(TEST_HOUR)) {
+              hour = Number(TEST_HOUR);
+              console.log(`Manual test hour override active: ${hour}:00 Brussels`);
+            }
+            console.log('Workflow started: Smart Daily Health Checks');
+            console.log(`Brussels date/time: ${today} ${time}`);
+            console.log(`Workflow schedule: ${WORKFLOW_SCHEDULE || 'manual or not available'}`);
+            if (SEND_TEST_TELEGRAM) {
+              sendTelegram(`✅ TEST HEALTH CHECKS%0AGitHub Actions Telegram test werkt.%0ABrussels tijd: ${today} ${time}`);
+              console.log('Telegram test message sent');
+            }
+
+            const backup = await loadBackup();
+            const meds = Array.isArray(backup.meds) ? backup.meds : [];
+            const intakesToday = backup.intakes?.[today] || {};
+            const measuresToday = backup.measures?.[today] || {};
+
+            console.log(`Backup timestamp: ${backup.timestamp || 'not available'}`);
+            console.log(`Medication count: ${meds.length}`);
+            console.log(`Measurements today: ${Object.keys(measuresToday).filter(key => hasMeasurement(measuresToday[key])).length}`);
+
+            const alerts = [];
+            const dailySummaryDate = SEND_DAILY_SUMMARY ? today : scheduledDailySummaryDate;
+            const shouldSendDailySummary = !!dailySummaryDate;
+
+            if (shouldSendDailySummary) {
+              console.log(`Daily summary check active for ${dailySummaryDate}`);
+              sendTelegram(buildDailySummary(backup, dailySummaryDate));
+              console.log(`Daily summary sent for ${dailySummaryDate}`);
+            }
+
+            const measurementChecks = {
+              8: { key: 'ochtend', label: 'OCHTEND BLOEDWAARDEN MISSEN', log: 'Ochtend bloedwaarden' },
+              13: { key: 'middag', label: 'MIDDAG BLOEDWAARDEN MISSEN', log: 'Middag bloedwaarden' },
+              22: { key: 'avond', label: 'AVOND BLOEDWAARDEN MISSEN', log: 'Avond bloedwaarden' }
+            };
+
+            if (measurementChecks[hour]) {
+              const check = measurementChecks[hour];
+              const measurement = measuresToday[check.key] || {};
+              const missing = describeMissingMeasurement(measurement);
+              console.log(`Checking measurement: ${check.log}`);
+              if (missing.length > 0) {
+                console.log(`Missing measurement fields for ${check.key}: ${missing.join(', ')}`);
+                alerts.push(`❌ ${check.label}!%0AOntbreekt: ${missing.join(', ')}`);
+              } else {
+                console.log(`Measurement ${check.key}: complete`);
+              }
+            }
+
+            if (hour === 10) {
+              console.log('Checking: Medicatie');
+              const missingMeds = [];
+              const dailyMedsForAlert = meds.filter(med => med && med.id && med.type !== 'sporadic');
+              console.log(`Daily medication count for alert: ${dailyMedsForAlert.length}`);
+
+              for (const med of dailyMedsForAlert) {
+                if (!med || !med.id) {
+                  console.log(`Skipping medication without id: ${med && med.name ? med.name : 'unknown'}`);
+                  continue;
+                }
+
+                const takenAt = intakesToday[med.id];
+                if (!takenAt) {
+                  missingMeds.push(med.name || med.id);
+                } else {
+                  console.log(`Medication taken: ${med.name || med.id} at ${takenAt}`);
+                }
+              }
+
+              if (missingMeds.length > 0) {
+                console.log(`Missing medication: ${missingMeds.join(', ')}`);
+                alerts.push(`❌ MEDICATIE NIET INGENOMEN!%0AOntbreekt: ${missingMeds.join(', ')}`);
+              } else {
+                console.log('Medication check: all medication taken or no medication configured');
+              }
+            }
+
+            if (![8, 10, 13, 22].includes(hour) && !shouldSendDailySummary) {
+              console.log(`No check configured for Brussels hour ${hour}`);
+            }
+
+            if (alerts.length > 0) {
+              console.log(`Telegram alerts to send: ${alerts.length}`);
+              for (const alert of alerts) {
+                sendTelegram(alert);
+                console.log(`Telegram sent: ${alert.substring(0, 60)}...`);
+              }
+            } else {
+              console.log('No Telegram sent: no alerts for this run');
+            }
+          } catch (e) {
+            console.error('Error:', e.message);
+            process.exit(1);
+          }
+          })();
+          NODEJS_EOF
