@@ -563,7 +563,27 @@
         }
 
         
-const APP_VERSION = '2.1.2';
+const APP_VERSION = '2.1.3';
+
+function getVersionHue(version = APP_VERSION) {
+ const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
+ return (parts[0] * 71 + parts[1] * 37 + parts[2] * 53 + 8) % 360;
+}
+
+function getVersionAccent(offset = 0, lightness = 45) {
+ return 'hsl(' + ((getVersionHue() + offset) % 360) + ' 72% ' + lightness + '%)';
+}
+
+function getVersionHeaderGradient(offset = 0) {
+ return 'linear-gradient(135deg,' + getVersionAccent(offset, 45) + ' 0%,' + getVersionAccent(offset, 30) + ' 100%)';
+}
+
+function applyVersionTheme() {
+ document.documentElement.style.setProperty('--version-header-gradient', getVersionHeaderGradient());
+ document.documentElement.style.setProperty('--version-header-border', getVersionAccent(10, 55));
+}
+
+applyVersionTheme();
 const LANGUAGE_OPTIONS = [
  { code:'nl', label:'Nederlands', flag:'🇳🇱' },
  { code:'fr', label:'Français', flag:'🇫🇷' },
@@ -2564,7 +2584,7 @@ class App {
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; padding: 18px; background: #eef2f7; margin: 0; color: var(--dark); }
         .button { background: var(--red); color: white; border: none; padding: 11px 18px; border-radius: 10px; font-size: 13px; cursor: pointer; margin: 0 auto 14px auto; display: block; font-weight: 700; }
         .report { background: white; padding: 26px; max-width: 860px; margin: 0 auto; border-radius: 18px; box-shadow: 0 12px 35px rgba(15,23,42,0.12); }
-        .hero { background: linear-gradient(135deg,#dc2626,#991b1b); color: white; border-radius: 18px; padding: 22px; margin-bottom: 18px; display:flex; align-items:center; justify-content:space-between; gap:18px; }
+        .hero { background: var(--version-header-gradient, linear-gradient(135deg,#dc2626,#991b1b)); color: white; border-radius: 18px; padding: 22px; margin-bottom: 18px; display:flex; align-items:center; justify-content:space-between; gap:18px; }
         .hero-left { display:flex; gap:14px; align-items:center; }
         .logo { width: 58px; height: 58px; border-radius: 14px; background:white; padding:4px; object-fit:cover; }
         .hero h1 { margin: 0; font-size: 25px; letter-spacing:-0.02em; }
@@ -3793,7 +3813,7 @@ class App {
                 const y = this.month.getFullYear();
                 const m = this.month.getMonth();
                 let html = '<div style="min-height:100vh;background:#f9fafb;padding:12px;">';
-                html += '<div style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);color:white;border-radius:16px;padding:12px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;overflow:hidden;">';
+                html += '<div style="background:' + getVersionHeaderGradient() + ';color:white;border-radius:16px;padding:12px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;overflow:hidden;">';
                 
                 // LEFT: Logo + Title
                 html += '<div style="display:flex;gap:8px;align-items:center;flex:1;min-width:0;">';
@@ -3822,7 +3842,7 @@ class App {
                 html += '</div>';
                 html += '</div>';
                 
-                html += '<button onclick="app.showEditAlarmSettings()" style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);border:2px solid #ef4444;color:white;width:100%;padding:12px;border-radius:8px;font-weight:700;cursor:pointer;margin-bottom:12px;font-size:16px;"><span style="font-size:20px;">🚨</span> ' + t('alarmSettings').toUpperCase() + '</button>';
+                html += '<button onclick="app.showEditAlarmSettings()" style="background:' + getVersionHeaderGradient() + ';border:2px solid ' + getVersionAccent(10, 55) + ';color:white;width:100%;padding:12px;border-radius:8px;font-weight:700;cursor:pointer;margin-bottom:12px;font-size:16px;"><span style="font-size:20px;">🚨</span> ' + t('alarmSettings').toUpperCase() + '</button>';
 
                 // PATIENT SECTION - Vóór kalender
                 if (!this.data.patient) {
@@ -3948,7 +3968,7 @@ class App {
                 const measures = this.data.measures[this.date] || {};
 
                 let html = '<div style="min-height:100vh;background:#f9fafb;padding:8px 8px 80px 8px;">';
-                html += '<div style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);color:white;border-radius:12px;padding:6px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">';
+                html += '<div style="background:' + getVersionHeaderGradient() + ';color:white;border-radius:12px;padding:6px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">';
                 html += '<button style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;width:28px;height:28px;color:white;font-size:12px;cursor:pointer;flex-shrink:0;" onclick="app.view=\'cal\';app.show();">◀</button>';
                 html += '<h1 style="font-size:13px;font-weight:700;margin:0;flex:1;">' + dayName + ' ' + d + ' ' + mName + '</h1>';
                 html += '</div>';
