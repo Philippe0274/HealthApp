@@ -1,19 +1,20 @@
-const urlVersion = new URL(self.location.href).searchParams.get('v');
-const APP_VERSION = urlVersion || '2.1.3';
+const APP_VERSION = '2.1.4';
 const CACHE_PREFIX = 'health-tracker-cache-';
 const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
+const APP_BASE = new URL(self.registration.scope).pathname;
+const appPath = (path = '') => APP_BASE + path;
 const APP_SHELL = [
-  '/HealthApp/',
-  '/HealthApp/index.html',
-  '/HealthApp/manifest.json',
-  '/HealthApp/logo.png',
-  '/HealthApp/telegram.png',
-  '/HealthApp/drugs.png',
-  '/HealthApp/24-hours.png',
-  '/HealthApp/recovery.png',
-  '/HealthApp/folder.png',
-  '/HealthApp/database-management.png',
-  '/HealthApp/event.png'
+  appPath(),
+  appPath('index.html'),
+  appPath('manifest.json'),
+  appPath('logo.png'),
+  appPath('telegram.png'),
+  appPath('drugs.png'),
+  appPath('24-hours.png'),
+  appPath('recovery.png'),
+  appPath('folder.png'),
+  appPath('database-management.png'),
+  appPath('event.png')
 ];
 
 self.addEventListener('install', (event) => {
@@ -73,10 +74,10 @@ async function networkFirst(request) {
   const cache = await caches.open(CACHE_NAME);
   try {
     const fresh = await fetch(new Request(request, { cache: 'reload' }));
-    if (fresh && fresh.ok) await cache.put('/HealthApp/index.html', fresh.clone());
+    if (fresh && fresh.ok) await cache.put(appPath('index.html'), fresh.clone());
     return fresh;
   } catch (err) {
-    return (await cache.match('/HealthApp/index.html')) || (await cache.match('/HealthApp/')) || Response.error();
+    return (await cache.match(request)) || (await cache.match(appPath('index.html'))) || (await cache.match(appPath())) || Response.error();
   }
 }
 

@@ -563,7 +563,7 @@
         }
 
         
-const APP_VERSION = '2.1.3';
+const APP_VERSION = '2.1.4';
 
 function getVersionHue(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
@@ -4525,7 +4525,30 @@ class App {
         // Register Service Worker
         if ('serviceWorker' in navigator) {
             let refreshingForUpdate = false;
-            const swUrl = '/HealthApp/sw.js?v=' + encodeURIComponent(APP_VERSION);
+            const appScope = new URL('./', window.location.href).pathname;
+            const swUrl = new URL('sw.js?v=' + encodeURIComponent(APP_VERSION), window.location.href).href;
+
+            async function checkOnlineAppVersion(registration) {
+                try {
+                    const response = await fetch(new URL('index.html?version-check=' + Date.now(), window.location.href).href, {
+                        cache: 'no-store',
+                        headers: { 'Cache-Control': 'no-cache' }
+                    });
+                    if (!response || !response.ok) return;
+                    const html = await response.text();
+                    const match = html.match(/const\s+APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
+                    const onlineVersion = match && match[1];
+                    if (onlineVersion && onlineVersion !== APP_VERSION) {
+                        showUpdateNotice();
+                        await registration.update().catch(() => {});
+                        setTimeout(() => {
+                            if (!refreshingForUpdate) window.location.reload();
+                        }, 1500);
+                    }
+                } catch (err) {
+                    // Offline or GitHub temporarily unavailable: keep the current PWA working.
+                }
+            }
 
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 if (refreshingForUpdate) return;
@@ -4535,10 +4558,11 @@ class App {
             });
 
             navigator.serviceWorker.register(swUrl, {
-                scope: '/HealthApp/',
+                scope: appScope,
                 updateViaCache: 'none'
             }).then((registration) => {
                 registration.update().catch(() => {});
+                checkOnlineAppVersion(registration);
 
                 registration.addEventListener('updatefound', () => {
                     const worker = registration.installing;
@@ -4551,7 +4575,17 @@ class App {
                     });
                 });
 
-                setInterval(() => registration.update().catch(() => {}), 60 * 60 * 1000);
+                setInterval(() => {
+                    registration.update().catch(() => {});
+                    checkOnlineAppVersion(registration);
+                }, 5 * 60 * 1000);
+
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden) {
+                        registration.update().catch(() => {});
+                        checkOnlineAppVersion(registration);
+                    }
+                });
             }).catch(() => {});
             
             // Listen for periodic sync messages from Service Worker
