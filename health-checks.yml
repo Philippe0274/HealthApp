@@ -1,4 +1,4 @@
-name: Smart Daily Health Checks
+﻿name: Smart Daily Health Checks
 
 on:
   schedule:
@@ -343,6 +343,54 @@ jobs:
             return `${day}-${month}-${year}`;
           }
 
+          function normalizeLanguage(value) {
+            const lang = String(value || '').toLowerCase();
+            if (['fr', 'français', 'francais', 'french'].includes(lang)) return 'fr';
+            if (['es', 'español', 'espanol', 'spanish'].includes(lang)) return 'es';
+            if (['en', 'english'].includes(lang)) return 'en';
+            return 'nl';
+          }
+
+          function getBackupLanguage(backup) {
+            return normalizeLanguage(backup?.patient?.language || 'nl');
+          }
+
+          function translateWorkflowText(text, lang) {
+            const code = normalizeLanguage(lang);
+            if (code === 'nl') return text;
+            const maps = {
+              fr: {
+                'TEST HEALTH CHECKS':'TEST HEALTH CHECKS','GitHub Actions Telegram test werkt.':'Le test Telegram GitHub Actions fonctionne.','Brussels tijd':'Heure de Bruxelles',
+                'DAGOVERZICHT HEALTH APP':'RAPPORT QUOTIDIEN HEALTH APP','Datum':'Date','Patient':'Patient','Bloeddruk':'Tension','Ochtend':'Matin','Middag':'Midi','Avond':'Soir','ochtend':'matin','middag':'midi','avond':'soir','Ontbreekt: geen':'Manquant: aucun','ontbreekt':'manquant','Ontbreekt':'Manquant',
+                'Dagelijkse medicatie':'Médication quotidienne','Ingenomen':'Pris','Top: Medicatie is correct ingenomen.':'Top : la médication a été correctement prise.','Foei! Je hebt je medicatie niet ingenomen!':'Attention ! Vous n’avez pas pris votre médication.','is ingenomen, maar':'a été pris, mais','zijn ingenomen, maar':'ont été pris, mais','niet.':'pas.',
+                'Er is geen dagelijkse medicatie ingesteld in de backup.':'Aucune médication quotidienne n’est définie dans la sauvegarde.','Voorraad dagelijkse medicatie':'Stock de la médication quotidienne','Geen dagelijkse medicatie ingesteld':'Aucune médication quotidienne définie','dag(en)':'jour(s)','bijvragen':'à renouveler','Sporadisch ingenomen vandaag':'Médication occasionnelle prise aujourd’hui','Medicatie bijvragen':'Médication à renouveler','dient te worden bijgevraagd aan de huisarts. Nog ongeveer':'doit être renouvelé auprès du médecin. Encore environ','dag(en) voorraad.':'jour(s) de stock.',
+                'Analyse':'Analyse','Er zijn vandaag geen volledige bloeddrukmetingen geregistreerd. Een dagtrend kan daardoor niet beoordeeld worden.':'Aucune mesure complète de tension n’a été enregistrée aujourd’hui. La tendance du jour ne peut donc pas être évaluée.','bloeddrukmoment(en) volledig geregistreerd.':'moment(s) de tension complètement enregistré(s).','Ontbrekende meetmomenten':'Moments de mesure manquants','Minstens een meting is ernstig verhoogd. Meet opnieuw na rust; bij bevestiging, klachten of aanhoudend hoge waarden is contact met huisarts of wachtdienst aangewezen.':'Au moins une mesure est fortement élevée. Reprenez la mesure après repos ; en cas de confirmation, de symptômes ou de valeurs élevées persistantes, contactez le médecin ou le service de garde.','Er zijn verhoogde bloeddrukwaarden geregistreerd. Volg de trend verder op en bespreek aanhoudende verhoging met de arts.':'Des valeurs de tension élevées ont été enregistrées. Continuez le suivi et discutez toute élévation persistante avec le médecin.','De bloeddruk was deels hoog-normaal. Verdere opvolging blijft nuttig.':'La tension était partiellement haute-normale. Le suivi reste utile.','De geregistreerde bloeddrukwaarden liggen vandaag binnen de streefzone.':'Les valeurs enregistrées aujourd’hui sont dans la zone cible.','Een of meer dagelijkse medicaties staan op lage voorraad en moeten worden bijgevraagd.':'Un ou plusieurs médicaments quotidiens sont presque épuisés et doivent être renouvelés.','Dit is een automatische opvolging op basis van geregistreerde gegevens, geen diagnose.':'Ceci est un suivi automatique basé sur les données enregistrées, pas un diagnostic.',
+                'BLOEDWAARDEN MISSEN':'VALEURS DE TENSION MANQUANTES','Systolisch':'Systolique','Diastolisch':'Diastolique','Hartslag':'Fréquence cardiaque','MEDICATIE NIET INGENOMEN':'MÉDICATION NON PRISE'
+              },
+              es: {
+                'GitHub Actions Telegram test werkt.':'La prueba de Telegram de GitHub Actions funciona.','Brussels tijd':'Hora de Bruselas',
+                'DAGOVERZICHT HEALTH APP':'INFORME DIARIO HEALTH APP','Datum':'Fecha','Patient':'Paciente','Bloeddruk':'Presión arterial','Ochtend':'Mañana','Middag':'Mediodía','Avond':'Noche','ochtend':'mañana','middag':'mediodía','avond':'noche','Ontbreekt: geen':'Falta: ninguno','ontbreekt':'falta','Ontbreekt':'Falta',
+                'Dagelijkse medicatie':'Medicación diaria','Ingenomen':'Tomado','Top: Medicatie is correct ingenomen.':'Top: la medicación se tomó correctamente.','Foei! Je hebt je medicatie niet ingenomen!':'Atención: no has tomado tu medicación.','is ingenomen, maar':'se tomó, pero','zijn ingenomen, maar':'se tomaron, pero','niet.':'no.',
+                'Er is geen dagelijkse medicatie ingesteld in de backup.':'No hay medicación diaria configurada en la copia.','Voorraad dagelijkse medicatie':'Stock de medicación diaria','Geen dagelijkse medicatie ingesteld':'No hay medicación diaria configurada','dag(en)':'día(s)','bijvragen':'pedir','Sporadisch ingenomen vandaag':'Medicación ocasional tomada hoy','Medicatie bijvragen':'Medicación a pedir','dient te worden bijgevraagd aan de huisarts. Nog ongeveer':'debe pedirse al médico. Quedan aproximadamente','dag(en) voorraad.':'día(s) de stock.',
+                'Analyse':'Análisis','Er zijn vandaag geen volledige bloeddrukmetingen geregistreerd. Een dagtrend kan daardoor niet beoordeeld worden.':'Hoy no se registraron mediciones completas de presión arterial. Por eso no se puede evaluar la tendencia diaria.','bloeddrukmoment(en) volledig geregistreerd.':'momento(s) de presión arterial registrado(s) completamente.','Ontbrekende meetmomenten':'Momentos de medición faltantes','Minstens een meting is ernstig verhoogd. Meet opnieuw na rust; bij bevestiging, klachten of aanhoudend hoge waarden is contact met huisarts of wachtdienst aangewezen.':'Al menos una medición está muy elevada. Mida de nuevo tras reposo; si se confirma, hay síntomas o valores altos persistentes, contacte con el médico o urgencias.','Er zijn verhoogde bloeddrukwaarden geregistreerd. Volg de trend verder op en bespreek aanhoudende verhoging met de arts.':'Se registraron valores elevados de presión. Siga la tendencia y comente elevaciones persistentes con el médico.','De bloeddruk was deels hoog-normaal. Verdere opvolging blijft nuttig.':'La presión fue parcialmente alta-normal. El seguimiento sigue siendo útil.','De geregistreerde bloeddrukwaarden liggen vandaag binnen de streefzone.':'Los valores registrados hoy están dentro del objetivo.','Een of meer dagelijkse medicaties staan op lage voorraad en moeten worden bijgevraagd.':'Uno o más medicamentos diarios tienen poco stock y deben pedirse.','Dit is een automatische opvolging op basis van geregistreerde gegevens, geen diagnose.':'Este es un seguimiento automático basado en datos registrados, no un diagnóstico.',
+                'BLOEDWAARDEN MISSEN':'FALTAN VALORES DE PRESIÓN','Systolisch':'Sistólica','Diastolisch':'Diastólica','Hartslag':'Frecuencia cardiaca','MEDICATIE NIET INGENOMEN':'MEDICACIÓN NO TOMADA'
+              },
+              en: {
+                'GitHub Actions Telegram test werkt.':'GitHub Actions Telegram test works.','Brussels tijd':'Brussels time',
+                'DAGOVERZICHT HEALTH APP':'DAILY SUMMARY HEALTH APP','Datum':'Date','Patient':'Patient','Bloeddruk':'Blood pressure','Ochtend':'Morning','Middag':'Afternoon','Avond':'Evening','ochtend':'morning','middag':'afternoon','avond':'evening','Ontbreekt: geen':'Missing: none','ontbreekt':'missing','Ontbreekt':'Missing',
+                'Dagelijkse medicatie':'Daily medication','Ingenomen':'Taken','Top: Medicatie is correct ingenomen.':'Great: medication was taken correctly.','Foei! Je hebt je medicatie niet ingenomen!':'Warning: you did not take your medication.','is ingenomen, maar':'was taken, but','zijn ingenomen, maar':'were taken, but','niet.':'not.',
+                'Er is geen dagelijkse medicatie ingesteld in de backup.':'No daily medication is configured in the backup.','Voorraad dagelijkse medicatie':'Daily medication stock','Geen dagelijkse medicatie ingesteld':'No daily medication configured','dag(en)':'day(s)','bijvragen':'request refill','Sporadisch ingenomen vandaag':'Sporadic medication taken today','Medicatie bijvragen':'Medication refill needed','dient te worden bijgevraagd aan de huisarts. Nog ongeveer':'must be requested from the doctor. About','dag(en) voorraad.':'day(s) of stock left.',
+                'Analyse':'Analysis','Er zijn vandaag geen volledige bloeddrukmetingen geregistreerd. Een dagtrend kan daardoor niet beoordeeld worden.':'No complete blood pressure measurements were registered today, so a daily trend cannot be assessed.','bloeddrukmoment(en) volledig geregistreerd.':'blood pressure moment(s) fully registered.','Ontbrekende meetmomenten':'Missing measurement moments','Minstens een meting is ernstig verhoogd. Meet opnieuw na rust; bij bevestiging, klachten of aanhoudend hoge waarden is contact met huisarts of wachtdienst aangewezen.':'At least one measurement is severely elevated. Measure again after rest; if confirmed, symptomatic or persistently high, contact the doctor or out-of-hours service.','Er zijn verhoogde bloeddrukwaarden geregistreerd. Volg de trend verder op en bespreek aanhoudende verhoging met de arts.':'Elevated blood pressure values were registered. Keep monitoring the trend and discuss persistent elevation with the doctor.','De bloeddruk was deels hoog-normaal. Verdere opvolging blijft nuttig.':'Blood pressure was partly high-normal. Continued monitoring remains useful.','De geregistreerde bloeddrukwaarden liggen vandaag binnen de streefzone.':'Today’s registered blood pressure values are within the target range.','Een of meer dagelijkse medicaties staan op lage voorraad en moeten worden bijgevraagd.':'One or more daily medications are low in stock and need a refill.','Dit is een automatische opvolging op basis van geregistreerde gegevens, geen diagnose.':'This is automatic follow-up based on registered data, not a diagnosis.',
+                'BLOEDWAARDEN MISSEN':'BLOOD PRESSURE VALUES MISSING','Systolisch':'Systolic','Diastolisch':'Diastolic','Hartslag':'Heart rate','MEDICATIE NIET INGENOMEN':'MEDICATION NOT TAKEN'
+              }
+            };
+            let output = String(text || '');
+            Object.entries(maps[code] || {}).sort((a, b) => b[0].length - a[0].length).forEach(([from, to]) => {
+              output = output.split(from).join(to);
+            });
+            return output;
+          }
+
           function buildDailySummary(backup, today) {
             const meds = Array.isArray(backup.meds) ? backup.meds : [];
             const allIntakes = backup.intakes || {};
@@ -452,17 +500,18 @@ jobs:
             return lines.join('%0A');
           }
 
-          function sendTelegram(text) {
+          function sendTelegram(text, lang = 'nl') {
             if (!TELEGRAM_TOKEN || !CHAT_ID) {
               throw new Error('Telegram token or chat id missing');
             }
+            const localizedText = translateWorkflowText(text, lang);
 
             execFileSync('curl', [
               '-fsS',
               '-X', 'POST',
               `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`,
               '-d', `chat_id=${CHAT_ID}`,
-              '-d', `text=${text}`
+              '-d', `text=${localizedText}`
             ], { encoding: 'utf8' });
           }
 
@@ -490,8 +539,10 @@ jobs:
             const meds = Array.isArray(backup.meds) ? backup.meds : [];
             const intakesToday = backup.intakes?.[today] || {};
             const measuresToday = backup.measures?.[today] || {};
+            const patientLanguage = getBackupLanguage(backup);
 
             console.log(`Backup timestamp: ${backup.timestamp || 'not available'}`);
+            console.log(`Patient language: ${patientLanguage}`);
             console.log(`Medication count: ${meds.length}`);
             console.log(`Measurements today: ${Object.keys(measuresToday).filter(key => hasMeasurement(measuresToday[key])).length}`);
 
@@ -501,7 +552,7 @@ jobs:
 
             if (shouldSendDailySummary) {
               console.log(`Daily summary check active for ${dailySummaryDate}`);
-              sendTelegram(buildDailySummary(backup, dailySummaryDate));
+              sendTelegram(buildDailySummary(backup, dailySummaryDate), patientLanguage);
               console.log(`Daily summary sent for ${dailySummaryDate}`);
             }
 
@@ -559,7 +610,7 @@ jobs:
             if (alerts.length > 0) {
               console.log(`Telegram alerts to send: ${alerts.length}`);
               for (const alert of alerts) {
-                sendTelegram(alert);
+                sendTelegram(alert, patientLanguage);
                 console.log(`Telegram sent: ${alert.substring(0, 60)}...`);
               }
             } else {
@@ -571,3 +622,4 @@ jobs:
           }
           })();
           NODEJS_EOF
+

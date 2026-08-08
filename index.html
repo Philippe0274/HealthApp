@@ -563,7 +563,7 @@
         }
 
         
-const APP_VERSION = '2.1.8';
+const APP_VERSION = '2.1.9';
 
 function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
@@ -685,8 +685,6 @@ function normalizeLangCode(v){
  return 'nl';
 }
 function getAppLanguage(){
- const forced = document.documentElement.getAttribute('data-current-language');
- if (forced) return normalizeLangCode(forced);
  if (window.app && window.app.data && window.app.data.patient && window.app.data.patient.language) {
   return normalizeLangCode(window.app.data.patient.language);
  }
@@ -694,6 +692,8 @@ function getAppLanguage(){
   const saved = JSON.parse(localStorage.getItem('data') || 'null');
   if (saved && saved.patient && saved.patient.language) return normalizeLangCode(saved.patient.language);
  } catch(e) {}
+ const forced = document.documentElement.getAttribute('data-current-language');
+ if (forced) return normalizeLangCode(forced);
  return 'nl';
 }
 function setPatientLanguage(language, root){
@@ -813,7 +813,32 @@ function translateAppText(root){
   ,'Mobiliteit': t('mobility', lang)
   ,'Rapporttaal alarm': t('emergencyReportLanguage', lang)
  };
- const walker = document.createTreeWalker(root || document.body, NodeFilter.SHOW_TEXT);
+ const reportExact = {
+  fr: {
+   'Gemiddelde bloeddruk':'Tension moyenne','Gemiddelde hartslag':'Fréquence cardiaque moyenne','Therapietrouw dagelijkse medicatie':'Observance du traitement quotidien','Bloeddrukmetingen':'Mesures de tension',
+   'ALGEMENE STATUS GOED':'ÉTAT GÉNÉRAL BON','AANDACHT NODIG':'ATTENTION NÉCESSAIRE','ONVOLDOENDE GEGEVENS':'DONNÉES INSUFFISANTES','Bloeddruk':'Tension','Medicatie':'Médication','Goed opgevolgd':'Bien suivi','Controleer gemiste innames':'Vérifier les prises manquées','Geen dagelijkse medicatie':'Aucun médicament quotidien','Actie nodig':'Action nécessaire','Arts contacteren bij aanhoudende waarden':'Contacter le médecin si les valeurs persistent','Geen acute actie in dit rapport':'Aucune action urgente dans ce rapport',
+   'Effect op bloeddruk: onvoldoende gegevens':'Effet sur la tension : données insuffisantes','Effect op bloeddruk: onvoldoende metingen':'Effet sur la tension : mesures insuffisantes','Bloeddruktrend in rapportperiode':'Tendance tensionnelle pendant la période','Startweek':'Semaine de début','Laatste week':'Dernière semaine','Verschil':'Différence','Nog te weinig meetpunten voor medicatiegrafiek':'Trop peu de mesures pour le graphique du médicament',
+   'Gebruiksmomenten':'Moments d’utilisation','Nog geen gebruiksgrafiek beschikbaar':'Aucun graphique d’utilisation disponible','SPORADISCH':'OCCASIONNEL','DAGELIJKS':'QUOTIDIEN','Standaard':'Standard','Aantal innames':'Nombre de prises','Laatste gebruik':'Dernière utilisation','Therapietrouw':'Observance','geregistreerde dagen':'jours enregistrés','Laatste inname':'Dernière prise','Sinds':'Depuis','Niet geregistreerd':'Non enregistré','Geen dagelijkse medicatie geregistreerd.':'Aucun médicament quotidien enregistré.','Geen sporadische medicatie geregistreerd.':'Aucun médicament occasionnel enregistré.',
+   'dagelijkse medicatie':'médication quotidienne','sporadische medicatie':'médication occasionnelle','dagelijkse innames':'prises quotidiennes','sporadische innames':'prises occasionnelles','Dagelijkse medicatie':'Médication quotidienne','Sporadische medicatie':'Médication occasionnelle','Samenvatting - Gezondheidsanalyse':'Résumé - Analyse de santé','Bovendruk (Systolisch)':'Systolique','Onderdruk (Diastolisch)':'Diastolique','Bereik:':'Plage :','Gemiddelde:':'Moyenne :','Trend:':'Tendance :','Gem. Systolisch':'Moy. systolique','Gem. Diastolisch':'Moy. diastolique','Gem. Hartslag':'Fréq. cardiaque moy.','Trends Analyse':'Analyse des tendances','Bovendruk Grafiek:':'Graphique systolique :','Onderdruk Grafiek:':'Graphique diastolique :','Hartslag Grafiek:':'Graphique fréquence cardiaque :','Onvoldoende gegevens voor trendanalyse':'Données insuffisantes pour l’analyse de tendance','Metingen':'Mesures','Datum':'Date','Moment':'Moment','Sys/Dia':'Sys/Dia','Medicatie Naleving':'Observance médicamenteuse','Aanbevelingen & Advies':'Recommandations et conseils','Intelligente Persoonlijke Aanbevelingen':'Recommandations personnelles intelligentes','Gegenereerd:':'Généré :'
+  },
+  es: {
+   'Gemiddelde bloeddruk':'Presión arterial media','Gemiddelde hartslag':'Frecuencia cardiaca media','Therapietrouw dagelijkse medicatie':'Adherencia a la medicación diaria','Bloeddrukmetingen':'Mediciones de presión arterial',
+   'ALGEMENE STATUS GOED':'ESTADO GENERAL BUENO','AANDACHT NODIG':'REQUIERE ATENCIÓN','ONVOLDOENDE GEGEVENS':'DATOS INSUFICIENTES','Bloeddruk':'Presión arterial','Medicatie':'Medicación','Goed opgevolgd':'Buen seguimiento','Controleer gemiste innames':'Revisar tomas omitidas','Geen dagelijkse medicatie':'Sin medicación diaria','Actie nodig':'Acción necesaria','Arts contacteren bij aanhoudende waarden':'Contactar al médico si los valores persisten','Geen acute actie in dit rapport':'Sin acción urgente en este informe',
+   'Effect op bloeddruk: onvoldoende gegevens':'Efecto sobre la presión: datos insuficientes','Effect op bloeddruk: onvoldoende metingen':'Efecto sobre la presión: mediciones insuficientes','Bloeddruktrend in rapportperiode':'Tendencia de presión en el periodo','Startweek':'Semana inicial','Laatste week':'Última semana','Verschil':'Diferencia','Nog te weinig meetpunten voor medicatiegrafiek':'Muy pocos datos para el gráfico de medicación',
+   'Gebruiksmomenten':'Momentos de uso','Nog geen gebruiksgrafiek beschikbaar':'No hay gráfico de uso disponible','SPORADISCH':'OCASIONAL','DAGELIJKS':'DIARIA','Standaard':'Estándar','Aantal innames':'Número de tomas','Laatste gebruik':'Último uso','Therapietrouw':'Adherencia','geregistreerde dagen':'días registrados','Laatste inname':'Última toma','Sinds':'Desde','Niet geregistreerd':'No registrado','Geen dagelijkse medicatie geregistreerd.':'No hay medicación diaria registrada.','Geen sporadische medicatie geregistreerd.':'No hay medicación ocasional registrada.',
+   'dagelijkse medicatie':'medicación diaria','sporadische medicatie':'medicación ocasional','dagelijkse innames':'tomas diarias','sporadische innames':'tomas ocasionales','Dagelijkse medicatie':'Medicación diaria','Sporadische medicatie':'Medicación ocasional','Samenvatting - Gezondheidsanalyse':'Resumen - análisis de salud','Bovendruk (Systolisch)':'Sistólica','Onderdruk (Diastolisch)':'Diastólica','Bereik:':'Rango:','Gemiddelde:':'Media:','Trend:':'Tendencia:','Gem. Systolisch':'Media sistólica','Gem. Diastolisch':'Media diastólica','Gem. Hartslag':'Frecuencia media','Trends Analyse':'Análisis de tendencias','Bovendruk Grafiek:':'Gráfico sistólico:','Onderdruk Grafiek:':'Gráfico diastólico:','Hartslag Grafiek:':'Gráfico de frecuencia cardiaca:','Onvoldoende gegevens voor trendanalyse':'Datos insuficientes para el análisis de tendencia','Metingen':'Mediciones','Datum':'Fecha','Moment':'Momento','Sys/Dia':'Sys/Dia','Medicatie Naleving':'Adherencia a la medicación','Aanbevelingen & Advies':'Recomendaciones y consejos','Intelligente Persoonlijke Aanbevelingen':'Recomendaciones personales inteligentes','Gegenereerd:':'Generado:'
+  },
+  en: {
+   'Gemiddelde bloeddruk':'Average blood pressure','Gemiddelde hartslag':'Average heart rate','Therapietrouw dagelijkse medicatie':'Daily medication adherence','Bloeddrukmetingen':'Blood pressure measurements',
+   'ALGEMENE STATUS GOED':'GENERAL STATUS GOOD','AANDACHT NODIG':'ATTENTION NEEDED','ONVOLDOENDE GEGEVENS':'INSUFFICIENT DATA','Bloeddruk':'Blood pressure','Medicatie':'Medication','Goed opgevolgd':'Well followed','Controleer gemiste innames':'Check missed intakes','Geen dagelijkse medicatie':'No daily medication','Actie nodig':'Action needed','Arts contacteren bij aanhoudende waarden':'Contact the doctor if values persist','Geen acute actie in dit rapport':'No urgent action in this report',
+   'Effect op bloeddruk: onvoldoende gegevens':'Effect on blood pressure: insufficient data','Effect op bloeddruk: onvoldoende metingen':'Effect on blood pressure: insufficient measurements','Bloeddruktrend in rapportperiode':'Blood pressure trend during report period','Startweek':'Start week','Laatste week':'Last week','Verschil':'Difference','Nog te weinig meetpunten voor medicatiegrafiek':'Too few data points for medication chart',
+   'Gebruiksmomenten':'Use moments','Nog geen gebruiksgrafiek beschikbaar':'No usage chart available yet','SPORADISCH':'SPORADIC','DAGELIJKS':'DAILY','Standaard':'Standard','Aantal innames':'Number of intakes','Laatste gebruik':'Last use','Therapietrouw':'Adherence','geregistreerde dagen':'registered days','Laatste inname':'Last intake','Sinds':'Since','Niet geregistreerd':'Not registered','Geen dagelijkse medicatie geregistreerd.':'No daily medication registered.','Geen sporadische medicatie geregistreerd.':'No sporadic medication registered.',
+   'dagelijkse medicatie':'daily medication','sporadische medicatie':'sporadic medication','dagelijkse innames':'daily intakes','sporadische innames':'sporadic intakes','Dagelijkse medicatie':'Daily medication','Sporadische medicatie':'Sporadic medication','Samenvatting - Gezondheidsanalyse':'Summary - Health analysis','Bovendruk (Systolisch)':'Systolic','Onderdruk (Diastolisch)':'Diastolic','Bereik:':'Range:','Gemiddelde:':'Average:','Trend:':'Trend:','Gem. Systolisch':'Avg. systolic','Gem. Diastolisch':'Avg. diastolic','Gem. Hartslag':'Avg. heart rate','Trends Analyse':'Trend analysis','Bovendruk Grafiek:':'Systolic chart:','Onderdruk Grafiek:':'Diastolic chart:','Hartslag Grafiek:':'Heart rate chart:','Onvoldoende gegevens voor trendanalyse':'Insufficient data for trend analysis','Metingen':'Measurements','Datum':'Date','Moment':'Moment','Sys/Dia':'Sys/Dia','Medicatie Naleving':'Medication adherence','Aanbevelingen & Advies':'Recommendations & advice','Intelligente Persoonlijke Aanbevelingen':'Smart personal recommendations','Gegenereerd:':'Generated:'
+  }
+ };
+ Object.assign(exact, reportExact[lang] || {});
+ const doc = (root && root.ownerDocument) || document;
+ const walker = doc.createTreeWalker(root || doc.body, NodeFilter.SHOW_TEXT);
  const nodes = [];
  while (walker.nextNode()) nodes.push(walker.currentNode);
  nodes.forEach(node => {
@@ -866,6 +891,7 @@ class App {
                     phone: '02 269 12 54',
                     hours: { ma_do: '07:00-19:30', vr: '07:00-18:30' }
                 }));
+                setPatientLanguage(this.data.patient && this.data.patient.language ? this.data.patient.language : getAppLanguage(), document.body);
                 this.show();
                 
                 // 🎨 EERST alles kleuren, DAARNA observer starten
@@ -1224,13 +1250,57 @@ class App {
                 if (sys && dia && hr) this.setMeas(moment, sys, dia, hr, time);
             }
 
+            getPatientLanguage() {
+                return normalizeLangCode(this.data && this.data.patient && this.data.patient.language ? this.data.patient.language : getAppLanguage());
+            }
+
+            localizeOutgoingText(msg) {
+                const lang = this.getPatientLanguage();
+                if (lang === 'nl') return msg;
+                const maps = {
+                    fr: {
+                        'Google Drive verbonden':'Google Drive connecté','Backup gestuurd':'Sauvegarde envoyée','Backup hersteld van Google Drive':'Sauvegarde restaurée depuis Google Drive','Health Tracker online':'Health Tracker en ligne','RAPPORT GEGENEREERD':'RAPPORT GÉNÉRÉ',
+                        'TOEGEVOEGD':'AJOUTÉ','VERWIJDERD':'SUPPRIMÉ','VOORRAAD AANGEPAST':'STOCK MODIFIÉ','NIEUWE VERPAKKING':'NOUVEL EMBALLAGE','INGENOMEN':'PRIS','WAARSCHUWING':'AVERTISSEMENT','BESTELLEN':'COMMANDER',
+                        'Sporadische medicatie':'Médication occasionnelle','Dagelijkse medicatie':'Médication quotidienne','voorraad':'stock','per inname':'par prise','Dagelijkse dosis':'Dose quotidienne','toegevoegd':'ajouté','verwijderd':'supprimé','Nieuwe verpakking':'Nouvel emballage','Verbruikt':'Utilisé','Voorraad':'Stock','over':'restant','Nog ongeveer':'Encore environ','dag(en) voorraad':'jour(s) de stock','Inname uit':'Prise du','terug in voorraad':'remis en stock',
+                        'UUR OPGESLAGEN':'HEURE ENREGISTRÉE','UUR VERWIJDERD':'HEURE SUPPRIMÉE','Uur behouden':'Heure conservée','Uur':'Heure','Was':'Était','BLOEDWAARDEN AANGEPAST':'VALEURS TENSIONNELLES MODIFIÉES','BLOEDWAARDEN INGEGEVEN':'VALEURS TENSIONNELLES SAISIES','BLOEDWAARDEN VERWIJDERD':'VALEURS TENSIONNELLES SUPPRIMÉES','Nieuw':'Nouveau','Oud':'Ancien',
+                        'DAGELIJKS RAPPORT':'RAPPORT QUOTIDIEN','OCHTEND':'MATIN','MIDDAG':'MIDI','AVOND':'SOIR','Ochtend':'Matin','Middag':'Midi','Avond':'Soir','Gemiddelden':'Moyennes','Niet ingegeven':'Non saisi',
+                        'Huisarts gegevens bijgewerkt':'Données du médecin mises à jour','Alarm instellingen opgeslagen':'Paramètres d’alarme enregistrés','INSTELLINGEN OPGESLAGEN':'PARAMÈTRES ENREGISTRÉS','Medicatie check':'Contrôle médicaments','Rapport':'Rapport',
+                        'NIEUWE PATIENT':'NOUVEAU PATIENT','PATIENT BIJGEWERKT':'PATIENT MIS À JOUR','PATIENT VERWIJDERD':'PATIENT SUPPRIMÉ','Geboortedatum':'Date de naissance','Toegevoegd':'Ajouté','Opgeslagen':'Enregistré','Gewist':'Effacé','NORMAAL':'NORMAL','VERHOOGD':'ÉLEVÉ','ATTENTIE':'ATTENTION','KRITISCH':'SÉVÈRE','Neem contact arts':'Contactez le médecin'
+                    },
+                    es: {
+                        'Google Drive verbonden':'Google Drive conectado','Backup gestuurd':'Copia enviada','Backup hersteld van Google Drive':'Copia restaurada desde Google Drive','Health Tracker online':'Health Tracker en línea','RAPPORT GEGENEREERD':'INFORME GENERADO',
+                        'TOEGEVOEGD':'AÑADIDO','VERWIJDERD':'ELIMINADO','VOORRAAD AANGEPAST':'STOCK MODIFICADO','NIEUWE VERPAKKING':'NUEVO ENVASE','INGENOMEN':'TOMADO','WAARSCHUWING':'ADVERTENCIA','BESTELLEN':'PEDIR',
+                        'Sporadische medicatie':'Medicación ocasional','Dagelijkse medicatie':'Medicación diaria','voorraad':'stock','per inname':'por toma','Dagelijkse dosis':'Dosis diaria','toegevoegd':'añadido','verwijderd':'eliminado','Nieuwe verpakking':'Nuevo envase','Verbruikt':'Consumido','Voorraad':'Stock','over':'restante','Nog ongeveer':'Aproximadamente','dag(en) voorraad':'día(s) de stock','Inname uit':'Toma del','terug in voorraad':'devuelto al stock',
+                        'UUR OPGESLAGEN':'HORA GUARDADA','UUR VERWIJDERD':'HORA ELIMINADA','Uur behouden':'Hora conservada','Uur':'Hora','Was':'Era','BLOEDWAARDEN AANGEPAST':'VALORES DE PRESIÓN MODIFICADOS','BLOEDWAARDEN INGEGEVEN':'VALORES DE PRESIÓN INTRODUCIDOS','BLOEDWAARDEN VERWIJDERD':'VALORES DE PRESIÓN ELIMINADOS','Nieuw':'Nuevo','Oud':'Anterior',
+                        'DAGELIJKS RAPPORT':'INFORME DIARIO','OCHTEND':'MAÑANA','MIDDAG':'MEDIODÍA','AVOND':'NOCHE','Ochtend':'Mañana','Middag':'Mediodía','Avond':'Noche','Gemiddelden':'Promedios','Niet ingegeven':'No introducido',
+                        'Huisarts gegevens bijgewerkt':'Datos del médico actualizados','Alarm instellingen opgeslagen':'Ajustes de alarma guardados','INSTELLINGEN OPGESLAGEN':'AJUSTES GUARDADOS','Medicatie check':'Control de medicación','Rapport':'Informe',
+                        'NIEUWE PATIENT':'NUEVO PACIENTE','PATIENT BIJGEWERKT':'PACIENTE ACTUALIZADO','PATIENT VERWIJDERD':'PACIENTE ELIMINADO','Geboortedatum':'Fecha de nacimiento','Toegevoegd':'Añadido','Opgeslagen':'Guardado','Gewist':'Borrado','NORMAAL':'NORMAL','VERHOOGD':'ELEVADO','ATTENTIE':'ATENCIÓN','KRITISCH':'SEVERO','Neem contact arts':'Contacte al médico'
+                    },
+                    en: {
+                        'Google Drive verbonden':'Google Drive connected','Backup gestuurd':'Backup sent','Backup hersteld van Google Drive':'Backup restored from Google Drive','Health Tracker online':'Health Tracker online','RAPPORT GEGENEREERD':'REPORT GENERATED',
+                        'TOEGEVOEGD':'ADDED','VERWIJDERD':'DELETED','VOORRAAD AANGEPAST':'STOCK UPDATED','NIEUWE VERPAKKING':'NEW PACKAGE','INGENOMEN':'TAKEN','WAARSCHUWING':'WARNING','BESTELLEN':'ORDER',
+                        'Sporadische medicatie':'Sporadic medication','Dagelijkse medicatie':'Daily medication','voorraad':'stock','per inname':'per intake','Dagelijkse dosis':'Daily dose','toegevoegd':'added','verwijderd':'removed','Nieuwe verpakking':'New package','Verbruikt':'Used','Voorraad':'Stock','over':'left','Nog ongeveer':'About','dag(en) voorraad':'day(s) of stock','Inname uit':'Intake from','terug in voorraad':'back in stock',
+                        'UUR OPGESLAGEN':'TIME SAVED','UUR VERWIJDERD':'TIME DELETED','Uur behouden':'Time kept','Uur':'Time','Was':'Was','BLOEDWAARDEN AANGEPAST':'BLOOD PRESSURE VALUES UPDATED','BLOEDWAARDEN INGEGEVEN':'BLOOD PRESSURE VALUES ENTERED','BLOEDWAARDEN VERWIJDERD':'BLOOD PRESSURE VALUES DELETED','Nieuw':'New','Oud':'Old',
+                        'DAGELIJKS RAPPORT':'DAILY REPORT','OCHTEND':'MORNING','MIDDAG':'AFTERNOON','AVOND':'EVENING','Ochtend':'Morning','Middag':'Afternoon','Avond':'Evening','Gemiddelden':'Averages','Niet ingegeven':'Not entered',
+                        'Huisarts gegevens bijgewerkt':'Doctor details updated','Alarm instellingen opgeslagen':'Alarm settings saved','INSTELLINGEN OPGESLAGEN':'SETTINGS SAVED','Medicatie check':'Medication check','Rapport':'Report',
+                        'NIEUWE PATIENT':'NEW PATIENT','PATIENT BIJGEWERKT':'PATIENT UPDATED','PATIENT VERWIJDERD':'PATIENT DELETED','Geboortedatum':'Date of birth','Toegevoegd':'Added','Opgeslagen':'Saved','Gewist':'Deleted','NORMAAL':'NORMAL','VERHOOGD':'ELEVATED','ATTENTIE':'ATTENTION','KRITISCH':'SEVERE','Neem contact arts':'Contact doctor'
+                    }
+                };
+                let text = String(msg || '');
+                Object.entries(maps[lang] || {}).sort((a, b) => b[0].length - a[0].length).forEach(([from, to]) => {
+                    text = text.split(from).join(to);
+                });
+                return text;
+            }
+
             async sendTg(msg) {
                 if (!this.telegram.token || !this.telegram.chatId) return;
                 try {
+                    const localizedMsg = this.localizeOutgoingText(msg);
                     await fetch('https://api.telegram.org/bot' + this.telegram.token + '/sendMessage', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ chat_id: this.telegram.chatId, text: msg, parse_mode: 'HTML' })
+                        body: JSON.stringify({ chat_id: this.telegram.chatId, text: localizedMsg, parse_mode: 'HTML' })
                     });
                 } catch(e) {}
             }
@@ -2203,7 +2273,7 @@ class App {
                 const chartData = this.generateChartsData();
                 const advice = this.generateSmartAdvice();
                 const doctor = this.doctor;
-                const reportLang = getAppLanguage();
+                const reportLang = normalizeLangCode(this.data && this.data.patient && this.data.patient.language ? this.data.patient.language : getAppLanguage());
 
                 // v3.1 - Moderne eerste rapportpagina, zonder bestaande patiëntinformatie te verliezen
                 const patient = this.data.patient || null;
@@ -2583,7 +2653,7 @@ class App {
 
                 const html = `
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="${reportLang}">
 <head>
     <meta charset="UTF-8">
     <title>📋 ${t('reportDocTitle', reportLang)}</title>
@@ -2966,7 +3036,7 @@ class App {
         ` : ''}
 
         <div style="text-align:center;margin-top:30px;padding-top:20px;border-top:1px solid #e5e7eb;font-size:11px;color:#6b7280;">
-            <p>Gegenereerd: ${new Date().toLocaleDateString('nl-NL', {year:'numeric',month:'long',day:'numeric'})}</p>
+            <p>Gegenereerd: ${new Date().toLocaleDateString(reportLang === 'nl' ? 'nl-NL' : reportLang, {year:'numeric',month:'long',day:'numeric'})}</p>
         </div>
     </div>
     <script>
