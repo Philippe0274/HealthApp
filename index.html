@@ -563,24 +563,39 @@
         }
 
         
-const APP_VERSION = '2.1.4';
+const APP_VERSION = '2.1.5';
 
-function getVersionHue(version = APP_VERSION) {
+function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
- return (parts[0] * 71 + parts[1] * 37 + parts[2] * 53 + 8) % 360;
+ const themes = [
+  { start:'#dc2626', end:'#991b1b', border:'#ef4444', theme:'#dc2626' },
+  { start:'#2563eb', end:'#1e3a8a', border:'#60a5fa', theme:'#2563eb' },
+  { start:'#059669', end:'#065f46', border:'#34d399', theme:'#059669' },
+  { start:'#7c3aed', end:'#4c1d95', border:'#a78bfa', theme:'#7c3aed' },
+  { start:'#0891b2', end:'#155e75', border:'#22d3ee', theme:'#0891b2' },
+  { start:'#ea580c', end:'#9a3412', border:'#fb923c', theme:'#ea580c' },
+  { start:'#be123c', end:'#881337', border:'#fb7185', theme:'#be123c' }
+ ];
+ const index = ((parts[0] * 11) + (parts[1] * 7) + parts[2]) % themes.length;
+ return themes[index];
 }
 
-function getVersionAccent(offset = 0, lightness = 45) {
- return 'hsl(' + ((getVersionHue() + offset) % 360) + ' 72% ' + lightness + '%)';
+function getVersionAccent() {
+ return getVersionTheme().border;
 }
 
-function getVersionHeaderGradient(offset = 0) {
- return 'linear-gradient(135deg,' + getVersionAccent(offset, 45) + ' 0%,' + getVersionAccent(offset, 30) + ' 100%)';
+function getVersionHeaderGradient() {
+ const theme = getVersionTheme();
+ return 'linear-gradient(135deg,' + theme.start + ' 0%,' + theme.end + ' 100%)';
 }
 
 function applyVersionTheme() {
+ const theme = getVersionTheme();
  document.documentElement.style.setProperty('--version-header-gradient', getVersionHeaderGradient());
- document.documentElement.style.setProperty('--version-header-border', getVersionAccent(10, 55));
+ document.documentElement.style.setProperty('--version-header-border', theme.border);
+ document.documentElement.style.setProperty('--red', theme.theme);
+ const themeColor = document.querySelector('meta[name="theme-color"]');
+ if (themeColor) themeColor.setAttribute('content', theme.theme);
 }
 
 applyVersionTheme();
@@ -3842,7 +3857,7 @@ class App {
                 html += '</div>';
                 html += '</div>';
                 
-                html += '<button onclick="app.showEditAlarmSettings()" style="background:' + getVersionHeaderGradient() + ';border:2px solid ' + getVersionAccent(10, 55) + ';color:white;width:100%;padding:12px;border-radius:8px;font-weight:700;cursor:pointer;margin-bottom:12px;font-size:16px;"><span style="font-size:20px;">🚨</span> ' + t('alarmSettings').toUpperCase() + '</button>';
+                html += '<button onclick="app.showEditAlarmSettings()" style="background:' + getVersionHeaderGradient() + ';border:2px solid ' + getVersionAccent() + ';color:white;width:100%;padding:12px;border-radius:8px;font-weight:700;cursor:pointer;margin-bottom:12px;font-size:16px;"><span style="font-size:20px;">🚨</span> ' + t('alarmSettings').toUpperCase() + '</button>';
 
                 // PATIENT SECTION - Vóór kalender
                 if (!this.data.patient) {
