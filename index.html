@@ -563,21 +563,14 @@
         }
 
         
-const APP_VERSION = '2.1.7';
+const APP_VERSION = '2.1.8';
 
 function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
- const themes = [
-  { start:'#dc2626', end:'#991b1b', border:'#ef4444', theme:'#dc2626' },
-  { start:'#2563eb', end:'#1e3a8a', border:'#60a5fa', theme:'#2563eb' },
-  { start:'#059669', end:'#065f46', border:'#34d399', theme:'#059669' },
-  { start:'#7c3aed', end:'#4c1d95', border:'#a78bfa', theme:'#7c3aed' },
-  { start:'#0891b2', end:'#155e75', border:'#22d3ee', theme:'#0891b2' },
-  { start:'#ea580c', end:'#9a3412', border:'#fb923c', theme:'#ea580c' },
-  { start:'#1d4ed8', end:'#172554', border:'#93c5fd', theme:'#1d4ed8' }
- ];
- const index = parts[2] % themes.length;
- return themes[index];
+ const colors = ['#EF6905', '#A1CB35', '#44ACFF', '#FFD400'];
+ const index = Math.max(0, parts[2] - 8) % colors.length;
+ const color = colors[index];
+ return { start: color, end: color, border: color, theme: color };
 }
 
 function getVersionAccent() {
