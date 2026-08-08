@@ -563,7 +563,7 @@
         }
 
         
-const APP_VERSION = '2.1.6';
+const APP_VERSION = '2.1.7';
 
 function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
@@ -1658,8 +1658,8 @@ class App {
                         name: 'Bovendruk (SYS)',
                         unit: 'mmHg',
                         value: value,
-                        short: 'kritieke bovendruk',
-                        explanation: `Waarde ${value} mmHg overschrijdt de rode grens (${t.roodSys}).`
+                        short: 'ernstig verhoogde bovendruk',
+                        explanation: `Waarde ${value} mmHg overschrijdt de rode grens (${t.roodSys}). Meet opnieuw na enkele minuten rust en laat bevestigde hoge waarden medisch beoordelen.`
                     };
                 }
 
@@ -1695,8 +1695,8 @@ class App {
                         name: 'Onderdruk (DIA)',
                         unit: 'mmHg',
                         value: value,
-                        short: 'kritieke onderdruk',
-                        explanation: `Waarde ${value} mmHg overschrijdt de rode grens (${t.roodDia}).`
+                        short: 'ernstig verhoogde onderdruk',
+                        explanation: `Waarde ${value} mmHg overschrijdt de rode grens (${t.roodDia}). Meet opnieuw na enkele minuten rust en laat bevestigde hoge waarden medisch beoordelen.`
                     };
                 }
 
@@ -1710,8 +1710,8 @@ class App {
                         name: 'Hartslag',
                         unit: 'bpm',
                         value: value,
-                        short: 'kritiek lage hartslag',
-                        explanation: `Hartslag ${value} bpm ligt onder de minimumgrens (${t.hrMin}).`
+                        short: 'lage hartslag buiten de ingestelde grens',
+                        explanation: `Hartslag ${value} bpm ligt onder de ingestelde minimumgrens (${t.hrMin}). Beoordeel dit samen met rusttoestand, medicatie en eventuele klachten.`
                     };
                     if (value <= t.hrGeelMax) return {
                         level: 'yellow',
@@ -1732,8 +1732,8 @@ class App {
                         name: 'Hartslag',
                         unit: 'bpm',
                         value: value,
-                        short: 'kritieke hartslag',
-                        explanation: `Hartslag ${value} bpm overschrijdt de rode grens (${t.hrGeelMax}).`
+                        short: 'sterk verhoogde hartslag',
+                        explanation: `Hartslag ${value} bpm overschrijdt de ingestelde rode grens (${t.hrGeelMax}). Controleer opnieuw in rust en neem bij klachten of aanhoudende waarden medisch contact op.`
                     };
                 }
 
@@ -1762,7 +1762,7 @@ class App {
                 const name = patientName || 'Patiënt';
 
                 if (abnormalVitals.length > 1) {
-                    if (redCount > 0) return `🚨 ${name}, meerdere vitale waarden vereisen onmiddellijke aandacht`;
+                    if (redCount > 0) return `🚨 ${name}, meerdere vitale waarden vragen medische aandacht`;
                     if (orangeCount > 0) return `🟠 ${name}, meerdere waarden vragen extra aandacht`;
                     return `🟡 ${name}, meerdere waarden zijn verhoogd`;
                 }
@@ -1770,7 +1770,7 @@ class App {
                 const v = abnormalVitals[0];
                 if (!v) return `${name}, waarden gecontroleerd`;
 
-                if (v.level === 'red') return `🚨 ${name}, uw ${v.short} vraagt onmiddellijke aandacht`;
+                if (v.level === 'red') return `🚨 ${name}, uw ${v.short} vraagt medische aandacht`;
                 if (v.level === 'orange') return `🟠 ${name}, uw ${v.short} vraagt extra aandacht`;
                 return `🟡 ${name}, uw ${v.short} moet opgevolgd worden`;
             }
@@ -1912,7 +1912,7 @@ class App {
                 const zoneUp = levelOrder[level] > levelOrder[prevLevel];
                 const zoneDown = levelOrder[level] < levelOrder[prevLevel];
 
-                if (extreme) return { icon: '🚨', title: 'Uitzonderlijk grote stijging', text: `De verandering tegenover de vorige meting is uitzonderlijk groot: SYS ${previous.sys} → ${current.sys}, DIA ${previous.dia} → ${current.dia}, HR ${previous.hr} → ${current.hr}. Controleer onmiddellijk opnieuw na rust.` };
+                if (extreme) return { icon: '🚨', title: 'Uitzonderlijk grote stijging', text: `De verandering tegenover de vorige meting is uitzonderlijk groot: SYS ${previous.sys} → ${current.sys}, DIA ${previous.dia} → ${current.dia}, HR ${previous.hr} → ${current.hr}. Controleer meteen opnieuw na enkele minuten rust.` };
                 if (zoneUp && level === 'red') return { icon: '🔴', title: 'Overgang naar rode zone', text: `De vorige meting zat in de ${this.getLevelLabel(prevLevel)} zone. Deze meting komt uit in de rode zone. Dat is een duidelijke verslechtering.` };
                 if (zoneDown) return { icon: '✅', title: 'Zone verbetert', text: `De vorige meting zat in de ${this.getLevelLabel(prevLevel)} zone. Deze meting zit nu in de ${this.getLevelLabel(level)} zone. Dat is een gunstige evolutie, ook al blijft opvolging nodig.` };
                 if (strongWorse || allUp) return { icon: '⚠️', title: 'Duidelijke verslechtering', text: `De huidige meting is slechter dan de vorige: SYS ${previous.sys} → ${current.sys} (${ds >= 0 ? '+' : ''}${ds}), DIA ${previous.dia} → ${current.dia} (${dd >= 0 ? '+' : ''}${dd}), HR ${previous.hr} → ${current.hr} (${dh >= 0 ? '+' : ''}${dh}).` };
@@ -2010,8 +2010,8 @@ class App {
                 overlay.innerHTML = `
                     <div class="vital-alarm-card" role="dialog" aria-modal="true">
                         <div class="vital-alarm-header" style="background:#7f1d1d;">
-                            <div class="vital-alarm-kicker">🚑 Kritieke waarschuwing</div>
-                            <div class="vital-alarm-title">${patientName}, deze meting vraagt onmiddellijke aandacht</div>
+                            <div class="vital-alarm-kicker">🚑 Zeer ernstige waarschuwing</div>
+                            <div class="vital-alarm-title">${patientName}, meet opnieuw en laat dit beoordelen</div>
                         </div>
                         <div class="vital-alarm-body">
                             <div class="vital-values">
@@ -2033,18 +2033,18 @@ class App {
                                 <span class="vital-pill">Vorige: ${previousLabel}</span>
                             </div>
                             <div class="vital-personal-summary" style="background:#fee2e2;border:1px solid #fecaca;color:#7f1d1d;">
-                                Deze waarde of schommeling is uitzonderlijk. Neem onmiddellijk contact op met uw huisarts of de huisartsenwachtdienst om dit te laten beoordelen.
+                                Deze waarde of schommeling is uitzonderlijk. Meet opnieuw na enkele minuten rust. Als dit bevestigd wordt, of als er klachten zijn, neem dan meteen contact op met uw huisarts of de huisartsenwachtdienst.
                             </div>
                             <div class="vital-analysis">
-                                <div class="vital-analysis-title">Waarom deze kritieke melding?</div>
+                                <div class="vital-analysis-title">Waarom deze ernstige melding?</div>
                                 ${reasonsHtml}
                             </div>
                             <div class="vital-advice" style="background:#fff1f2;border:1px solid #fecaca;">
                                 <div class="vital-advice-title" style="color:#7f1d1d;">Dringend advies</div>
                                 <ul>
                                     <li>Ga rustig zitten en meet opnieuw na enkele minuten rust.</li>
-                                    <li>Contacteer onmiddellijk uw huisarts of de wachtdienst als deze meting bevestigd wordt.</li>
-                                    <li>Bel 112 bij pijn op de borst, kortademigheid, verlammingsverschijnselen, spraakstoornissen, bewustzijnsverlies of plots ernstige hoofdpijn.</li>
+                                    <li>Contacteer meteen uw huisarts of de wachtdienst als deze meting bevestigd wordt of als u zich onwel voelt.</li>
+                                    <li>Bel 112 bij pijn op de borst, kortademigheid, verlammingsverschijnselen, spraakstoornissen, bewustzijnsverlies, plots ernstige hoofdpijn of zichtstoornissen.</li>
                                 </ul>
                             </div>
                             <button class="vital-alarm-btn" style="background:#7f1d1d;" onclick="document.getElementById('vital-alarm-overlay')?.remove()">Ik heb dit begrepen</button>
@@ -2098,14 +2098,15 @@ class App {
                     },
                     red: {
                         color: '#dc2626', soft: '#fef2f2', border: '#fecaca',
-                        kicker: 'Dringende medische waarschuwing',
+                        kicker: 'Ernstige medische waarschuwing',
                         button: 'Ik heb het begrepen',
                         adviceTitle: 'Belangrijk',
                         bullets: [
-                            'uw afwijkende waarde(n) bevinden zich in een kritieke zone.',
+                            'uw afwijkende waarde(n) bevinden zich in de rode zone.',
                             'blijf rustig zitten en meet na enkele minuten opnieuw.',
-                            'neem onmiddellijk contact op met uw huisarts of wachtdienst als dit bevestigd wordt.',
-                            'bel 112 bij pijn op de borst, kortademigheid, verlammingsverschijnselen, spraakstoornissen, plots ernstige hoofdpijn of bewustzijnsverlies.'
+                            'neem meteen contact op met uw huisarts of wachtdienst als dit bevestigd wordt of als u zich onwel voelt.',
+                            'bel 112 bij pijn op de borst, kortademigheid, verlammingsverschijnselen, spraakstoornissen, plots ernstige hoofdpijn, zichtstoornissen of bewustzijnsverlies.',
+                            'deze app stelt geen diagnose en vervangt geen arts.'
                         ]
                     }
                 };

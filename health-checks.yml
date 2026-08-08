@@ -401,7 +401,7 @@ jobs:
               analysis.push(`Ontbrekende meetmomenten: ${missingMeasurements.join(', ')}.`);
             }
             if (severe.length > 0) {
-              analysis.push('Minstens een meting is ernstig verhoogd. Bij klachten of aanhoudend hoge waarden is medisch contact aangewezen.');
+              analysis.push('Minstens een meting is ernstig verhoogd. Meet opnieuw na rust; bij bevestiging, klachten of aanhoudend hoge waarden is contact met huisarts of wachtdienst aangewezen.');
             } else if (elevated.length > 0) {
               analysis.push('Er zijn verhoogde bloeddrukwaarden geregistreerd. Volg de trend verder op en bespreek aanhoudende verhoging met de arts.');
             } else if (highNormal.length > 0) {
