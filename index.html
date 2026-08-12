@@ -566,12 +566,12 @@
         }
 
         
-const APP_VERSION = '2.1.16';
+const APP_VERSION = '3.0.0';
 
 function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
  const colors = ['#EF6905', '#A1CB35', '#44ACFF', '#FFD400'];
- const index = Math.max(0, parts[2] - 8) % colors.length;
+ const index = ((parts[0] || 0) + (parts[1] || 0) + (parts[2] || 0)) % colors.length;
  const color = colors[index];
  return { start: color, end: color, border: color, theme: color };
 }
