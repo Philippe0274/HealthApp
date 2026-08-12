@@ -566,7 +566,7 @@
         }
 
         
-const APP_VERSION = '2.1.15';
+const APP_VERSION = '2.1.16';
 
 function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
@@ -1125,7 +1125,7 @@ class App {
 ├─ Dagelijkse dosis: ${this.formatMedQuantity(med, this.getMedDoseAmount(med))}
 └─ ✅`);
                 }
-                this.show();
+                this.refreshMedicationDisplay({ keepMedicationMenu: true });
             }
 
             rmMed(id) {
@@ -1135,7 +1135,7 @@ class App {
                 this.data.meds = this.data.meds.filter(m => m.id !== id);
                 this.save();
                 this.sendTg(`🗑️ <b>${med.name}</b> VERWIJDERD`);
-                this.show();
+                this.refreshMedicationDisplay({ keepMedicationMenu: true });
             }
 
             adjustMedStock(id) {
@@ -1168,7 +1168,7 @@ class App {
                     const newCurrent = this.getPills(id);
                     this.save();
                     this.sendTg(`📦 <b>${med.name}</b> - VOORRAAD AANGEPAST\n├─ ${typeLabel}\n├─ ➕ ${this.formatMedQuantity(med, qty)} toegevoegd\n├─ ${this.formatMedQuantity(med, oldCurrent)} → ${this.formatMedQuantity(med, newCurrent)}\n└─ ✅`);
-                    this.show();
+                    this.refreshMedicationDisplay({ keepMedicationMenu: true });
                     return;
                 }
 
@@ -1188,7 +1188,7 @@ class App {
                     const newCurrent = this.getPills(id);
                     this.save();
                     this.sendTg(`📦 <b>${med.name}</b> - VOORRAAD AANGEPAST\n├─ ${typeLabel}\n├─ ➖ ${this.formatMedQuantity(med, qty)} verwijderd\n├─ ${this.formatMedQuantity(med, oldCurrent)} → ${this.formatMedQuantity(med, newCurrent)}\n└─ ✅`);
-                    this.show();
+                    this.refreshMedicationDisplay({ keepMedicationMenu: true });
                     return;
                 }
 
@@ -1205,7 +1205,7 @@ class App {
                     const newCurrent = this.getPills(id);
                     this.save();
                     this.sendTg(`📦 <b>${med.name}</b> - NIEUWE VERPAKKING\n├─ ${typeLabel}\n├─ 📦 Nieuwe verpakking: ${this.formatMedQuantity(med, qty)}\n├─ ${this.formatMedQuantity(med, oldCurrent)} → ${this.formatMedQuantity(med, newCurrent)}\n└─ ✅`);
-                    this.show();
+                    this.refreshMedicationDisplay({ keepMedicationMenu: true });
                     return;
                 }
 
@@ -1262,7 +1262,7 @@ class App {
                     }
                 }
                 this.save();
-                this.show();
+                this.refreshMedicationDisplay();
             }
 
             saveTimeOnly(moment) {
@@ -3813,6 +3813,12 @@ class App {
                 }, 10);
             }
 
+            refreshMedicationDisplay(options = {}) {
+                this.normalizeMeds();
+                if (options.keepMedicationMenu) this.showSet = true;
+                this.show();
+            }
+
             savePatient(firstName, lastName, birthDate, photoBase64, allergies, medicalHistory, mobilityStatus, language, emergencyContact) {
                 const isNew = !this.data.patient;
                 const existingPhoto = this.data.patient && this.data.patient.photo ? this.data.patient.photo : null;
@@ -4128,6 +4134,7 @@ class App {
                 for (let med of this.getSortedMeds()) {
                     const remaining = this.getPills(med.id);
                     const totalAmount = this.getMedTotalAmount(med);
+                    const displayTotalAmount = this.getMedDisplayTotalAmount(med);
                     const doseAmount = this.getMedDoseAmount(med);
                     const daysLeft = med.type !== 'sporadic' ? Math.floor(remaining / Math.max(1, doseAmount)) : remaining;
                     const pct = med.type !== 'sporadic'
@@ -4141,7 +4148,7 @@ class App {
                     html += '<div style="font-size:11px;font-weight:600;color:' + pct + ';">' + (pct === '#10b981' ? '✅' : pct === '#f59e0b' ? '⚠️' : '🚨') + ' ' + this.formatMedStock(med) + '</div>';
                     html += '</div>';
                     const doseForVisual = Math.max(0.0001, doseAmount || 1);
-                    const visualDoseTotal = med.type !== 'sporadic' ? (totalAmount / doseForVisual) : totalAmount;
+                    const visualDoseTotal = med.type !== 'sporadic' ? (displayTotalAmount / doseForVisual) : displayTotalAmount;
                     const visualDoseRemaining = med.type !== 'sporadic' ? (remaining / doseForVisual) : remaining;
                     const visualUnits = Math.min(70, Math.max(1, Math.round(visualDoseTotal)));
                     const visualRemaining = visualDoseTotal > 0 ? Math.round((visualDoseRemaining / visualDoseTotal) * visualUnits) : 0;
