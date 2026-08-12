@@ -81,7 +81,7 @@
     <div id="app"></div>
     <script>
         const MEDS_COLORS = ['#ff0000', '#0066ff', '#00cc00', '#ff6600', '#ff00ff'];
-        const MEDS_ICONS = ['💊', '💉', '🩺', '🏥', '🔬'];
+        const MEDS_ICONS = ['💊', '🥄'];
         const DOCTOR_DATA = {name:'Dr. Verbesselt Koen',address:'Wolvertemsesteenweg 115 - 1850 Grimbergen',phone:'02 269 12 54',hours:{ma_do:'07:00-19:30',vr:'07:00-18:30'}};
         function getBloodPressureStatus(s,d){if(s<=119&&d<=79)return{status:'🟢',color:'#10b981'};if(s<=129&&d<=84)return{status:'🟢',color:'#10b981'};if(s<=139||d<=89)return{status:'🟡',color:'#f59e0b'};if(s<=159||d<=99)return{status:'🟠',color:'#f97316'};if(s<=179||d<=109)return{status:'🔴',color:'#ef4444'};return{status:'🔴',color:'#dc2626'};}
         function getHeartRateStatus(h){if(h>=55&&h<=70)return{status:'🟢',color:'#10b981'};if(h>70&&h<=100)return{status:'🟢',color:'#10b981'};if(h>100&&h<=120)return{status:'🟡',color:'#f59e0b'};return{status:'🔴',color:'#dc2626'};}
@@ -566,7 +566,7 @@
         }
 
         
-const APP_VERSION = '2.1.13';
+const APP_VERSION = '2.1.15';
 
 function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
@@ -984,15 +984,26 @@ class App {
                 return parseFloat(value) || 0;
             }
 
+            getMedDisplayTotalAmount(med) {
+                if (!med) return 0;
+                const value = med.stockDisplayAmount !== undefined ? med.stockDisplayAmount : this.getMedTotalAmount(med);
+                return parseFloat(value) || 0;
+            }
+
+            getMedIcon(med) {
+                return this.getMedUnit(med) === 'pillen' ? '💊' : '🥄';
+            }
+
             normalizeMed(med, index = 0) {
                 if (!med) return med;
                 if (!med.type) med.type = 'daily';
                 if (!med.stockUnit) med.stockUnit = med.name && med.name.toLowerCase().includes('optifibre') ? 'g' : 'pillen';
                 if (med.stockAmount === undefined) med.stockAmount = med.pills !== undefined ? med.pills : 0;
                 if (med.pills === undefined) med.pills = med.stockAmount;
+                if (med.stockDisplayAmount === undefined) med.stockDisplayAmount = this.getMedTotalAmount(med);
                 if (med.doseAmount === undefined) med.doseAmount = med.type === 'sporadic' ? (parseFloat(med.pillsPerIntake) || 1) : (med.stockUnit === 'pillen' ? 1 : 1);
                 if (!med.color) med.color = MEDS_COLORS[index % MEDS_COLORS.length];
-                if (!med.icon) med.icon = med.stockUnit === 'g' ? '🥄' : MEDS_ICONS[index % MEDS_ICONS.length];
+                med.icon = this.getMedIcon(med);
                 return med;
             }
 
@@ -1047,7 +1058,7 @@ class App {
             }
 
             formatMedStock(med) {
-                return this.formatMedQuantity(med, this.getPills(med.id)) + '/' + this.formatMedQuantity(med, this.getMedTotalAmount(med));
+                return this.formatMedQuantity(med, this.getPills(med.id)) + '/' + this.formatMedQuantity(med, this.getMedDisplayTotalAmount(med));
             }
 
             getPills(id) {
@@ -1086,13 +1097,14 @@ class App {
                     dosage: dosage,
                     pills: p,
                     stockAmount: p,
+                    stockDisplayAmount: p,
                     stockUnit: stockUnit,
                     doseAmount: doseAmount,
                     doseUnit: stockUnit,
                     type: isSporadic ? 'sporadic' : 'daily',
                     pillsPerIntake: isSporadic ? doseAmount : 1,
                     color: MEDS_COLORS[this.data.meds.length % 5],
-                    icon: stockUnit === 'g' ? '🥄' : MEDS_ICONS[this.data.meds.length % 5]
+                    icon: stockUnit === 'pillen' ? '💊' : '🥄'
                 };
                 this.data.meds.push(med);
                 this.normalizeMeds();
@@ -1152,6 +1164,7 @@ class App {
                     const newTotal = oldCurrent + qty + used;
                     med.pills = newTotal;
                     med.stockAmount = newTotal;
+                    med.stockDisplayAmount = this.getMedDisplayTotalAmount(med) + qty;
                     const newCurrent = this.getPills(id);
                     this.save();
                     this.sendTg(`📦 <b>${med.name}</b> - VOORRAAD AANGEPAST\n├─ ${typeLabel}\n├─ ➕ ${this.formatMedQuantity(med, qty)} toegevoegd\n├─ ${this.formatMedQuantity(med, oldCurrent)} → ${this.formatMedQuantity(med, newCurrent)}\n└─ ✅`);
@@ -1171,6 +1184,7 @@ class App {
                     const newTotal = Math.max(0, oldCurrent - qty) + used;
                     med.pills = newTotal;
                     med.stockAmount = newTotal;
+                    med.stockDisplayAmount = Math.max(this.getMedDisplayTotalAmount(med), oldCurrent);
                     const newCurrent = this.getPills(id);
                     this.save();
                     this.sendTg(`📦 <b>${med.name}</b> - VOORRAAD AANGEPAST\n├─ ${typeLabel}\n├─ ➖ ${this.formatMedQuantity(med, qty)} verwijderd\n├─ ${this.formatMedQuantity(med, oldCurrent)} → ${this.formatMedQuantity(med, newCurrent)}\n└─ ✅`);
@@ -1187,6 +1201,7 @@ class App {
                     const newTotal = newCurrentTarget + used;
                     med.pills = newTotal;
                     med.stockAmount = newTotal;
+                    med.stockDisplayAmount = newCurrentTarget;
                     const newCurrent = this.getPills(id);
                     this.save();
                     this.sendTg(`📦 <b>${med.name}</b> - NIEUWE VERPAKKING\n├─ ${typeLabel}\n├─ 📦 Nieuwe verpakking: ${this.formatMedQuantity(med, qty)}\n├─ ${this.formatMedQuantity(med, oldCurrent)} → ${this.formatMedQuantity(med, newCurrent)}\n└─ ✅`);
