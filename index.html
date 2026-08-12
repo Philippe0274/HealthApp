@@ -276,13 +276,14 @@
         }
 
         function buildDriveBackupPanel() {
+          const lang = getAppLanguage();
           const info = getDriveStatusInfo();
           const primaryAction = info.connected ? 'driveSync()' : 'handleSyncAction()';
-          const primaryText = info.connected ? 'Synchroniseren' : 'Verbinden';
+          const primaryText = translateTextValue(info.connected ? 'Synchroniseren' : 'Verbinden', lang);
           const restoreDisabled = info.connected ? '' : ' disabled';
           const restoreStyle = info.connected ? '#f97316' : '#9ca3af';
-          const connectedLabel = info.connected ? '🟢 Verbonden' : (wantsGoogleDriveConnection() ? '🟡 Opnieuw verbinden' : '⚪ Niet verbonden');
-          const statusLabel = info.localNewer ? '🟡 Lokale wijzigingen' : (info.connected && info.driveTs ? '🟢 Alles gesynchroniseerd' : (wantsGoogleDriveConnection() ? '🟡 Opnieuw verbinden' : '🟡 Niet gesynchroniseerd'));
+          const connectedLabel = info.connected ? '🟢 ' + translateTextValue('Verbonden', lang) : (wantsGoogleDriveConnection() ? '🟡 ' + translateTextValue('Opnieuw verbinden', lang) : '⚪ ' + translateTextValue('Niet verbonden', lang));
+          const statusLabel = info.localNewer ? '🟡 ' + translateTextValue('Lokale wijzigingen', lang) : (info.connected && info.driveTs ? '🟢 ' + translateTextValue('Alles gesynchroniseerd', lang) : (wantsGoogleDriveConnection() ? '🟡 ' + translateTextValue('Opnieuw verbinden', lang) : '🟡 ' + translateTextValue('Niet gesynchroniseerd', lang)));
 
           return '<div id="drive-backup-panel" style="background:white;border-radius:8px;padding:10px;margin:10px 0 12px 0;box-shadow:0 1px 3px rgba(0,0,0,0.05);border:1px solid #e5e7eb;">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">' +
@@ -290,19 +291,20 @@
               '<div style="font-size:11px;font-weight:800;color:' + (info.connected ? '#166534' : '#64748b') + ';">' + connectedLabel + '</div>' +
             '</div>' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:9px;">' +
-              '<div style="background:#f8fafc;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><div style="font-size:10px;color:#64748b;font-weight:800;">Laatste synchronisatie</div><div style="font-size:12px;color:#111827;font-weight:900;margin-top:2px;">' + info.drive.date + '</div><div style="font-size:11px;color:#64748b;">' + info.drive.time + '</div></div>' +
-              '<div style="background:#f8fafc;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><div style="font-size:10px;color:#64748b;font-weight:800;">Status</div><div style="font-size:12px;color:' + (info.localNewer ? '#9a3412' : '#166534') + ';font-weight:900;margin-top:2px;">' + statusLabel + '</div></div>' +
+              '<div style="background:#f8fafc;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><div style="font-size:10px;color:#64748b;font-weight:800;">' + translateTextValue('Laatste synchronisatie', lang) + '</div><div style="font-size:12px;color:#111827;font-weight:900;margin-top:2px;">' + info.drive.date + '</div><div style="font-size:11px;color:#64748b;">' + info.drive.time + '</div></div>' +
+              '<div style="background:#f8fafc;border-radius:8px;padding:8px;border:1px solid #eef2f7;"><div style="font-size:10px;color:#64748b;font-weight:800;">' + t('status', lang) + '</div><div style="font-size:12px;color:' + (info.localNewer ? '#9a3412' : '#166534') + ';font-weight:900;margin-top:2px;">' + statusLabel + '</div></div>' +
             '</div>' +
             '<div style="display:flex;gap:8px;align-items:center;">' +
               '<button onclick="' + primaryAction + '" style="flex:1;background:#2563eb;color:white;border:none;border-radius:8px;padding:10px 8px;min-height:42px;cursor:pointer;font-size:12px;font-weight:900;">☁️ ' + primaryText + '</button>' +
-              '<button onclick="showDriveRestoreConfirm()" style="flex:1;background:' + restoreStyle + ';color:white;border:none;border-radius:8px;padding:10px 8px;min-height:42px;cursor:pointer;font-size:12px;font-weight:900;"' + restoreDisabled + '>☁️ Herstellen</button>' +
+              '<button onclick="showDriveRestoreConfirm()" style="flex:1;background:' + restoreStyle + ';color:white;border:none;border-radius:8px;padding:10px 8px;min-height:42px;cursor:pointer;font-size:12px;font-weight:900;"' + restoreDisabled + '>☁️ ' + translateTextValue('Herstellen', lang) + '</button>' +
             '</div>' +
           '</div>';
         }
 
         function showDriveRestoreConfirm() {
+          const lang = getAppLanguage();
           if (!isGTokenValid()) {
-            showDriveNotice('Google Drive niet verbonden', 'Verbind eerst met Google Drive voordat je gegevens herstelt.', 'warning');
+            showDriveNotice(translateTextValue('Google Drive niet verbonden', lang), translateTextValue('Verbind eerst met Google Drive voordat je gegevens herstelt.', lang), 'warning');
             return;
           }
           const existing = document.getElementById('drive-restore-modal');
@@ -319,11 +321,12 @@
             '</div>' +
             '<p style="margin:0 0 14px 0;color:#7c2d12;font-size:13px;line-height:1.45;font-weight:700;">Lokale wijzigingen na deze datum gaan verloren.</p>' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
-              '<button id="drive-restore-cancel" onclick="document.getElementById(\'drive-restore-modal\').remove()" style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:9px;padding:12px;font-weight:900;cursor:pointer;">Annuleren</button>' +
-              '<button onclick="document.getElementById(\'drive-restore-modal\').remove();driveRestore(true)" style="background:#f97316;color:white;border:none;border-radius:9px;padding:12px;font-weight:900;cursor:pointer;">Herstellen</button>' +
+              '<button id="drive-restore-cancel" onclick="document.getElementById(\'drive-restore-modal\').remove()" style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:9px;padding:12px;font-weight:900;cursor:pointer;">' + t('cancel', lang) + '</button>' +
+              '<button onclick="document.getElementById(\'drive-restore-modal\').remove();driveRestore(true)" style="background:#f97316;color:white;border:none;border-radius:9px;padding:12px;font-weight:900;cursor:pointer;">' + translateTextValue('Herstellen', lang) + '</button>' +
             '</div>' +
           '</div>';
           document.body.appendChild(modal);
+          translateAppText(modal);
           setTimeout(() => {
             const cancel = document.getElementById('drive-restore-cancel');
             if (cancel) cancel.focus();
@@ -563,7 +566,7 @@
         }
 
         
-const APP_VERSION = '2.1.11';
+const APP_VERSION = '2.1.13';
 
 function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
@@ -714,6 +717,8 @@ function translateTextValue(value, lang){
  let text = String(value == null ? '' : value);
  const maps = {
   fr: {
+   'Synchroniseren':'Synchroniser','Herstellen':'Restaurer','Verbinden':'Connecter','Verbonden':'Connecté','Opnieuw verbinden':'Reconnecter','Niet verbonden':'Non connecté','Lokale wijzigingen':'Modifications locales','Alles gesynchroniseerd':'Tout est synchronisé','Niet gesynchroniseerd':'Non synchronisé','Laatste synchronisatie':'Dernière synchronisation','Synchronisatie voltooid':'Synchronisation terminée','Synchronisatie mislukt':'Échec de la synchronisation','Herstellen mislukt':'Échec de la restauration','Google Drive wordt bijgewerkt.':'Google Drive est mis à jour.','De nieuwste gegevens staan veilig in Google Drive.':'Les dernières données sont enregistrées dans Google Drive.','Google Drive bevat nu de nieuwste gegevens.':'Google Drive contient maintenant les dernières données.','Google Drive niet verbonden':'Google Drive non connecté','Verbind eerst met Google Drive voordat je synchroniseert.':'Connectez d’abord Google Drive avant de synchroniser.','Verbind eerst met Google Drive voordat je gegevens herstelt.':'Connectez d’abord Google Drive avant de restaurer les données.','Gegevens succesvol hersteld':'Données restaurées avec succès','De gegevens zijn hersteld vanuit Google Drive.':'Les données ont été restaurées depuis Google Drive.','Geen backup gevonden':'Aucune sauvegarde trouvée',
+   'pillen':'comprimés','pil':'comprimé','per dag':'par jour','Voorraadeenheid':'Unité de stock','Totale voorraad':'Stock total','Huidige voorraad':'Stock actuel','Voorraad aanpassen':'Modifier le stock',
    'Gemiddelde bloeddruk':'Tension moyenne','Gemiddelde hartslag':'Fréquence cardiaque moyenne','Therapietrouw dagelijkse medicatie':'Observance du traitement quotidien','Bloeddrukmetingen':'Mesures de tension','Bloeddruk':'Tension','Hartslag':'Fréquence cardiaque','Medicatie':'Médication','Metingen':'Mesures','Trend':'Tendance','Status':'Statut','Datum':'Date','Moment':'Moment','Bereik':'Plage','Gemiddelde':'Moyenne','Variatie':'Variation','Duur opvolging':'Durée du suivi','Opvolging':'Suivi','opvolging':'suivi','dagen opvolging':'jours de suivi','dagen':'jours',
    'ALGEMENE STATUS GOED':'ÉTAT GÉNÉRAL BON','AANDACHT NODIG':'ATTENTION NÉCESSAIRE','OPVOLGEN':'SUIVI','ONVOLDOENDE GEGEVENS':'DONNÉES INSUFFISANTES','Goed opgevolgd':'Bien suivi','Controleer gemiste innames':'Vérifier les prises manquées','Geen dagelijkse medicatie':'Aucun médicament quotidien','Actie nodig':'Action nécessaire','Arts contacteren bij aanhoudende waarden':'Contacter le médecin si les valeurs persistent','Geen acute actie in dit rapport':'Aucune action urgente dans ce rapport','Geen trend':'Aucune tendance',
    'GOED':'BON','MATIG':'MODÉRÉ','SLECHT':'MAUVAIS','INSTABIEL':'INSTABLE','STABIEL':'STABLE','NORMAAL':'NORMAL','VERHOOGD':'ÉLEVÉ','KRITISCH':'SÉVÈRE','ATTENTIE':'ATTENTION',
@@ -725,6 +730,8 @@ function translateTextValue(value, lang){
    'Gekende medische historie':'Antécédents médicaux connus','Medische Historie':'Antécédents médicaux','Medische voorgeschiedenis':'Antécédents médicaux','Mobiliteitstoestand':'Mobilité','Allergieën':'Allergies','Hypertensie':'Hypertension','Hoge bloeddruk':'Hypertension','Diabetes':'Diabète','Hartaandoening':'Affection cardiaque','Hartfalen':'Insuffisance cardiaque','Nierproblemen':'Problèmes rénaux','Nierprobleem':'Problème rénal','Nieren':'Reins','CVA':'AVC','Beroerte':'AVC','Astma':'Asthme','COPD':'BPCO','Cholesterol':'Cholestérol','Trombose':'Thrombose','Rolstoel':'Fauteuil roulant','Krukken':'Béquilles','Loopt met hulpmiddel':'Marche avec aide','Wandelt zelfstandig':'Marche de façon autonome','Beperkte mobiliteit':'Mobilité réduite','Penicilline':'Pénicilline','Noten':'Noix'
   },
   es: {
+   'Synchroniseren':'Sincronizar','Herstellen':'Restaurar','Verbinden':'Conectar','Verbonden':'Conectado','Opnieuw verbinden':'Reconectar','Niet verbonden':'No conectado','Lokale wijzigingen':'Cambios locales','Alles gesynchroniseerd':'Todo sincronizado','Niet gesynchroniseerd':'No sincronizado','Laatste synchronisatie':'Última sincronización','Synchronisatie voltooid':'Sincronización completada','Synchronisatie mislukt':'Error de sincronización','Herstellen mislukt':'Error de restauración','Google Drive wordt bijgewerkt.':'Google Drive se está actualizando.','De nieuwste gegevens staan veilig in Google Drive.':'Los datos más recientes están seguros en Google Drive.','Google Drive bevat nu de nieuwste gegevens.':'Google Drive contiene ahora los datos más recientes.','Google Drive niet verbonden':'Google Drive no conectado','Verbind eerst met Google Drive voordat je synchroniseert.':'Conecte primero Google Drive antes de sincronizar.','Verbind eerst met Google Drive voordat je gegevens herstelt.':'Conecte primero Google Drive antes de restaurar los datos.','Gegevens succesvol hersteld':'Datos restaurados correctamente','De gegevens zijn hersteld vanuit Google Drive.':'Los datos se restauraron desde Google Drive.','Geen backup gevonden':'No se encontró copia',
+   'pillen':'comprimidos','pil':'comprimido','per dag':'por día','Voorraadeenheid':'Unidad de stock','Totale voorraad':'Stock total','Huidige voorraad':'Stock actual','Voorraad aanpassen':'Modificar stock',
    'Gemiddelde bloeddruk':'Presión arterial media','Gemiddelde hartslag':'Frecuencia cardiaca media','Therapietrouw dagelijkse medicatie':'Adherencia a la medicación diaria','Bloeddrukmetingen':'Mediciones de presión arterial','Bloeddruk':'Presión arterial','Hartslag':'Frecuencia cardiaca','Medicatie':'Medicación','Metingen':'Mediciones','Trend':'Tendencia','Status':'Estado','Datum':'Fecha','Moment':'Momento','Bereik':'Rango','Gemiddelde':'Media','Variatie':'Variación','Duur opvolging':'Duración del seguimiento','Opvolging':'Seguimiento','opvolging':'seguimiento','dagen opvolging':'días de seguimiento','dagen':'días',
    'ALGEMENE STATUS GOED':'ESTADO GENERAL BUENO','AANDACHT NODIG':'REQUIERE ATENCIÓN','OPVOLGEN':'SEGUIMIENTO','ONVOLDOENDE GEGEVENS':'DATOS INSUFICIENTES','Goed opgevolgd':'Buen seguimiento','Controleer gemiste innames':'Revisar tomas omitidas','Geen dagelijkse medicatie':'Sin medicación diaria','Actie nodig':'Acción necesaria','Arts contacteren bij aanhoudende waarden':'Contactar al médico si los valores persisten','Geen acute actie in dit rapport':'Sin acción urgente en este informe','Geen trend':'Sin tendencia',
    'GOED':'BUENO','MATIG':'MODERADO','SLECHT':'MALO','INSTABIEL':'INESTABLE','STABIEL':'ESTABLE','NORMAAL':'NORMAL','VERHOOGD':'ELEVADO','KRITISCH':'SEVERO','ATTENTIE':'ATENCIÓN',
@@ -736,6 +743,8 @@ function translateTextValue(value, lang){
    'Gekende medische historie':'Antecedentes médicos conocidos','Medische Historie':'Antecedentes médicos','Medische voorgeschiedenis':'Antecedentes médicos','Mobiliteitstoestand':'Movilidad','Allergieën':'Alergias','Hypertensie':'Hipertensión','Hoge bloeddruk':'Hipertensión','Diabetes':'Diabetes','Hartaandoening':'Enfermedad cardiaca','Hartfalen':'Insuficiencia cardiaca','Nierproblemen':'Problemas renales','Nierprobleem':'Problema renal','Nieren':'Riñones','CVA':'ACV','Beroerte':'Ictus','Astma':'Asma','COPD':'EPOC','Cholesterol':'Colesterol','Trombose':'Trombosis','Rolstoel':'Silla de ruedas','Krukken':'Muletas','Loopt met hulpmiddel':'Camina con ayuda','Wandelt zelfstandig':'Camina de forma autónoma','Beperkte mobiliteit':'Movilidad reducida','Penicilline':'Penicilina','Noten':'Frutos secos'
   },
   en: {
+   'Synchroniseren':'Sync','Herstellen':'Restore','Verbinden':'Connect','Verbonden':'Connected','Opnieuw verbinden':'Reconnect','Niet verbonden':'Not connected','Lokale wijzigingen':'Local changes','Alles gesynchroniseerd':'Everything synced','Niet gesynchroniseerd':'Not synced','Laatste synchronisatie':'Last sync','Synchronisatie voltooid':'Sync completed','Synchronisatie mislukt':'Sync failed','Herstellen mislukt':'Restore failed','Google Drive wordt bijgewerkt.':'Google Drive is being updated.','De nieuwste gegevens staan veilig in Google Drive.':'The latest data is safe in Google Drive.','Google Drive bevat nu de nieuwste gegevens.':'Google Drive now contains the latest data.','Google Drive niet verbonden':'Google Drive not connected','Verbind eerst met Google Drive voordat je synchroniseert.':'Connect Google Drive before syncing.','Verbind eerst met Google Drive voordat je gegevens herstelt.':'Connect Google Drive before restoring data.','Gegevens succesvol hersteld':'Data restored successfully','De gegevens zijn hersteld vanuit Google Drive.':'The data has been restored from Google Drive.','Geen backup gevonden':'No backup found',
+   'pillen':'pills','pil':'pill','per dag':'per day','Voorraadeenheid':'Stock unit','Totale voorraad':'Total stock','Huidige voorraad':'Current stock','Voorraad aanpassen':'Adjust stock',
    'Gemiddelde bloeddruk':'Average blood pressure','Gemiddelde hartslag':'Average heart rate','Therapietrouw dagelijkse medicatie':'Daily medication adherence','Bloeddrukmetingen':'Blood pressure measurements','Bloeddruk':'Blood pressure','Hartslag':'Heart rate','Medicatie':'Medication','Metingen':'Measurements','Trend':'Trend','Status':'Status','Datum':'Date','Moment':'Moment','Bereik':'Range','Gemiddelde':'Average','Variatie':'Variation','Duur opvolging':'Follow-up duration','Opvolging':'Follow-up','opvolging':'follow-up','dagen opvolging':'days follow-up','dagen':'days',
    'ALGEMENE STATUS GOED':'GENERAL STATUS GOOD','AANDACHT NODIG':'ATTENTION NEEDED','OPVOLGEN':'FOLLOW UP','ONVOLDOENDE GEGEVENS':'INSUFFICIENT DATA','Goed opgevolgd':'Well followed','Controleer gemiste innames':'Check missed intakes','Geen dagelijkse medicatie':'No daily medication','Actie nodig':'Action needed','Arts contacteren bij aanhoudende waarden':'Contact the doctor if values persist','Geen acute actie in dit rapport':'No urgent action in this report','Geen trend':'No trend',
    'GOED':'GOOD','MATIG':'MODERATE','SLECHT':'POOR','INSTABIEL':'UNSTABLE','STABIEL':'STABLE','NORMAAL':'NORMAL','VERHOOGD':'ELEVATED','KRITISCH':'SEVERE','ATTENTIE':'ATTENTION',
@@ -959,6 +968,7 @@ class App {
             }
 
             save() {
+                this.normalizeMeds();
                 localStorage.setItem('data', JSON.stringify(this.data));
                 queueDriveAutoSync('data-save');
             }
@@ -974,8 +984,51 @@ class App {
                 return parseFloat(value) || 0;
             }
 
+            normalizeMed(med, index = 0) {
+                if (!med) return med;
+                if (!med.type) med.type = 'daily';
+                if (!med.stockUnit) med.stockUnit = med.name && med.name.toLowerCase().includes('optifibre') ? 'g' : 'pillen';
+                if (med.stockAmount === undefined) med.stockAmount = med.pills !== undefined ? med.pills : 0;
+                if (med.pills === undefined) med.pills = med.stockAmount;
+                if (med.doseAmount === undefined) med.doseAmount = med.type === 'sporadic' ? (parseFloat(med.pillsPerIntake) || 1) : (med.stockUnit === 'pillen' ? 1 : 1);
+                if (!med.color) med.color = MEDS_COLORS[index % MEDS_COLORS.length];
+                if (!med.icon) med.icon = med.stockUnit === 'g' ? '🥄' : MEDS_ICONS[index % MEDS_ICONS.length];
+                return med;
+            }
+
+            normalizeMeds() {
+                this.data.meds = (this.data.meds || []).map((med, index) => this.normalizeMed(med, index)).filter(Boolean);
+                return this.data.meds;
+            }
+
+            getSortedMeds(type = null) {
+                const meds = this.normalizeMeds().slice();
+                const order = { daily: 0, sporadic: 1 };
+                return meds
+                    .filter(med => !type || med.type === type)
+                    .sort((a, b) => {
+                        const groupDiff = (order[a.type] ?? 0) - (order[b.type] ?? 0);
+                        if (groupDiff !== 0) return groupDiff;
+                        return String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' });
+                    });
+            }
+
+            getMedUsedAmount(med) {
+                if (!med || !med.id) return 0;
+                const perIntake = this.getMedDoseAmount(med);
+                let used = 0;
+                Object.values(this.data.intakes || {}).forEach(day => {
+                    if (day && day[med.id]) used += perIntake;
+                });
+                return used;
+            }
+
             getMedUnit(med) {
                 return (med && med.stockUnit) ? med.stockUnit : 'pillen';
+            }
+
+            getMedUnitLabel(med) {
+                return translateTextValue(this.getMedUnit(med), this.getPatientLanguage ? this.getPatientLanguage() : getAppLanguage());
             }
 
             getMedDoseAmount(med) {
@@ -990,7 +1043,7 @@ class App {
             }
 
             formatMedQuantity(med, value) {
-                return this.formatMedAmount(value) + ' ' + this.getMedUnit(med);
+                return this.formatMedAmount(value) + ' ' + this.getMedUnitLabel(med);
             }
 
             formatMedStock(med) {
@@ -998,14 +1051,9 @@ class App {
             }
 
             getPills(id) {
-                let count = 0;
                 const med = this.data.meds.find(m => m.id === id);
                 if (!med) return 0;
-                const perIntake = this.getMedDoseAmount(med);
-                for (let day in this.data.intakes) {
-                    if (this.data.intakes[day][id]) count += perIntake;
-                }
-                return Math.max(0, this.getMedTotalAmount(med) - count);
+                return Math.max(0, this.getMedTotalAmount(med) - this.getMedUsedAmount(med));
             }
 
             addMed(type = 'daily') {
@@ -1047,6 +1095,8 @@ class App {
                     icon: stockUnit === 'g' ? '🥄' : MEDS_ICONS[this.data.meds.length % 5]
                 };
                 this.data.meds.push(med);
+                this.normalizeMeds();
+                this.showSet = true;
                 this.save();
                 if (isSporadic) {
                     this.sendTg(`${med.icon} <b>${med.name}</b> TOEGEVOEGD!
@@ -1079,6 +1129,7 @@ class App {
             adjustMedStock(id) {
                 const med = this.data.meds.find(m => m.id === id);
                 if (!med) return;
+                this.normalizeMed(med, this.data.meds.indexOf(med));
 
                 const current = this.getPills(id);
                 const typeLabel = med.type === 'sporadic' ? '🔵 Sporadische medicatie' : '🟢 Dagelijkse medicatie';
@@ -1097,7 +1148,8 @@ class App {
                     const qty = parseFloat(prompt('Hoeveel ' + unit + ' toevoegen?', '1') || '0');
                     if (qty <= 0 || qty > 5000) { alert('Aantal moet tussen 0 en 5000 zijn!'); return; }
                     const oldCurrent = this.getPills(id);
-                    const newTotal = this.getMedTotalAmount(med) + qty;
+                    const used = this.getMedUsedAmount(med);
+                    const newTotal = oldCurrent + qty + used;
                     med.pills = newTotal;
                     med.stockAmount = newTotal;
                     const newCurrent = this.getPills(id);
@@ -1115,7 +1167,8 @@ class App {
                         alert(`Je kan geen ${this.formatMedQuantity(med, qty)} verwijderen.\nHuidige voorraad = ${this.formatMedQuantity(med, oldCurrent)}.`);
                         return;
                     }
-                    const newTotal = this.getMedTotalAmount(med) - qty;
+                    const used = this.getMedUsedAmount(med);
+                    const newTotal = Math.max(0, oldCurrent - qty) + used;
                     med.pills = newTotal;
                     med.stockAmount = newTotal;
                     const newCurrent = this.getPills(id);
@@ -1129,7 +1182,9 @@ class App {
                     const qty = parseFloat(prompt('Hoeveel ' + unit + ' zit er in de nieuwe verpakking?', unit === 'g' ? '250' : '28') || '0');
                     if (qty <= 0 || qty > 5000) { alert('Aantal moet tussen 0 en 5000 zijn!'); return; }
                     const oldCurrent = this.getPills(id);
-                    const newTotal = this.getMedTotalAmount(med) + qty;
+                    const used = this.getMedUsedAmount(med);
+                    const newCurrentTarget = oldCurrent + qty;
+                    const newTotal = newCurrentTarget + used;
                     med.pills = newTotal;
                     med.stockAmount = newTotal;
                     const newCurrent = this.getPills(id);
@@ -2345,7 +2400,7 @@ class App {
                 const reportStart = reportDates.length ? reportDates[0] : this.today();
                 const reportEnd = reportDates.length ? reportDates[reportDates.length - 1] : this.today();
                 const daysFollowed = reportDates.length ? Math.max(1, Math.round((new Date(reportEnd) - new Date(reportStart)) / 86400000) + 1) : 0;
-                const dailyMedsForRate = (this.data.meds || []).filter(m => m.type !== 'sporadic');
+                const dailyMedsForRate = this.getSortedMeds('daily');
                 let expectedDailyIntakes = dailyMedsForRate.length * Math.max(daysFollowed, 1);
                 let takenDailyIntakes = 0;
                 reportDates.forEach(day => {
@@ -2437,7 +2492,7 @@ class App {
             </div>
         </div>`;
                 // v3.2 - Professioneel medicatieoverzicht voor artsenrapport (geen voorraad tonen)
-                const allMedsForReport = this.data.meds || [];
+                const allMedsForReport = this.getSortedMeds();
                 const dailyMedsForReport = allMedsForReport.filter(m => m.type !== 'sporadic');
                 const sporadicMedsForReport = allMedsForReport.filter(m => m.type === 'sporadic');
 
@@ -3319,7 +3374,7 @@ class App {
                 const trendStatusDia = varDia > 10 ? '🔴 INSTABIEL' : varDia > 5 ? '🟡 MATIG' : '🟢 STABIEL';
 
                 let medicationsHtml = '';
-                this.data.meds.forEach(med => {
+                this.getSortedMeds().forEach(med => {
                     const typeInfo = med.type === 'sporadic' ? ` - 🔵 sporadisch (${this.formatMedQuantity(med, this.getMedDoseAmount(med))} per inname)` : ' - 🟢 dagelijks';
                     medicationsHtml += `<div class="med-item">${med.icon} <b>${med.name}</b> (${med.dosage})${typeInfo}</div>`;
                 });
@@ -3703,7 +3758,7 @@ class App {
                 const trendStatusDia = varDia > 10 ? '🔴 INSTABIEL' : varDia > 5 ? '🟡 MATIG' : '🟢 STABIEL';
 
                 let medicationsHtml = '';
-                this.data.meds.forEach(med => {
+                this.getSortedMeds().forEach(med => {
                     const total = this.getMedTotalAmount(med);
                     const remaining = this.getPills(med.id);
                     const used = total - remaining;
@@ -4005,10 +4060,10 @@ class App {
                 if (this.showSet) {
                     html += '<div style="background:white;border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';
                     html += '<h2 style="font-size:14px;font-weight:700;margin-bottom:10px;">💊 ' + t('medications').toUpperCase() + '</h2>';
-                    for (let med of this.data.meds) {
+                    for (let med of this.getSortedMeds()) {
                         html += '<div style="background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
                         const medTypeLabel = med.type === 'sporadic' ? ' 🔵 ' + t('sporadic') : ' 🟢 ' + t('daily');
-                        const perIntakeLabel = med.type === 'sporadic' ? ' • ' + this.formatMedQuantity(med, this.getMedDoseAmount(med)) + ' per inname' : (this.getMedDoseAmount(med) !== 1 ? ' • ' + this.formatMedQuantity(med, this.getMedDoseAmount(med)) + ' per dag' : '');
+                        const perIntakeLabel = med.type === 'sporadic' ? ' • ' + this.formatMedQuantity(med, this.getMedDoseAmount(med)) + ' ' + translateTextValue('per inname', getAppLanguage()) : (this.getMedDoseAmount(med) !== 1 ? ' • ' + this.formatMedQuantity(med, this.getMedDoseAmount(med)) + ' ' + translateTextValue('per dag', getAppLanguage()) : '');
                         html += '<div><div style="font-weight:700;">' + med.icon + ' ' + med.name + '</div><div style="font-size:11px;color:#6b7280;">' + med.dosage + ' • ' + this.formatMedStock(med) + medTypeLabel + perIntakeLabel + '</div></div>';
                         html += '<div style="display:flex;gap:6px;">';
                         html += '<button onclick="app.adjustMedStock(\'' + med.id + '\')" style="background:#3b82f6;color:white;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;">📦 ' + t('stock') + '</button>';
@@ -4037,25 +4092,25 @@ class App {
                     html += '</div>';
                     
                     html += '<div style="margin-bottom:8px;">';
-                    html += '<label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Avond deadline</label>';
+                    html += '<label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">' + t('eveningDeadline') + '</label>';
                     html += '<input id="avondInput" type="time" value="' + this.settings.avondDeadline + '" style="width:35%;padding:6px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;">';
                     html += '</div>';
                     
                     html += '<div style="margin-bottom:8px;">';
-                    html += '<label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Medicatie check</label>';
+                    html += '<label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">' + t('medicationCheck') + '</label>';
                     html += '<input id="medicatieInput" type="time" value="' + this.settings.medicatieCheck + '" style="width:35%;padding:6px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;">';
                     html += '</div>';
                     
                     html += '<div style="margin-bottom:8px;">';
-                    html += '<label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Rapport check</label>';
+                    html += '<label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">' + t('reportCheck') + '</label>';
                     html += '<input id="rapportInput" type="time" value="' + this.settings.rapportCheck + '" style="width:35%;padding:6px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;">';
                     html += '</div>';
                     
-                    html += '<button onclick="app.saveSettings()" style="background:#8b5cf6;color:white;border:none;border-radius:8px;padding:6px 10px;width:35%;font-weight:700;font-size:12px;cursor:pointer;">💾 OPSLAAN</button>';
+                    html += '<button onclick="app.saveSettings()" style="background:#8b5cf6;color:white;border:none;border-radius:8px;padding:6px 10px;width:35%;font-weight:700;font-size:12px;cursor:pointer;">💾 ' + t('save').toUpperCase() + '</button>';
                     html += '</div>';
                 }
 
-                for (let med of this.data.meds) {
+                for (let med of this.getSortedMeds()) {
                     const remaining = this.getPills(med.id);
                     const totalAmount = this.getMedTotalAmount(med);
                     const doseAmount = this.getMedDoseAmount(med);
@@ -4066,7 +4121,7 @@ class App {
                     html += '<div style="background:white;border-radius:12px;padding:8px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);">';
                     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
                     const isSporadicMed = med.type === 'sporadic';
-                    const typeBadge = isSporadicMed ? ' <span style="font-size:9px;background:#dbeafe;color:#1d4ed8;border-radius:10px;padding:1px 5px;">Sporadisch</span>' : '';
+                    const typeBadge = isSporadicMed ? ' <span style="font-size:9px;background:#dbeafe;color:#1d4ed8;border-radius:10px;padding:1px 5px;">' + t('sporadic') + '</span>' : '';
                     html += '<h2 style="font-size:12px;font-weight:700;margin:0;color:' + med.color + ';">' + med.icon + ' ' + med.name + typeBadge + '</h2>';
                     html += '<div style="font-size:11px;font-weight:600;color:' + pct + ';">' + (pct === '#10b981' ? '✅' : pct === '#f59e0b' ? '⚠️' : '🚨') + ' ' + this.formatMedStock(med) + '</div>';
                     html += '</div>';
@@ -4103,12 +4158,12 @@ class App {
                 html += '</div>';
 
                 // MEDICATIES - Compact
-                for (let med of this.data.meds) {
+                for (let med of this.getSortedMeds()) {
                     const time = intakes[med.id] || '';
                     html += '<div style="background:white;border-radius:10px;padding:6px;margin-bottom:6px;box-shadow:0 1px 2px rgba(0,0,0,0.03);border-left:4px solid ' + med.color + ';">';
                     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:6px;">';
-                    const dayTypeBadge = med.type === 'sporadic' ? ' <span style="font-size:8px;background:#dbeafe;color:#1d4ed8;border-radius:8px;padding:1px 4px;">Sporadisch</span>' : '';
-                    const dayPerIntake = med.type === 'sporadic' ? ' • ' + this.formatMedQuantity(med, this.getMedDoseAmount(med)) + ' per inname' : (this.getMedDoseAmount(med) !== 1 ? ' • ' + this.formatMedQuantity(med, this.getMedDoseAmount(med)) + ' per dag' : '');
+                    const dayTypeBadge = med.type === 'sporadic' ? ' <span style="font-size:8px;background:#dbeafe;color:#1d4ed8;border-radius:8px;padding:1px 4px;">' + t('sporadic') + '</span>' : '';
+                    const dayPerIntake = med.type === 'sporadic' ? ' • ' + this.formatMedQuantity(med, this.getMedDoseAmount(med)) + ' ' + translateTextValue('per inname', getAppLanguage()) : (this.getMedDoseAmount(med) !== 1 ? ' • ' + this.formatMedQuantity(med, this.getMedDoseAmount(med)) + ' ' + translateTextValue('per dag', getAppLanguage()) : '');
                     html += '<div style="flex:1;min-width:0;"><h2 style="font-size:11px;font-weight:700;margin:0;color:' + med.color + ';">' + med.icon + ' ' + med.name + dayTypeBadge + '</h2><div style="font-size:9px;color:#6b7280;">' + med.dosage + dayPerIntake + '</div></div>';
                     html += '<span style="background:' + med.color + ';color:white;padding:2px 6px;border-radius:10px;font-weight:600;font-size:10px;flex-shrink:0;white-space:nowrap;">' + this.formatMedStock(med) + '</span>';
                     html += '</div>';
