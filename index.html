@@ -110,6 +110,7 @@
         let gSyncTimer = null;
         let gDriveStatusTone = 'warning';
         let gDriveStatusText = 'Drive controleren';
+        const DRIVE_AUTO_SYNC_ENABLED = false;
 
         function isGTokenValid() {
           if (!gAccessToken || gAccessToken === 'null' || gAccessToken === '') return false;
@@ -122,6 +123,10 @@
         }
 
         function queueDriveAutoSync(reason = 'local-save') {
+          if (!DRIVE_AUTO_SYNC_ENABLED) {
+            if (wantsGoogleDriveConnection()) setDriveConnectionStatus(isGTokenValid() ? 'success' : 'warning', isGTokenValid() ? 'Drive verbonden' : 'Drive opnieuw verbinden');
+            return;
+          }
           const interactiveReconnect = ['data-save', 'settings-save', 'doctor-save', 'alarm-settings-save'].includes(reason);
           if (!wantsGoogleDriveConnection()) {
             setDriveConnectionStatus('error', 'Drive niet verbonden');
@@ -477,9 +482,9 @@
 
         async function driveSync(options = {}) {
           const auto = !!(options && options.auto);
-          if (auto && window.app && !hasMeaningfulHealthData(app.data)) {
+          if (window.app && !hasMeaningfulHealthData(app.data)) {
             setDriveConnectionStatus('warning', 'Drive restore aanbevolen');
-            showDriveNotice('Google Drive niet overschreven', 'Lokale patiëntgegevens lijken leeg. Herstel eerst vanuit Google Drive voordat automatisch synchroniseren doorgaat.', 'warning');
+            showDriveNotice('Google Drive niet overschreven', 'Lokale patiëntgegevens lijken leeg. Herstel eerst vanuit Google Drive voordat synchroniseren doorgaat.', 'warning');
             return;
           }
           if (!isGTokenValid()) {
@@ -629,7 +634,7 @@
         }
 
         
-const APP_VERSION = '3.0.9';
+const APP_VERSION = '3.0.10';
 
 function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
