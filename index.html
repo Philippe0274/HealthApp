@@ -110,7 +110,7 @@
         let gSyncTimer = null;
         let gDriveStatusTone = 'warning';
         let gDriveStatusText = 'Drive controleren';
-        const DRIVE_AUTO_SYNC_ENABLED = false;
+        const DRIVE_AUTO_SYNC_ENABLED = true;
 
         function isGTokenValid() {
           if (!gAccessToken || gAccessToken === 'null' || gAccessToken === '') return false;
@@ -190,6 +190,38 @@
             if (String(med.name || '').toLowerCase() !== 'belsar') return true;
           }
           return false;
+        }
+
+        function buildDriveBackupPayload() {
+          const data = stripPatientPhotoForStorage(app.data || {});
+          return {
+            meds: Array.isArray(data.meds) ? data.meds : [],
+            intakes: data.intakes || {},
+            measures: data.measures || {},
+            rapportages: data.rapportages || {},
+            patient: data.patient || null,
+            settings: app.settings || {},
+            timestamp: new Date().toISOString()
+          };
+        }
+
+        function validateDriveBackupPayload(backup) {
+          if (!backup || typeof backup !== 'object') {
+            return { ok: false, reason: 'Backup is leeg of ongeldig.' };
+          }
+
+          const meds = Array.isArray(backup.meds) ? backup.meds : [];
+          const hasNamedMedication = meds.some(med => med && String(med.name || '').trim());
+          const hasMeasurements = backup.measures && Object.keys(backup.measures).length > 0;
+          const hasIntakes = backup.intakes && Object.keys(backup.intakes).length > 0;
+          const patient = backup.patient || {};
+          const hasPatientIdentity = ['name', 'firstName', 'lastName', 'birthdate', 'dob'].some(key => String(patient[key] || '').trim());
+
+          if (!hasPatientIdentity && !hasNamedMedication && !hasMeasurements && !hasIntakes) {
+            return { ok: false, reason: 'Lokale patiëntgegevens lijken leeg of onvolledig.' };
+          }
+
+          return { ok: true, reason: '' };
         }
 
         function getStoredPatientPhoto() {
@@ -480,9 +512,6 @@
 
         async function driveSync(options = {}) {
           const auto = !!(options && options.auto);
-          showDriveNotice('Synchroniseren tijdelijk geblokkeerd', 'Herstellen vanuit Google Drive blijft beschikbaar. Synchroniseren zetten we pas terug aan nadat lokaal opslaan stabiel is.', 'warning');
-          setDriveConnectionStatus('warning', 'Sync tijdelijk uit');
-          return;
           if (window.app && !hasMeaningfulHealthData(app.data)) {
             setDriveConnectionStatus('warning', 'Drive restore aanbevolen');
             showDriveNotice('Google Drive niet overschreven', 'Lokale patiëntgegevens lijken leeg. Herstel eerst vanuit Google Drive voordat synchroniseren doorgaat.', 'warning');
@@ -513,15 +542,13 @@
           try {
             setDriveConnectionStatus('warning', 'Drive synchroniseert');
             if (auto) showDriveNotice('☁️ Synchroniseren...', 'Google Drive wordt bijgewerkt.', 'info');
-            const backup = {
-              meds: app.data.meds,
-              intakes: app.data.intakes,
-              measures: app.data.measures,
-              rapportages: app.data.rapportages || {},
-              patient: app.data.patient || null,
-              settings: app.settings,
-              timestamp: new Date().toISOString()
-            };
+            const backup = buildDriveBackupPayload();
+            const backupValidation = validateDriveBackupPayload(backup);
+            if (!backupValidation.ok) {
+              setDriveConnectionStatus('warning', 'Drive restore aanbevolen');
+              showDriveNotice('Synchronisatie gestopt', backupValidation.reason + ' Google Drive werd niet overschreven.', 'warning');
+              return;
+            }
             const json = JSON.stringify(backup, null, 2);
             let fileId = localStorage.getItem('gdrive_file_id');
             
@@ -635,7 +662,7 @@
         }
 
         
-const APP_VERSION = '3.0.11';
+const APP_VERSION = '3.0.12';
 
 function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
