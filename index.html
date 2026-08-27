@@ -172,6 +172,21 @@
           updateDriveConnectionStatus();
         }
 
+        function hasMeaningfulHealthData(data) {
+          if (!data) return false;
+          if (data.patient) return true;
+          if (data.measures && Object.keys(data.measures).length) return true;
+          if (data.intakes && Object.keys(data.intakes).length) return true;
+          const meds = Array.isArray(data.meds) ? data.meds : [];
+          if (meds.length > 1) return true;
+          if (meds.length === 1) {
+            const med = meds[0] || {};
+            if (String(med.id || '') !== '1') return true;
+            if (String(med.name || '').toLowerCase() !== 'belsar') return true;
+          }
+          return false;
+        }
+
         function updateDriveConnectionStatus() {
           if (typeof document === 'undefined' || !document.body) return;
           let chip = document.getElementById('drive-connection-status');
@@ -376,7 +391,12 @@
                 app.sendTg('✅ Google Drive verbonden!');
                 showDriveNotice('Google Drive verbonden', 'Je kunt nu veilig synchroniseren of herstellen.', 'success');
               } else {
-                queueDriveAutoSync('silent-reconnect');
+                if (window.app && hasMeaningfulHealthData(app.data)) {
+                  queueDriveAutoSync('silent-reconnect');
+                } else {
+                  setDriveConnectionStatus('warning', 'Drive restore aanbevolen');
+                  showDriveNotice('Google Drive verbonden', 'Lokale patiëntgegevens lijken leeg. Herstel eerst vanuit Google Drive.', 'warning');
+                }
               }
               app.show();
             }
@@ -422,6 +442,11 @@
 
         async function driveSync(options = {}) {
           const auto = !!(options && options.auto);
+          if (auto && window.app && !hasMeaningfulHealthData(app.data)) {
+            setDriveConnectionStatus('warning', 'Drive restore aanbevolen');
+            showDriveNotice('Google Drive niet overschreven', 'Lokale patiëntgegevens lijken leeg. Herstel eerst vanuit Google Drive voordat automatisch synchroniseren doorgaat.', 'warning');
+            return;
+          }
           if (!isGTokenValid()) {
             if (wantsGoogleDriveConnection()) {
               gSyncQueued = true;
@@ -568,7 +593,7 @@
         }
 
         
-const APP_VERSION = '3.0.7';
+const APP_VERSION = '3.0.8';
 
 function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
@@ -979,7 +1004,6 @@ class App {
 
                 for (const candidate of candidates) {
                     try {
-                        localStorage.removeItem('data');
                         localStorage.setItem('data', JSON.stringify(candidate.data));
                         if (candidate.notice === 'reports') {
                             this.data.rapportages = {};
