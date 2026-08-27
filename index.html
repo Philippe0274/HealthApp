@@ -116,7 +116,7 @@
         }
 
         function wantsGoogleDriveConnection() {
-          return localStorage.getItem('gdrive_auto_connect') === '1' || !!localStorage.getItem('gdrive_user_name');
+          return !!GDRIVE_ACCOUNT_HINT || localStorage.getItem('gdrive_auto_connect') === '1' || !!localStorage.getItem('gdrive_user_name');
         }
 
         function queueDriveAutoSync(reason = 'local-save') {
@@ -566,7 +566,7 @@
         }
 
         
-const APP_VERSION = '3.0.2';
+const APP_VERSION = '3.0.3';
 
 function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
@@ -969,16 +969,19 @@ class App {
 
             save() {
                 this.normalizeMeds();
-                const payload = JSON.stringify(this.data);
                 try {
-                    localStorage.setItem('data', payload);
-                    if (localStorage.getItem('data') !== payload) {
-                        throw new Error('localStorage verification failed');
-                    }
+                    localStorage.setItem('data', JSON.stringify(this.data));
                 } catch(e) {
                     console.error('Data save failed:', e);
-                    alert('Opslaan mislukt. De gegevens zijn niet bewaard. Controleer opslagruimte of browserinstellingen.');
-                    return false;
+                    try {
+                        this.data.rapportages = {};
+                        localStorage.setItem('data', JSON.stringify(this.data));
+                        showDriveNotice('Opslag opgeschoond', 'Medicatie, metingen en patiëntgegevens zijn bewaard. Oude gegenereerde rapportdata werd verwijderd om opslagruimte vrij te maken.', 'warning');
+                    } catch(retryError) {
+                        console.error('Data save retry failed:', retryError);
+                        alert('Opslaan mislukt. De gegevens zijn niet bewaard. Controleer opslagruimte of browserinstellingen.');
+                        return false;
+                    }
                 }
                 queueDriveAutoSync('data-save');
                 return true;
