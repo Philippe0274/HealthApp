@@ -23,6 +23,8 @@
         .day-cell.today { background: #ff1493 !important; border-color: #db2777 !important; color: #fff !important; box-shadow: 0 0 0 2px #f9a8d4, 0 8px 20px rgba(219,39,119,.35); transform: scale(1.03); }
         .day-number { font-size: 11px; font-weight: 950; }
         .holiday-name { font-size: 7px; font-weight: 850; margin-top: 1px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .life-event-name { font-size: 7px; font-weight: 900; margin-top: 1px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color:#166534; }
+        .day-cell.today .life-event-name { color:#fff; }
         .calendar-wrap { background:white;border-radius:12px;padding:8px;box-shadow:0 1px 4px rgba(0,0,0,0.03);margin-bottom:12px; }
         .calendar-head { display:flex;gap:8px;margin-bottom:8px;align-items:center; }
         .calendar-nav-btn { background:#f8fafc;border:1px solid #e5e7eb;border-radius:9px;width:32px;height:32px;font-size:14px;cursor:pointer; }
@@ -566,7 +568,7 @@
         }
 
         
-const APP_VERSION = '3.0.4';
+const APP_VERSION = '3.0.5';
 
 function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
@@ -727,7 +729,7 @@ function translateTextValue(value, lang){
    'Samenvatting - Gezondheidsanalyse':'Résumé - Analyse de santé','Bovendruk (Systolisch)':'Systolique','Onderdruk (Diastolisch)':'Diastolique','Systolisch':'Systolique','Diastolisch':'Diastolique','Trends Analyse':'Analyse des tendances','Trend Analyse':'Analyse de tendance','Bovendruk Grafiek':'Graphique systolique','Onderdruk Grafiek':'Graphique diastolique','Hartslag Grafiek':'Graphique de fréquence cardiaque','Grafiek':'Graphique','Lijst':'Liste','Lijst titels':'Titres de liste','Onderliggende vakken':'Blocs sous-jacents','Onvoldoende gegevens voor trendanalyse':'Données insuffisantes pour l’analyse de tendance','Medicatie Naleving':'Observance médicamenteuse','Aanbevelingen & Advies':'Recommandations et conseils','Advies':'Conseil','Raad':'Conseil','raad':'conseil','Intelligente Persoonlijke Aanbevelingen':'Recommandations personnelles intelligentes','Medische Aandacht':'Attention médicale','Vermijden':'À éviter','Gegenereerd':'Généré',
    'ALCOHOL BEPERKING':'LIMITATION DE L’ALCOOL','VOEDING':'ALIMENTATION','STRESS & RUST':'STRESS ET REPOS','NEEM CONTACT OP MET ARTS':'CONTACTEZ LE MÉDECIN','Beperk alcohol tot maximum 1 glas per dag. Alcohol verhoogt bloeddruk en kan medicatie-effectiviteit verminderen.':'Limitez l’alcool à maximum 1 verre par jour. L’alcool augmente la tension et peut réduire l’efficacité des médicaments.','Beperk zout (max 5g per dag)':'Limitez le sel (max. 5 g par jour)','Drink genoeg water (1.5-2L per dag)':'Buvez suffisamment d’eau (1,5-2 l par jour)','Vermijd cafeïne-overmatige inname':'Évitez une consommation excessive de caféine','Eet groenten & magere eiwitten':'Mangez des légumes et des protéines maigres','Rusttijd: 3x per dag (10 minuten)':'Repos : 3 fois par jour (10 minutes)','Diepademhalings-oefeningen':'Exercices de respiration profonde','Regelmatige slaap (7-8 uur)':'Sommeil régulier (7-8 heures)','Vermijd plotse stress':'Évitez le stress soudain','Bij persistente hoge waarden (>140/90), hoofdpijn, of ongewone symptomen.':'En cas de valeurs élevées persistantes (>140/90), de maux de tête ou de symptômes inhabituels.',
    'Blijf actief in uw mogelijkheden - lichte armstrekken, rolstoelaerobics, of aangepaste fysiotherapie.':'Restez actif selon vos possibilités : étirements légers des bras, exercices en fauteuil ou kinésithérapie adaptée.','GEEN wandelen aanbevolen - aangepaste beweging is beter!':'La marche n’est PAS recommandée : un mouvement adapté est préférable.','Minimaal 30 minuten gematigde beweging per dag (wandelen, fietsen, zwemmen).':'Au moins 30 minutes d’activité modérée par jour (marche, vélo, natation).','Minimaal 30 minuten gematigde beweging per dag.':'Au moins 30 minutes d’activité modérée par jour.','Diabetes: Monitor bloedsuiker regelmatig. Coördineer medicatie met arts.':'Diabète : surveillez régulièrement la glycémie. Coordonnez les médicaments avec le médecin.','Hartaandoening: Vermijd stres, hou regelmatig contact met cardioloog.':'Affection cardiaque : évitez le stress et gardez un contact régulier avec le cardiologue.','Nierprobleem: Beperk zoutinname en controleer vochtverlies.':'Problème rénal : limitez le sel et surveillez les pertes de liquide.','ALLERGIËN':'ALLERGIES','Vermijd deze stoffen en informeer altijd uw arts/apotheker!':'Évitez ces substances et informez toujours votre médecin/pharmacien.','Hoge bloeddruk gedetecteerd! Beperk zout tot max 5g/dag.':'Hypertension détectée ! Limitez le sel à max. 5 g/jour.','Matige bloeddruk: Verhoog groenten & magere eiwitten, vermijd vette voeding.':'Tension modérée : augmentez légumes et protéines maigres, évitez les aliments gras.','Drink 1.5-2L water per dag - essentieel voor bloeddruk regulatie.':'Buvez 1,5-2 l d’eau par jour, essentiel pour réguler la tension.','Eet kalium-rijke voeding (banaan, spinazie, avocado) - goed voor hart.':'Mangez des aliments riches en potassium (banane, épinards, avocat), bons pour le cœur.','Geen alcohol of maximaal 1 glas per dag - verhoogt bloeddruk.':'Pas d’alcool ou maximum 1 verre par jour : augmente la tension.','Beperkt cafeïne (max 2 kopjes koffie/thee per dag).':'Limitez la caféine (max. 2 tasses de café/thé par jour).','Geen roken - verhoogt risico op hartziekten aanzienlijk.':'Ne pas fumer : augmente fortement le risque de maladie cardiaque.',
-   'Gekende medische historie':'Antécédents médicaux connus','Medische Historie':'Antécédents médicaux','Medische voorgeschiedenis':'Antécédents médicaux','Mobiliteitstoestand':'Mobilité','Allergieën':'Allergies','Hypertensie':'Hypertension','Hoge bloeddruk':'Hypertension','Diabetes':'Diabète','Hartaandoening':'Affection cardiaque','Hartfalen':'Insuffisance cardiaque','Nierproblemen':'Problèmes rénaux','Nierprobleem':'Problème rénal','Nieren':'Reins','CVA':'AVC','Beroerte':'AVC','Astma':'Asthme','COPD':'BPCO','Cholesterol':'Cholestérol','Trombose':'Thrombose','Rolstoel':'Fauteuil roulant','Krukken':'Béquilles','Loopt met hulpmiddel':'Marche avec aide','Wandelt zelfstandig':'Marche de façon autonome','Beperkte mobiliteit':'Mobilité réduite','Penicilline':'Pénicilline','Noten':'Noix'
+   'Gekende medische historie':'Antécédents médicaux connus','Medische Historie':'Antécédents médicaux','Medische voorgeschiedenis':'Antécédents médicaux','Mobiliteitstoestand':'Mobilité','Allergieën':'Allergies','Belangrijke datums':'Dates importantes','Verhuisdatum':'Date du déménagement','Woonplaats':'Lieu de résidence','Wettelijk samenwonen':'Cohabitation légale','Huwelijk':'Mariage','Verhuis naar':'Déménagement à','Verhuis':'Déménagement','dagen in':'jours à','Hypertensie':'Hypertension','Hoge bloeddruk':'Hypertension','Diabetes':'Diabète','Hartaandoening':'Affection cardiaque','Hartfalen':'Insuffisance cardiaque','Nierproblemen':'Problèmes rénaux','Nierprobleem':'Problème rénal','Nieren':'Reins','CVA':'AVC','Beroerte':'AVC','Astma':'Asthme','COPD':'BPCO','Cholesterol':'Cholestérol','Trombose':'Thrombose','Rolstoel':'Fauteuil roulant','Krukken':'Béquilles','Loopt met hulpmiddel':'Marche avec aide','Wandelt zelfstandig':'Marche de façon autonome','Beperkte mobiliteit':'Mobilité réduite','Penicilline':'Pénicilline','Noten':'Noix'
   },
   es: {
    'Synchroniseren':'Sincronizar','Herstellen':'Restaurar','Verbinden':'Conectar','Verbonden':'Conectado','Opnieuw verbinden':'Reconectar','Niet verbonden':'No conectado','Lokale wijzigingen':'Cambios locales','Alles gesynchroniseerd':'Todo sincronizado','Niet gesynchroniseerd':'No sincronizado','Laatste synchronisatie':'Última sincronización','Synchronisatie voltooid':'Sincronización completada','Synchronisatie mislukt':'Error de sincronización','Herstellen mislukt':'Error de restauración','Google Drive wordt bijgewerkt.':'Google Drive se está actualizando.','De nieuwste gegevens staan veilig in Google Drive.':'Los datos más recientes están seguros en Google Drive.','Google Drive bevat nu de nieuwste gegevens.':'Google Drive contiene ahora los datos más recientes.','Google Drive niet verbonden':'Google Drive no conectado','Verbind eerst met Google Drive voordat je synchroniseert.':'Conecte primero Google Drive antes de sincronizar.','Verbind eerst met Google Drive voordat je gegevens herstelt.':'Conecte primero Google Drive antes de restaurar los datos.','Gegevens succesvol hersteld':'Datos restaurados correctamente','De gegevens zijn hersteld vanuit Google Drive.':'Los datos se restauraron desde Google Drive.','Geen backup gevonden':'No se encontró copia',
@@ -740,7 +742,7 @@ function translateTextValue(value, lang){
    'Samenvatting - Gezondheidsanalyse':'Resumen - análisis de salud','Bovendruk (Systolisch)':'Sistólica','Onderdruk (Diastolisch)':'Diastólica','Systolisch':'Sistólica','Diastolisch':'Diastólica','Trends Analyse':'Análisis de tendencias','Trend Analyse':'Análisis de tendencia','Bovendruk Grafiek':'Gráfico sistólico','Onderdruk Grafiek':'Gráfico diastólico','Hartslag Grafiek':'Gráfico de frecuencia cardiaca','Grafiek':'Gráfico','Lijst':'Lista','Lijst titels':'Títulos de lista','Onderliggende vakken':'Bloques subyacentes','Onvoldoende gegevens voor trendanalyse':'Datos insuficientes para el análisis de tendencia','Medicatie Naleving':'Adherencia a la medicación','Aanbevelingen & Advies':'Recomendaciones y consejos','Advies':'Consejo','Raad':'Consejo','raad':'consejo','Intelligente Persoonlijke Aanbevelingen':'Recomendaciones personales inteligentes','Medische Aandacht':'Atención médica','Vermijden':'Evitar','Gegenereerd':'Generado',
    'ALCOHOL BEPERKING':'LIMITACIÓN DE ALCOHOL','VOEDING':'ALIMENTACIÓN','STRESS & RUST':'ESTRÉS Y DESCANSO','NEEM CONTACT OP MET ARTS':'CONTACTE AL MÉDICO','Beperk alcohol tot maximum 1 glas per dag. Alcohol verhoogt bloeddruk en kan medicatie-effectiviteit verminderen.':'Limite el alcohol a máximo 1 vaso al día. El alcohol aumenta la presión y puede reducir la eficacia de la medicación.','Beperk zout (max 5g per dag)':'Limite la sal (máx. 5 g al día)','Drink genoeg water (1.5-2L per dag)':'Beba suficiente agua (1,5-2 l al día)','Vermijd cafeïne-overmatige inname':'Evite el consumo excesivo de cafeína','Eet groenten & magere eiwitten':'Coma verduras y proteínas magras','Rusttijd: 3x per dag (10 minuten)':'Descanso: 3 veces al día (10 minutos)','Diepademhalings-oefeningen':'Ejercicios de respiración profunda','Regelmatige slaap (7-8 uur)':'Sueño regular (7-8 horas)','Vermijd plotse stress':'Evite el estrés repentino','Bij persistente hoge waarden (>140/90), hoofdpijn, of ongewone symptomen.':'Con valores altos persistentes (>140/90), dolor de cabeza o síntomas inusuales.',
    'Blijf actief in uw mogelijkheden - lichte armstrekken, rolstoelaerobics, of aangepaste fysiotherapie.':'Manténgase activo dentro de sus posibilidades: estiramientos suaves de brazos, ejercicios en silla o fisioterapia adaptada.','GEEN wandelen aanbevolen - aangepaste beweging is beter!':'NO se recomienda caminar: el movimiento adaptado es mejor.','Minimaal 30 minuten gematigde beweging per dag (wandelen, fietsen, zwemmen).':'Al menos 30 minutos de actividad moderada al día (caminar, bicicleta, nadar).','Minimaal 30 minuten gematigde beweging per dag.':'Al menos 30 minutos de actividad moderada al día.','Diabetes: Monitor bloedsuiker regelmatig. Coördineer medicatie met arts.':'Diabetes: controle la glucemia regularmente. Coordine la medicación con el médico.','Hartaandoening: Vermijd stres, hou regelmatig contact met cardioloog.':'Enfermedad cardiaca: evite el estrés y mantenga contacto regular con el cardiólogo.','Nierprobleem: Beperk zoutinname en controleer vochtverlies.':'Problema renal: limite la sal y controle la pérdida de líquidos.','ALLERGIËN':'ALERGIAS','Vermijd deze stoffen en informeer altijd uw arts/apotheker!':'Evite estas sustancias e informe siempre a su médico/farmacéutico.','Hoge bloeddruk gedetecteerd! Beperk zout tot max 5g/dag.':'¡Presión alta detectada! Limite la sal a máx. 5 g/día.','Matige bloeddruk: Verhoog groenten & magere eiwitten, vermijd vette voeding.':'Presión moderada: aumente verduras y proteínas magras, evite alimentos grasos.','Drink 1.5-2L water per dag - essentieel voor bloeddruk regulatie.':'Beba 1,5-2 l de agua al día, esencial para regular la presión.','Eet kalium-rijke voeding (banaan, spinazie, avocado) - goed voor hart.':'Coma alimentos ricos en potasio (plátano, espinaca, aguacate), buenos para el corazón.','Geen alcohol of maximaal 1 glas per dag - verhoogt bloeddruk.':'Nada de alcohol o máximo 1 vaso al día: aumenta la presión.','Beperkt cafeïne (max 2 kopjes koffie/thee per dag).':'Limite la cafeína (máx. 2 tazas de café/té al día).','Geen roken - verhoogt risico op hartziekten aanzienlijk.':'No fumar: aumenta mucho el riesgo de enfermedad cardiaca.',
-   'Gekende medische historie':'Antecedentes médicos conocidos','Medische Historie':'Antecedentes médicos','Medische voorgeschiedenis':'Antecedentes médicos','Mobiliteitstoestand':'Movilidad','Allergieën':'Alergias','Hypertensie':'Hipertensión','Hoge bloeddruk':'Hipertensión','Diabetes':'Diabetes','Hartaandoening':'Enfermedad cardiaca','Hartfalen':'Insuficiencia cardiaca','Nierproblemen':'Problemas renales','Nierprobleem':'Problema renal','Nieren':'Riñones','CVA':'ACV','Beroerte':'Ictus','Astma':'Asma','COPD':'EPOC','Cholesterol':'Colesterol','Trombose':'Trombosis','Rolstoel':'Silla de ruedas','Krukken':'Muletas','Loopt met hulpmiddel':'Camina con ayuda','Wandelt zelfstandig':'Camina de forma autónoma','Beperkte mobiliteit':'Movilidad reducida','Penicilline':'Penicilina','Noten':'Frutos secos'
+   'Gekende medische historie':'Antecedentes médicos conocidos','Medische Historie':'Antecedentes médicos','Medische voorgeschiedenis':'Antecedentes médicos','Mobiliteitstoestand':'Movilidad','Allergieën':'Alergias','Belangrijke datums':'Fechas importantes','Verhuisdatum':'Fecha de mudanza','Woonplaats':'Lugar de residencia','Wettelijk samenwonen':'Convivencia legal','Huwelijk':'Matrimonio','Verhuis naar':'Mudanza a','Verhuis':'Mudanza','dagen in':'días en','Hypertensie':'Hipertensión','Hoge bloeddruk':'Hipertensión','Diabetes':'Diabetes','Hartaandoening':'Enfermedad cardiaca','Hartfalen':'Insuficiencia cardiaca','Nierproblemen':'Problemas renales','Nierprobleem':'Problema renal','Nieren':'Riñones','CVA':'ACV','Beroerte':'Ictus','Astma':'Asma','COPD':'EPOC','Cholesterol':'Colesterol','Trombose':'Trombosis','Rolstoel':'Silla de ruedas','Krukken':'Muletas','Loopt met hulpmiddel':'Camina con ayuda','Wandelt zelfstandig':'Camina de forma autónoma','Beperkte mobiliteit':'Movilidad reducida','Penicilline':'Penicilina','Noten':'Frutos secos'
   },
   en: {
    'Synchroniseren':'Sync','Herstellen':'Restore','Verbinden':'Connect','Verbonden':'Connected','Opnieuw verbinden':'Reconnect','Niet verbonden':'Not connected','Lokale wijzigingen':'Local changes','Alles gesynchroniseerd':'Everything synced','Niet gesynchroniseerd':'Not synced','Laatste synchronisatie':'Last sync','Synchronisatie voltooid':'Sync completed','Synchronisatie mislukt':'Sync failed','Herstellen mislukt':'Restore failed','Google Drive wordt bijgewerkt.':'Google Drive is being updated.','De nieuwste gegevens staan veilig in Google Drive.':'The latest data is safe in Google Drive.','Google Drive bevat nu de nieuwste gegevens.':'Google Drive now contains the latest data.','Google Drive niet verbonden':'Google Drive not connected','Verbind eerst met Google Drive voordat je synchroniseert.':'Connect Google Drive before syncing.','Verbind eerst met Google Drive voordat je gegevens herstelt.':'Connect Google Drive before restoring data.','Gegevens succesvol hersteld':'Data restored successfully','De gegevens zijn hersteld vanuit Google Drive.':'The data has been restored from Google Drive.','Geen backup gevonden':'No backup found',
@@ -753,7 +755,7 @@ function translateTextValue(value, lang){
    'Samenvatting - Gezondheidsanalyse':'Summary - Health analysis','Bovendruk (Systolisch)':'Systolic','Onderdruk (Diastolisch)':'Diastolic','Systolisch':'Systolic','Diastolisch':'Diastolic','Trends Analyse':'Trend analysis','Trend Analyse':'Trend analysis','Bovendruk Grafiek':'Systolic chart','Onderdruk Grafiek':'Diastolic chart','Hartslag Grafiek':'Heart rate chart','Grafiek':'Chart','Lijst':'List','Lijst titels':'List titles','Onderliggende vakken':'Underlying boxes','Onvoldoende gegevens voor trendanalyse':'Insufficient data for trend analysis','Medicatie Naleving':'Medication adherence','Aanbevelingen & Advies':'Recommendations & advice','Advies':'Advice','Raad':'Advice','raad':'advice','Intelligente Persoonlijke Aanbevelingen':'Smart personal recommendations','Medische Aandacht':'Medical attention','Vermijden':'Avoid','Gegenereerd':'Generated',
    'ALCOHOL BEPERKING':'ALCOHOL LIMITATION','VOEDING':'NUTRITION','STRESS & RUST':'STRESS & REST','NEEM CONTACT OP MET ARTS':'CONTACT THE DOCTOR','Beperk alcohol tot maximum 1 glas per dag. Alcohol verhoogt bloeddruk en kan medicatie-effectiviteit verminderen.':'Limit alcohol to maximum 1 glass per day. Alcohol raises blood pressure and may reduce medication effectiveness.','Beperk zout (max 5g per dag)':'Limit salt (max 5 g per day)','Drink genoeg water (1.5-2L per dag)':'Drink enough water (1.5-2 L per day)','Vermijd cafeïne-overmatige inname':'Avoid excessive caffeine intake','Eet groenten & magere eiwitten':'Eat vegetables and lean proteins','Rusttijd: 3x per dag (10 minuten)':'Rest time: 3 times a day (10 minutes)','Diepademhalings-oefeningen':'Deep breathing exercises','Regelmatige slaap (7-8 uur)':'Regular sleep (7-8 hours)','Vermijd plotse stress':'Avoid sudden stress','Bij persistente hoge waarden (>140/90), hoofdpijn, of ongewone symptomen.':'For persistent high values (>140/90), headache, or unusual symptoms.',
    'Blijf actief in uw mogelijkheden - lichte armstrekken, rolstoelaerobics, of aangepaste fysiotherapie.':'Stay active within your possibilities: light arm stretches, wheelchair aerobics, or adapted physiotherapy.','GEEN wandelen aanbevolen - aangepaste beweging is beter!':'NO walking recommended: adapted movement is better.','Minimaal 30 minuten gematigde beweging per dag (wandelen, fietsen, zwemmen).':'At least 30 minutes of moderate activity per day (walking, cycling, swimming).','Minimaal 30 minuten gematigde beweging per dag.':'At least 30 minutes of moderate activity per day.','Diabetes: Monitor bloedsuiker regelmatig. Coördineer medicatie met arts.':'Diabetes: monitor blood sugar regularly. Coordinate medication with the doctor.','Hartaandoening: Vermijd stres, hou regelmatig contact met cardioloog.':'Heart condition: avoid stress and keep regular contact with the cardiologist.','Nierprobleem: Beperk zoutinname en controleer vochtverlies.':'Kidney problem: limit salt intake and monitor fluid loss.','ALLERGIËN':'ALLERGIES','Vermijd deze stoffen en informeer altijd uw arts/apotheker!':'Avoid these substances and always inform your doctor/pharmacist.','Hoge bloeddruk gedetecteerd! Beperk zout tot max 5g/dag.':'High blood pressure detected! Limit salt to max 5 g/day.','Matige bloeddruk: Verhoog groenten & magere eiwitten, vermijd vette voeding.':'Moderate blood pressure: increase vegetables and lean proteins, avoid fatty foods.','Drink 1.5-2L water per dag - essentieel voor bloeddruk regulatie.':'Drink 1.5-2 L water per day, essential for blood pressure regulation.','Eet kalium-rijke voeding (banaan, spinazie, avocado) - goed voor hart.':'Eat potassium-rich foods (banana, spinach, avocado), good for the heart.','Geen alcohol of maximaal 1 glas per dag - verhoogt bloeddruk.':'No alcohol or maximum 1 glass per day: raises blood pressure.','Beperkt cafeïne (max 2 kopjes koffie/thee per dag).':'Limit caffeine (max 2 cups of coffee/tea per day).','Geen roken - verhoogt risico op hartziekten aanzienlijk.':'No smoking: significantly increases heart disease risk.',
-   'Gekende medische historie':'Known medical history','Medische Historie':'Medical history','Medische voorgeschiedenis':'Medical history','Mobiliteitstoestand':'Mobility status','Allergieën':'Allergies','Hypertensie':'Hypertension','Hoge bloeddruk':'Hypertension','Diabetes':'Diabetes','Hartaandoening':'Heart condition','Hartfalen':'Heart failure','Nierproblemen':'Kidney problems','Nierprobleem':'Kidney problem','Nieren':'Kidneys','CVA':'Stroke','Beroerte':'Stroke','Astma':'Asthma','COPD':'COPD','Cholesterol':'Cholesterol','Trombose':'Thrombosis','Rolstoel':'Wheelchair','Krukken':'Crutches','Loopt met hulpmiddel':'Walks with aid','Wandelt zelfstandig':'Walks independently','Beperkte mobiliteit':'Reduced mobility','Penicilline':'Penicillin','Noten':'Nuts'
+   'Gekende medische historie':'Known medical history','Medische Historie':'Medical history','Medische voorgeschiedenis':'Medical history','Mobiliteitstoestand':'Mobility status','Allergieën':'Allergies','Belangrijke datums':'Important dates','Verhuisdatum':'Moving date','Woonplaats':'Place of residence','Wettelijk samenwonen':'Legal cohabitation','Huwelijk':'Marriage','Verhuis naar':'Move to','Verhuis':'Move','dagen in':'days in','Hypertensie':'Hypertension','Hoge bloeddruk':'Hypertension','Diabetes':'Diabetes','Hartaandoening':'Heart condition','Hartfalen':'Heart failure','Nierproblemen':'Kidney problems','Nierprobleem':'Kidney problem','Nieren':'Kidneys','CVA':'Stroke','Beroerte':'Stroke','Astma':'Asthma','COPD':'COPD','Cholesterol':'Cholesterol','Trombose':'Thrombosis','Rolstoel':'Wheelchair','Krukken':'Crutches','Loopt met hulpmiddel':'Walks with aid','Wandelt zelfstandig':'Walks independently','Beperkte mobiliteit':'Reduced mobility','Penicilline':'Penicillin','Noten':'Nuts'
   }
  };
  Object.entries(maps[code] || {}).sort((a,b) => b[0].length - a[0].length).forEach(([from, to]) => {
@@ -949,6 +951,7 @@ class App {
                     phone: '02 269 12 54',
                     hours: { ma_do: '07:00-19:30', vr: '07:00-18:30' }
                 }));
+                this.ensurePatientLifeEvents();
                 setPatientLanguage(this.data.patient && this.data.patient.language ? this.data.patient.language : getAppLanguage(), document.body);
                 this.show();
                 
@@ -1002,6 +1005,57 @@ class App {
             today() {
                 const d = new Date();
                 return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            }
+
+            getDefaultLifeEvents() {
+                return {
+                    moveDate: '2026-08-15',
+                    moveCity: 'Vilvoorde',
+                    legalCohabitationDate: '',
+                    marriageDate: ''
+                };
+            }
+
+            normalizeLifeEvents(lifeEvents = {}) {
+                return { ...this.getDefaultLifeEvents(), ...(lifeEvents || {}) };
+            }
+
+            ensurePatientLifeEvents() {
+                if (!this.data.patient) return;
+                const normalized = this.normalizeLifeEvents(this.data.patient.lifeEvents);
+                if (JSON.stringify(this.data.patient.lifeEvents || {}) !== JSON.stringify(normalized)) {
+                    this.data.patient.lifeEvents = normalized;
+                    try {
+                        localStorage.setItem('data', JSON.stringify(this.data));
+                    } catch(e) {
+                        console.warn('Life events migration save failed:', e);
+                    }
+                }
+            }
+
+            getPatientLifeEvents() {
+                return this.normalizeLifeEvents(this.data.patient && this.data.patient.lifeEvents);
+            }
+
+            getLifeEventsForDate(dateStr) {
+                const events = this.getPatientLifeEvents();
+                const items = [];
+                if (events.moveDate === dateStr) items.push('🏠 Verhuis naar ' + (events.moveCity || 'Vilvoorde'));
+                if (events.legalCohabitationDate === dateStr) items.push('🤝 Wettelijk samenwonen');
+                if (events.marriageDate === dateStr) items.push('💍 Huwelijk');
+                return items;
+            }
+
+            getDaysLivingInCity() {
+                const events = this.getPatientLifeEvents();
+                if (!events.moveDate || !events.moveCity) return null;
+                const start = new Date(events.moveDate + 'T00:00:00');
+                const today = new Date(this.today() + 'T00:00:00');
+                if (Number.isNaN(start.getTime()) || today < start) return null;
+                return {
+                    city: events.moveCity,
+                    days: Math.floor((today - start) / 86400000) + 1
+                };
             }
 
             getMedTotalAmount(med) {
@@ -3939,10 +3993,11 @@ class App {
                 this.show();
             }
 
-            savePatient(firstName, lastName, birthDate, photoBase64, allergies, medicalHistory, mobilityStatus, language, emergencyContact) {
+            savePatient(firstName, lastName, birthDate, photoBase64, allergies, medicalHistory, mobilityStatus, language, emergencyContact, lifeEvents) {
                 const isNew = !this.data.patient;
                 const existingPhoto = this.data.patient && this.data.patient.photo ? this.data.patient.photo : null;
                 const patientLanguage = normalizeLangCode(language || 'nl');
+                const existingLifeEvents = this.data.patient && this.data.patient.lifeEvents ? this.data.patient.lifeEvents : null;
                 this.data.patient = {
                     firstName: firstName,
                     lastName: lastName,
@@ -3952,7 +4007,8 @@ class App {
                     medicalHistory: medicalHistory || '',
                     mobilityStatus: mobilityStatus || '',
                     language: patientLanguage,
-                    emergencyContact: normalizeEmergencyContact(emergencyContact, patientLanguage)
+                    emergencyContact: normalizeEmergencyContact(emergencyContact, patientLanguage),
+                    lifeEvents: this.normalizeLifeEvents(lifeEvents || existingLifeEvents)
                 };
                 this.save();
                 
@@ -4050,12 +4106,16 @@ class App {
                     const dateStr = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
                     const dayOfWeek = new Date(y, m, d).getDay();
                     const holiday = this.getBelgianHoliday(dateStr);
+                    const lifeEvents = this.getLifeEventsForDate(dateStr);
                     let cls = 'day-cell';
                     if (dayOfWeek === 0 || dayOfWeek === 6) cls += ' weekend';
                     if (holiday) cls += ' holiday';
+                    if (lifeEvents.length) cls += ' life-event';
                     if (dateStr === today) cls += ' today';
                     const holidayHtml = holiday ? '<div class="holiday-name">' + holiday + '</div>' : '';
-                    cal += '<div class="' + cls + '" title="' + (holiday || dateStr) + '" onclick="app.date=\'' + dateStr + '\';app.view=\'day\';app.show();"><div class="day-number">' + d + '</div>' + holidayHtml + '</div>';
+                    const lifeEventHtml = lifeEvents.map(item => '<div class="life-event-name">' + item + '</div>').join('');
+                    const title = [dateStr, holiday].concat(lifeEvents).filter(Boolean).join(' - ');
+                    cal += '<div class="' + cls + '" title="' + title + '" onclick="app.date=\'' + dateStr + '\';app.view=\'day\';app.show();"><div class="day-number">' + d + '</div>' + holidayHtml + lifeEventHtml + '</div>';
                 }
 
                 let html = '<div class="calendar-wrap">';
@@ -4141,9 +4201,11 @@ class App {
                 html += '<div style="background:' + getVersionHeaderGradient() + ';color:white;border-radius:16px;padding:12px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;overflow:hidden;">';
                 
                 // LEFT: Logo + Title
+                const livingCounter = this.getDaysLivingInCity();
+                const livingCounterHtml = livingCounter ? '<p style="font-size:9px;opacity:0.95;margin:2px 0 0 0;font-weight:800;">🏠 ' + livingCounter.days + ' dagen in ' + livingCounter.city + '</p>' : '';
                 html += '<div style="display:flex;gap:8px;align-items:center;flex:1;min-width:0;">';
                 html += '<img src="./logo.png" style="width:48px;height:48px;border-radius:8px;background:white;padding:3px;flex-shrink:0;">';
-                html += '<div style="min-width:0;"><h1 style="font-size:13px;font-weight:700;margin:0;">' + t('appTitle') + '</h1><p style="font-size:9px;opacity:0.9;margin:2px 0 0 0;">' + t('appSubtitle') + ' (' + this.data.meds.length + ' meds) • v' + APP_VERSION + '</p></div>';
+                html += '<div style="min-width:0;"><h1 style="font-size:13px;font-weight:700;margin:0;">' + t('appTitle') + '</h1><p style="font-size:9px;opacity:0.9;margin:2px 0 0 0;">' + t('appSubtitle') + ' (' + this.data.meds.length + ' meds) • v' + APP_VERSION + '</p>' + livingCounterHtml + '</div>';
                 html += '</div>';
                 
                 // RIGHT: compact phone grid. Keep 3 columns so tap targets never overlap the title.
@@ -4550,6 +4612,17 @@ class App {
                             <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🚶 ${t('mobility')}</label>
                             <textarea id="patient-mobility-status" placeholder="bijv. Krukken/Rolstoel, Loopt met hulpmiddel..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;font-family:inherit;min-height:60px;resize:vertical;"></textarea>
                         </div>
+                        <div style="margin-bottom:16px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#f8fafc;">
+                            <h3 style="margin:0 0 10px 0;font-size:14px;font-weight:700;color:#1f2937;">🏠 Belangrijke datums</h3>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Verhuisdatum</label>
+                            <input type="date" id="patient-move-date" value="2026-08-15" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;margin-bottom:10px;">
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Woonplaats</label>
+                            <input type="text" id="patient-move-city" value="Vilvoorde" placeholder="Vilvoorde" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;margin-bottom:10px;">
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Wettelijk samenwonen</label>
+                            <input type="date" id="patient-legal-cohabitation-date" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;margin-bottom:10px;">
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Huwelijk</label>
+                            <input type="date" id="patient-marriage-date" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
+                        </div>
                         ${renderEmergencyContactFields(null, defaultLanguage)}
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px;">
                             <button style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;padding:11px 16px;border-radius:6px;font-weight:500;cursor:pointer;font-size:14px;" onclick="document.getElementById('patient-modal').remove();">${t('cancel')}</button>
@@ -4625,6 +4698,7 @@ class App {
             const p = app.data.patient;
             if (!p) return;
             const emergency = normalizeEmergencyContact(p.emergencyContact, p.language);
+            const lifeEvents = app.normalizeLifeEvents(p.lifeEvents);
             
             const birthYear = parseInt(p.birthDate.split('-')[0]);
             const age = new Date().getFullYear() - birthYear;
@@ -4653,6 +4727,15 @@ class App {
                         
                         ${p.mobilityStatus ? '<div style="margin-bottom:16px;"><p style="margin:0 0 8px 0;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;">🚶 ' + t('mobility') + '</p><p style="margin:0;font-size:14px;color:#1f2937;line-height:1.5;white-space:pre-wrap;"><span style="background:#fef3c7;color:#92400e;padding:4px 12px;border-radius:4px;font-weight:500;display:inline-block;">' + p.mobilityStatus + '</span></p></div>' : ''}
 
+                        <div style="margin-bottom:16px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#f8fafc;">
+                            <p style="margin:0 0 8px 0;font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;">🏠 Belangrijke datums</p>
+                            <p style="margin:0;font-size:13px;color:#1f2937;line-height:1.6;">
+                                Verhuis: ${lifeEvents.moveDate ? formatDate(lifeEvents.moveDate) + ' naar ' + (lifeEvents.moveCity || '-') : '-'}<br>
+                                Wettelijk samenwonen: ${lifeEvents.legalCohabitationDate ? formatDate(lifeEvents.legalCohabitationDate) : '-'}<br>
+                                Huwelijk: ${lifeEvents.marriageDate ? formatDate(lifeEvents.marriageDate) : '-'}
+                            </p>
+                        </div>
+
                         <div style="margin-bottom:24px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#f8fafc;">
                             <p style="margin:0 0 8px 0;font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;">🚨 ${t('emergencyContact')}</p>
                             ${hasEmergencyContact(emergency) ? `
@@ -4672,6 +4755,7 @@ class App {
             const p = app.data.patient;
             if (!p) return;
             const patientLanguage = normalizeLangCode(p.language || 'nl');
+            const lifeEvents = app.normalizeLifeEvents(p.lifeEvents);
             
             document.body.insertAdjacentHTML('beforeend', `
                 <div id="patient-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target.id==='patient-modal') document.getElementById('patient-modal').remove();">
@@ -4721,6 +4805,17 @@ class App {
                         <div style="margin-bottom:16px;">
                             <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🚶 ${t('mobility')}</label>
                             <textarea id="patient-mobility-status" placeholder="bijv. Krukken/Rolstoel, Loopt met hulpmiddel..." style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;font-family:inherit;min-height:60px;resize:vertical;">${p.mobilityStatus || ''}</textarea>
+                        </div>
+                        <div style="margin-bottom:16px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#f8fafc;">
+                            <h3 style="margin:0 0 10px 0;font-size:14px;font-weight:700;color:#1f2937;">🏠 Belangrijke datums</h3>
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Verhuisdatum</label>
+                            <input type="date" id="patient-move-date" value="${lifeEvents.moveDate || ''}" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;margin-bottom:10px;">
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Woonplaats</label>
+                            <input type="text" id="patient-move-city" value="${lifeEvents.moveCity || ''}" placeholder="Vilvoorde" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;margin-bottom:10px;">
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Wettelijk samenwonen</label>
+                            <input type="date" id="patient-legal-cohabitation-date" value="${lifeEvents.legalCohabitationDate || ''}" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;margin-bottom:10px;">
+                            <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">Huwelijk</label>
+                            <input type="date" id="patient-marriage-date" value="${lifeEvents.marriageDate || ''}" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box;font-size:14px;">
                         </div>
                         ${renderEmergencyContactFields(p.emergencyContact, patientLanguage)}
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px;">
@@ -4778,6 +4873,12 @@ class App {
             const medicalHistory = document.getElementById('patient-medical-history').value;
             const mobilityStatus = document.getElementById('patient-mobility-status').value;
             const language = document.getElementById('patient-language')?.value || 'nl';
+            const lifeEvents = {
+                moveDate: document.getElementById('patient-move-date')?.value || '',
+                moveCity: document.getElementById('patient-move-city')?.value || '',
+                legalCohabitationDate: document.getElementById('patient-legal-cohabitation-date')?.value || '',
+                marriageDate: document.getElementById('patient-marriage-date')?.value || ''
+            };
             const removeEmergency = document.getElementById('emergency-remove')?.checked || false;
             const emergencyContact = removeEmergency ? createEmptyEmergencyContact(language) : normalizeEmergencyContact({
                 fullName: document.getElementById('emergency-name')?.value || '',
@@ -4801,14 +4902,14 @@ class App {
                 if (photoBase64) {
                     compressImage(photoBase64, (compressed) => {
                         if (app && app.savePatient) {
-                            app.savePatient(firstName, lastName, birthDate, compressed, allergies, medicalHistory, mobilityStatus, language, emergencyContact);
+                            app.savePatient(firstName, lastName, birthDate, compressed, allergies, medicalHistory, mobilityStatus, language, emergencyContact, lifeEvents);
                             const modal = document.getElementById('patient-modal');
                             if (modal) modal.remove();
                         }
                     });
                 } else {
                     if (app && app.savePatient) {
-                        app.savePatient(firstName, lastName, birthDate, null, allergies, medicalHistory, mobilityStatus, language, emergencyContact);
+                        app.savePatient(firstName, lastName, birthDate, null, allergies, medicalHistory, mobilityStatus, language, emergencyContact, lifeEvents);
                         const modal = document.getElementById('patient-modal');
                         if (modal) modal.remove();
                     }

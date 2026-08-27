@@ -1,4 +1,4 @@
-const APP_VERSION = '3.0.4';
+const APP_VERSION = '3.0.5';
 const CACHE_PREFIX = 'health-tracker-cache-';
 const CACHE_NAME = CACHE_PREFIX + APP_VERSION;
 const APP_BASE = new URL(self.registration.scope).pathname;
