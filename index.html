@@ -96,6 +96,8 @@
         const GDRIVE_ACCOUNT_HINT = 'philippe.demeersman1970@gmail.com';
         const GDRIVE_FOLDER_ID = '1flE6MFq5be0xCPpPJbyozIVTIZOhzu0X'; // SyncHealthapp folder
         const GDRIVE_FILE_NAME = 'healthapp-backup.json';
+        const GDRIVE_PHOTO_FILE_NAME = 'healthapp-patient-photo.jpg';
+        const PATIENT_PHOTO_PLACEHOLDER = '__PATIENT_PHOTO_STORED_SEPARATELY__';
 
         let gTokenClient = null;
         let gAccessToken = null;
@@ -110,6 +112,7 @@
         let gSyncTimer = null;
         let gDriveStatusTone = 'warning';
         let gDriveStatusText = 'Drive controleren';
+        let gPatientPhotoDataUrl = '';
         const DRIVE_AUTO_SYNC_ENABLED = true;
 
         function isGTokenValid() {
@@ -224,34 +227,166 @@
           return { ok: true, reason: '' };
         }
 
-        function getStoredPatientPhoto() {
-          return '';
+        function dataUrlToBlob(dataUrl) {
+          const parts = String(dataUrl || '').split(',');
+          if (parts.length < 2) throw new Error('Ongeldige foto-data');
+          const mimeMatch = parts[0].match(/data:([^;]+)/);
+          const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+          const binary = atob(parts[1]);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          return new Blob([bytes], { type: mime });
         }
 
-        function saveStoredPatientPhoto(photo) {
+        function blobToDataUrl(blob) {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result || '');
+            reader.onerror = () => reject(reader.error || new Error('Foto lezen mislukt'));
+            reader.readAsDataURL(blob);
+          });
+        }
+
+        async function findDriveFileByName(fileName) {
+          const q = `name='${fileName}' and '${GDRIVE_FOLDER_ID}' in parents and trashed=false`;
+          const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&spaces=drive&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc`;
+          const res = await fetch(url, { headers: { Authorization: `Bearer ${gAccessToken}` } });
+          if (!res.ok) throw new Error('Drive zoeken mislukt: ' + res.status);
+          const data = await res.json();
+          return data.files || [];
+        }
+
+        async function uploadDrivePatientPhoto(photoDataUrl) {
+          if (!photoDataUrl || !photoDataUrl.startsWith('data:')) return '';
+          const existing = await findDriveFileByName(GDRIVE_PHOTO_FILE_NAME);
+          await Promise.all(existing.map(file => fetch(`https://www.googleapis.com/drive/v3/files/${file.id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${gAccessToken}` }
+          }).catch(err => console.warn('Old patient photo delete failed:', err))));
+
+          const meta = { name: GDRIVE_PHOTO_FILE_NAME, parents: [GDRIVE_FOLDER_ID] };
+          const form = new FormData();
+          form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+          form.append('file', dataUrlToBlob(photoDataUrl));
+
+          const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${gAccessToken}` },
+            body: form
+          });
+          if (!res.ok) throw new Error('Foto upload mislukt: ' + res.status);
+          const created = await res.json();
+          localStorage.setItem('gdrive_patient_photo_id', created.id);
+          return created.id;
+        }
+
+        async function downloadDrivePatientPhoto(photoFileId) {
+          let fileId = photoFileId || localStorage.getItem('gdrive_patient_photo_id') || '';
+          if (!fileId) {
+            const files = await findDriveFileByName(GDRIVE_PHOTO_FILE_NAME);
+            fileId = files[0] && files[0].id ? files[0].id : '';
+          }
+          if (!fileId) return '';
+
+          const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+            headers: { Authorization: `Bearer ${gAccessToken}` }
+          });
+          if (!res.ok && photoFileId) {
+            const files = await findDriveFileByName(GDRIVE_PHOTO_FILE_NAME);
+            const fallbackId = files[0] && files[0].id ? files[0].id : '';
+            if (fallbackId && fallbackId !== fileId) return downloadDrivePatientPhoto(fallbackId);
+          }
+          if (!res.ok) throw new Error('Foto download mislukt: ' + res.status);
+          const dataUrl = await blobToDataUrl(await res.blob());
+          await saveStoredPatientPhoto(dataUrl);
+          localStorage.setItem('gdrive_patient_photo_id', fileId);
+          return dataUrl;
+        }
+
+        function openPatientPhotoDb() {
+          return new Promise((resolve, reject) => {
+            if (!window.indexedDB) {
+              reject(new Error('IndexedDB niet beschikbaar'));
+              return;
+            }
+            const request = indexedDB.open('health-app-media', 1);
+            request.onupgradeneeded = () => {
+              const db = request.result;
+              if (!db.objectStoreNames.contains('files')) db.createObjectStore('files');
+            };
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error || new Error('IndexedDB openen mislukt'));
+          });
+        }
+
+        async function readPatientPhotoFromIndexedDb() {
+          const db = await openPatientPhotoDb();
+          return new Promise((resolve, reject) => {
+            const tx = db.transaction('files', 'readonly');
+            const request = tx.objectStore('files').get('patient-photo');
+            request.onsuccess = () => resolve(request.result || '');
+            request.onerror = () => reject(request.error || new Error('Patiëntfoto lezen mislukt'));
+            tx.oncomplete = () => db.close();
+          });
+        }
+
+        async function writePatientPhotoToIndexedDb(photo) {
+          const db = await openPatientPhotoDb();
+          return new Promise((resolve, reject) => {
+            const tx = db.transaction('files', 'readwrite');
+            const store = tx.objectStore('files');
+            const request = photo ? store.put(photo, 'patient-photo') : store.delete('patient-photo');
+            request.onerror = () => reject(request.error || new Error('Patiëntfoto bewaren mislukt'));
+            tx.oncomplete = () => {
+              db.close();
+              resolve(true);
+            };
+            tx.onerror = () => reject(tx.error || new Error('Patiëntfoto bewaren mislukt'));
+          });
+        }
+
+        function getStoredPatientPhoto() {
+          return gPatientPhotoDataUrl || '';
+        }
+
+        async function saveStoredPatientPhoto(photo) {
+          gPatientPhotoDataUrl = photo || '';
           try {
-            localStorage.removeItem('patient_photo');
+            await writePatientPhotoToIndexedDb(gPatientPhotoDataUrl);
+            try { localStorage.removeItem('patient_photo'); } catch(e) {}
             return true;
           } catch(e) {
-            console.warn('Patient photo cleanup failed:', e);
+            console.warn('Patient photo save failed:', e);
             return false;
           }
         }
 
-        function cleanupLocalPhotoStorage() {
+        async function loadStoredPatientPhoto() {
+          try {
+            gPatientPhotoDataUrl = await readPatientPhotoFromIndexedDb();
+          } catch(e) {
+            gPatientPhotoDataUrl = '';
+            console.warn('Patient photo load failed:', e);
+          }
+          return gPatientPhotoDataUrl;
+        }
+
+        async function cleanupLocalPhotoStorage() {
           try { localStorage.removeItem('patient_photo'); } catch(e) {}
         }
 
         function stripPatientPhotoForStorage(data) {
           const copy = JSON.parse(JSON.stringify(data || {}));
-          if (copy.patient && copy.patient.photo) copy.patient.photo = '__PATIENT_PHOTO_STORED_SEPARATELY__';
+          if (copy.patient && copy.patient.photo && copy.patient.photo.startsWith && copy.patient.photo.startsWith('data:')) {
+            copy.patient.photo = PATIENT_PHOTO_PLACEHOLDER;
+          }
           return copy;
         }
 
         function mergeStoredPatientPhoto(data) {
           if (!data || !data.patient) return data;
           const storedPhoto = getStoredPatientPhoto();
-          if (storedPhoto && (!data.patient.photo || data.patient.photo === '__PATIENT_PHOTO_STORED_SEPARATELY__')) {
+          if (storedPhoto && (!data.patient.photo || data.patient.photo === PATIENT_PHOTO_PLACEHOLDER)) {
             data.patient.photo = storedPhoto;
           }
           return data;
@@ -549,6 +684,24 @@
               showDriveNotice('Synchronisatie gestopt', backupValidation.reason + ' Google Drive werd niet overschreven.', 'warning');
               return;
             }
+            const patientPhoto = getStoredPatientPhoto() || (app && app.data && app.data.patient ? app.data.patient.photo : '') || '';
+            if (patientPhoto && patientPhoto.startsWith && patientPhoto.startsWith('data:')) {
+              const photoFileId = await uploadDrivePatientPhoto(patientPhoto);
+              if (backup.patient) {
+                backup.patient.photo = PATIENT_PHOTO_PLACEHOLDER;
+                backup.patient.photoFileId = photoFileId;
+                backup.patient.photoFileName = GDRIVE_PHOTO_FILE_NAME;
+              }
+              if (app.data.patient) {
+                app.data.patient.photoFileId = photoFileId;
+                app.data.patient.photoFileName = GDRIVE_PHOTO_FILE_NAME;
+                try {
+                  localStorage.setItem('data', JSON.stringify(stripPatientPhotoForStorage(app.data)));
+                } catch(e) {
+                  console.warn('Patient photo reference save failed:', e);
+                }
+              }
+            }
             const json = JSON.stringify(backup, null, 2);
             let fileId = localStorage.getItem('gdrive_file_id');
             
@@ -640,6 +793,14 @@
             app.data.measures = backup.measures || {};
             app.data.rapportages = backup.rapportages || {};
             app.data.patient = backup.patient || null;
+            if (app.data.patient && (app.data.patient.photoFileId || app.data.patient.photoFileName)) {
+              try {
+                const restoredPhoto = await downloadDrivePatientPhoto(app.data.patient.photoFileId);
+                if (restoredPhoto) app.data.patient.photo = restoredPhoto;
+              } catch(photoError) {
+                console.warn('Patient photo restore failed:', photoError);
+              }
+            }
             cleanupLocalPhotoStorage();
             app.settings = backup.settings || app.settings;
             app.save(); // CORRECT methode!
@@ -662,7 +823,7 @@
         }
 
         
-const APP_VERSION = '3.0.12';
+const APP_VERSION = '3.0.13';
 
 function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
@@ -1049,6 +1210,12 @@ class App {
                 this.ensurePatientLifeEvents();
                 setPatientLanguage(this.data.patient && this.data.patient.language ? this.data.patient.language : getAppLanguage(), document.body);
                 this.show();
+                loadStoredPatientPhoto().then((photo) => {
+                    if (photo && this.data.patient && (!this.data.patient.photo || this.data.patient.photo === PATIENT_PHOTO_PLACEHOLDER)) {
+                        this.data.patient.photo = photo;
+                        this.show();
+                    }
+                });
                 
                 // 🎨 EERST alles kleuren, DAARNA observer starten
                 setTimeout(() => {
@@ -1129,6 +1296,7 @@ class App {
 
             getPatientPhotoSrc(patient = null) {
                 const src = patient && typeof patient.photo === 'string' ? patient.photo.trim() : '';
+                if (src === PATIENT_PHOTO_PLACEHOLDER) return getStoredPatientPhoto();
                 if (!src || src === 'null' || src === 'undefined') return '';
                 return src;
             }
@@ -4091,11 +4259,17 @@ class App {
                 this.show();
             }
 
-            savePatient(firstName, lastName, birthDate, photoBase64, allergies, medicalHistory, mobilityStatus, language, emergencyContact, lifeEvents, removePhoto = false) {
+            async savePatient(firstName, lastName, birthDate, photoBase64, allergies, medicalHistory, mobilityStatus, language, emergencyContact, lifeEvents, removePhoto = false) {
                 const isNew = !this.data.patient;
+                const previousPhotoFileId = this.data.patient && this.data.patient.photoFileId ? this.data.patient.photoFileId : localStorage.getItem('gdrive_patient_photo_id');
                 const existingPhoto = this.getPatientPhotoSrc(this.data.patient);
                 const nextPhoto = removePhoto ? null : (photoBase64 || existingPhoto || null);
-                if (removePhoto) saveStoredPatientPhoto(null);
+                if (removePhoto) {
+                    await saveStoredPatientPhoto(null);
+                    try { localStorage.removeItem('gdrive_patient_photo_id'); } catch(e) {}
+                } else if (photoBase64) {
+                    await saveStoredPatientPhoto(photoBase64);
+                }
                 const patientLanguage = normalizeLangCode(language || 'nl');
                 const existingLifeEvents = this.data.patient && this.data.patient.lifeEvents ? this.data.patient.lifeEvents : null;
                 this.data.patient = {
@@ -4110,6 +4284,10 @@ class App {
                     emergencyContact: normalizeEmergencyContact(emergencyContact, patientLanguage),
                     lifeEvents: this.normalizeLifeEvents(lifeEvents || existingLifeEvents)
                 };
+                if (!removePhoto && previousPhotoFileId) {
+                    this.data.patient.photoFileId = previousPhotoFileId;
+                    this.data.patient.photoFileName = GDRIVE_PHOTO_FILE_NAME;
+                }
                 this.save();
                 
                 // Telegram melding
@@ -4974,7 +5152,7 @@ class App {
             });
         }
         
-        function savePatientData() {
+        async function savePatientData() {
             const firstName = document.getElementById('patient-first').value;
             const lastName = document.getElementById('patient-last').value;
             const birthDate = document.getElementById('patient-birth').value;
@@ -5010,16 +5188,16 @@ class App {
             
             try {
                 if (photoBase64) {
-                    compressImage(photoBase64, (compressed) => {
+                    compressImage(photoBase64, async (compressed) => {
                         if (app && app.savePatient) {
-                            app.savePatient(firstName, lastName, birthDate, compressed, allergies, medicalHistory, mobilityStatus, language, emergencyContact, lifeEvents, removePhoto);
+                            await app.savePatient(firstName, lastName, birthDate, compressed, allergies, medicalHistory, mobilityStatus, language, emergencyContact, lifeEvents, removePhoto);
                             const modal = document.getElementById('patient-modal');
                             if (modal) modal.remove();
                         }
                     });
                 } else {
                     if (app && app.savePatient) {
-                        app.savePatient(firstName, lastName, birthDate, null, allergies, medicalHistory, mobilityStatus, language, emergencyContact, lifeEvents, removePhoto);
+                        await app.savePatient(firstName, lastName, birthDate, null, allergies, medicalHistory, mobilityStatus, language, emergencyContact, lifeEvents, removePhoto);
                         const modal = document.getElementById('patient-modal');
                         if (modal) modal.remove();
                     }
