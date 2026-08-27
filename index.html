@@ -568,7 +568,7 @@
         }
 
         
-const APP_VERSION = '3.0.5';
+const APP_VERSION = '3.0.7';
 
 function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
@@ -974,8 +974,7 @@ class App {
                 this.normalizeMeds();
                 const candidates = [
                     { data: this.data, notice: null },
-                    { data: { ...this.data, rapportages: {} }, notice: 'reports' },
-                    { data: { ...this.data, rapportages: {}, patient: this.data.patient ? { ...this.data.patient, photo: null } : null }, notice: 'photo' }
+                    { data: { ...this.data, rapportages: {} }, notice: 'reports' }
                 ];
 
                 for (const candidate of candidates) {
@@ -985,11 +984,6 @@ class App {
                         if (candidate.notice === 'reports') {
                             this.data.rapportages = {};
                             showDriveNotice('Opslag opgeschoond', 'Medicatie, metingen en patiëntgegevens zijn bewaard. Oude gegenereerde rapportdata werd verwijderd om opslagruimte vrij te maken.', 'warning');
-                        }
-                        if (candidate.notice === 'photo') {
-                            this.data.rapportages = {};
-                            if (this.data.patient) this.data.patient.photo = null;
-                            showDriveNotice('Opslag opgeschoond', 'Medicatie, metingen en patiëntgegevens zijn bewaard. De patiëntfoto werd verwijderd om opslagruimte vrij te maken.', 'warning');
                         }
                         queueDriveAutoSync('data-save');
                         return true;
@@ -1035,6 +1029,12 @@ class App {
 
             getPatientLifeEvents() {
                 return this.normalizeLifeEvents(this.data.patient && this.data.patient.lifeEvents);
+            }
+
+            getPatientPhotoSrc(patient = null) {
+                const src = patient && typeof patient.photo === 'string' ? patient.photo.trim() : '';
+                if (!src || src === 'null' || src === 'undefined') return '';
+                return src;
             }
 
             getLifeEventsForDate(dateStr) {
@@ -2604,6 +2604,7 @@ class App {
                 const hrStatusObj = getHeartRateStatus(stats.avgHr || 0);
                 const emergencyContact = normalizeEmergencyContact(patient && patient.emergencyContact, patient && patient.language);
                 const futureAlarmReportLanguage = getEmergencyContactReportLanguage(patient);
+                const patientPhoto = this.getPatientPhotoSrc(patient);
                 const generalStatusText = (stats.avgSys && stats.avgDia)
                     ? ((stats.avgSys < 135 && stats.avgDia < 85 && (expectedDailyIntakes === 0 || therapyRate >= 90)) ? '🟢 ALGEMENE STATUS GOED' : (stats.avgSys >= 160 || stats.avgDia >= 100 ? '🔴 AANDACHT NODIG' : '🟡 OPVOLGEN'))
                     : '⚪ ONVOLDOENDE GEGEVENS';
@@ -2611,7 +2612,7 @@ class App {
                 const patientCardHtml = patient ? `
         <div class="medical-card patient-card">
             <div class="patient-photo-wrap">
-                ${patient.photo ? `<img src="${patient.photo}" class="patient-photo">` : `<div class="patient-photo placeholder">👤</div>`}
+                ${patientPhoto ? `<img src="${patientPhoto}" class="patient-photo">` : `<div class="patient-photo placeholder">👤</div>`}
             </div>
             <div class="patient-main">
                 <div class="card-eyebrow">👤 ${t('patient', reportLang).toUpperCase()}</div>
@@ -3993,16 +3994,17 @@ class App {
                 this.show();
             }
 
-            savePatient(firstName, lastName, birthDate, photoBase64, allergies, medicalHistory, mobilityStatus, language, emergencyContact, lifeEvents) {
+            savePatient(firstName, lastName, birthDate, photoBase64, allergies, medicalHistory, mobilityStatus, language, emergencyContact, lifeEvents, removePhoto = false) {
                 const isNew = !this.data.patient;
-                const existingPhoto = this.data.patient && this.data.patient.photo ? this.data.patient.photo : null;
+                const existingPhoto = this.getPatientPhotoSrc(this.data.patient);
+                const nextPhoto = removePhoto ? null : (photoBase64 || existingPhoto || null);
                 const patientLanguage = normalizeLangCode(language || 'nl');
                 const existingLifeEvents = this.data.patient && this.data.patient.lifeEvents ? this.data.patient.lifeEvents : null;
                 this.data.patient = {
                     firstName: firstName,
                     lastName: lastName,
                     birthDate: birthDate,
-                    photo: photoBase64 || existingPhoto,
+                    photo: nextPhoto,
                     allergies: allergies || '',
                     medicalHistory: medicalHistory || '',
                     mobilityStatus: mobilityStatus || '',
@@ -4236,11 +4238,12 @@ class App {
                     html += '<button onclick="showPatientForm()" style="background:#3b82f6;border:none;color:white;width:100%;padding:12px;border-radius:8px;font-weight:500;cursor:pointer;margin-bottom:12px;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;"><span style="font-size:18px;">👤</span> ' + t('patientAdd') + '</button>';
                 } else {
                     const p = this.data.patient;
+                    const patientPhoto = this.getPatientPhotoSrc(p);
                     const emergency = normalizeEmergencyContact(p.emergencyContact, p.language);
                     const emergencyLabel = hasEmergencyContact(emergency) ? ' • 🚨 ' + emergency.fullName : ' • 🚨 ' + t('noEmergencyContact');
                     html += '<div style="background:white;border-radius:8px;padding:12px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);border:1px solid #e5e7eb;display:flex;align-items:center;gap:12px;">';
-                    if (p.photo) {
-                        html += '<img src="' + p.photo + '" style="width:60px;height:60px;border-radius:8px;object-fit:cover;flex-shrink:0;">';
+                    if (patientPhoto) {
+                        html += '<img src="' + patientPhoto + '" style="width:60px;height:60px;border-radius:8px;object-fit:cover;flex-shrink:0;">';
                     } else {
                         html += '<div style="width:60px;height:60px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:24px;">👤</div>';
                     }
@@ -4599,6 +4602,7 @@ class App {
                             <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:8px;">📷 ${t('photo')}</label>
                             <input type="file" id="patient-photo" accept="image/*" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;">
                             <img id="photo-preview" style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-top:8px;display:none;">
+                            <input type="hidden" id="patient-photo-remove-state" value="0">
                         </div>
                         <div style="margin-bottom:16px;">
                             <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🚫 ${t('allergies')}</label>
@@ -4697,6 +4701,7 @@ class App {
         function showPatientInfoPopup() {
             const p = app.data.patient;
             if (!p) return;
+            const patientPhoto = app.getPatientPhotoSrc(p);
             const emergency = normalizeEmergencyContact(p.emergencyContact, p.language);
             const lifeEvents = app.normalizeLifeEvents(p.lifeEvents);
             
@@ -4712,7 +4717,7 @@ class App {
                         </div>
                         
                         <div style="display:flex;gap:16px;margin-bottom:24px;padding-bottom:24px;border-bottom:0.5px solid #e5e7eb;">
-                            ${p.photo ? '<img src="' + p.photo + '" style="width:80px;height:80px;border-radius:8px;object-fit:cover;flex-shrink:0;">' : '<div style="width:80px;height:80px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:36px;">👤</div>'}
+                            ${patientPhoto ? '<img src="' + patientPhoto + '" style="width:80px;height:80px;border-radius:8px;object-fit:cover;flex-shrink:0;">' : '<div style="width:80px;height:80px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:36px;">👤</div>'}
                             <div style="flex:1;">
                                 <p style="margin:0 0 4px 0;font-size:16px;font-weight:600;color:#1f2937;">${p.firstName} ${p.lastName}</p>
                                 <p style="margin:0;font-size:13px;color:#6b7280;">${t('birthDate')}: ${formatDate(p.birthDate)}</p>
@@ -4756,6 +4761,7 @@ class App {
             if (!p) return;
             const patientLanguage = normalizeLangCode(p.language || 'nl');
             const lifeEvents = app.normalizeLifeEvents(p.lifeEvents);
+            const patientPhoto = app.getPatientPhotoSrc(p);
             
             document.body.insertAdjacentHTML('beforeend', `
                 <div id="patient-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;" onclick="if(event.target.id==='patient-modal') document.getElementById('patient-modal').remove();">
@@ -4781,18 +4787,19 @@ class App {
                         </div>
                         <div style="margin-bottom:16px;">
                             <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:8px;">📷 ${t('photo')}</label>
-                            <div id="preview-container" style="display:${p.photo ? 'block' : 'none'};margin-bottom:8px;">
-                                <img id="photo-preview" src="${p.photo || ''}" style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-bottom:8px;">
+                            <div id="preview-container" style="display:${patientPhoto ? 'block' : 'none'};margin-bottom:8px;">
+                                <img id="photo-preview" src="${patientPhoto || ''}" style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-bottom:8px;">
                                 <div style="display:flex;gap:6px;">
                                     <button type="button" id="change-photo-btn" style="background:#3b82f6;color:white;border:none;padding:6px 12px;border-radius:4px;font-size:11px;cursor:pointer;flex:1;">${t('change')}</button>
                                     <button type="button" id="remove-photo-btn" style="background:#ef4444;color:white;border:none;padding:6px 12px;border-radius:4px;font-size:11px;cursor:pointer;flex:1;">${t('remove')}</button>
                                 </div>
                             </div>
-                            <div id="upload-area" style="display:${p.photo ? 'none' : 'block'};border:2px dashed #d1d5db;border-radius:8px;padding:16px;text-align:center;cursor:pointer;background:#f9fafb;">
+                            <div id="upload-area" style="display:${patientPhoto ? 'none' : 'block'};border:2px dashed #d1d5db;border-radius:8px;padding:16px;text-align:center;cursor:pointer;background:#f9fafb;">
                                 <div style="font-size:28px;margin-bottom:8px;">📸</div>
                                 <p style="font-size:12px;color:#6b7280;margin:0;">Klik om foto te uploaden</p>
                             </div>
                             <input type="file" id="patient-photo" accept="image/*" style="display:none;">
+                            <input type="hidden" id="patient-photo-remove-state" value="0">
                         </div>
                         <div style="margin-bottom:16px;">
                             <label style="font-size:12px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px;">🚫 ${t('allergies')}</label>
@@ -4849,6 +4856,8 @@ class App {
                 photoPreview.src = '';
                 previewContainer.style.display = 'none';
                 uploadArea.style.display = 'block';
+                const removeState = document.getElementById('patient-photo-remove-state');
+                if (removeState) removeState.value = '1';
             });
             
             // File change
@@ -4859,6 +4868,8 @@ class App {
                         photoPreview.src = ev.target.result;
                         previewContainer.style.display = 'block';
                         uploadArea.style.display = 'none';
+                        const removeState = document.getElementById('patient-photo-remove-state');
+                        if (removeState) removeState.value = '0';
                     };
                     reader.readAsDataURL(e.target.files[0]);
                 }
@@ -4888,9 +4899,10 @@ class App {
                 language: document.getElementById('emergency-language')?.value || language
             }, language);
             const preview = document.getElementById('photo-preview');
+            const removePhoto = document.getElementById('patient-photo-remove-state')?.value === '1';
             
-            // Check of foto geldig is (data URL en zichtbaar)
-            const hasValidPhoto = preview && preview.src && preview.src.startsWith('data:') && preview.style.display !== 'none';
+            // Alleen een nieuwe data-foto wordt gecomprimeerd; bestaande foto's blijven via savePatient behouden.
+            const hasValidPhoto = !removePhoto && preview && preview.src && preview.src.startsWith('data:');
             const photoBase64 = hasValidPhoto ? preview.src : null;
             
             if (!firstName || !lastName || !birthDate) {
@@ -4902,14 +4914,14 @@ class App {
                 if (photoBase64) {
                     compressImage(photoBase64, (compressed) => {
                         if (app && app.savePatient) {
-                            app.savePatient(firstName, lastName, birthDate, compressed, allergies, medicalHistory, mobilityStatus, language, emergencyContact, lifeEvents);
+                            app.savePatient(firstName, lastName, birthDate, compressed, allergies, medicalHistory, mobilityStatus, language, emergencyContact, lifeEvents, removePhoto);
                             const modal = document.getElementById('patient-modal');
                             if (modal) modal.remove();
                         }
                     });
                 } else {
                     if (app && app.savePatient) {
-                        app.savePatient(firstName, lastName, birthDate, null, allergies, medicalHistory, mobilityStatus, language, emergencyContact, lifeEvents);
+                        app.savePatient(firstName, lastName, birthDate, null, allergies, medicalHistory, mobilityStatus, language, emergencyContact, lifeEvents, removePhoto);
                         const modal = document.getElementById('patient-modal');
                         if (modal) modal.remove();
                     }
