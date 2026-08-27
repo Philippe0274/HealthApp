@@ -566,7 +566,7 @@
         }
 
         
-const APP_VERSION = '3.0.3';
+const APP_VERSION = '3.0.4';
 
 function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
@@ -969,22 +969,34 @@ class App {
 
             save() {
                 this.normalizeMeds();
-                try {
-                    localStorage.setItem('data', JSON.stringify(this.data));
-                } catch(e) {
-                    console.error('Data save failed:', e);
+                const candidates = [
+                    { data: this.data, notice: null },
+                    { data: { ...this.data, rapportages: {} }, notice: 'reports' },
+                    { data: { ...this.data, rapportages: {}, patient: this.data.patient ? { ...this.data.patient, photo: null } : null }, notice: 'photo' }
+                ];
+
+                for (const candidate of candidates) {
                     try {
-                        this.data.rapportages = {};
-                        localStorage.setItem('data', JSON.stringify(this.data));
-                        showDriveNotice('Opslag opgeschoond', 'Medicatie, metingen en patiëntgegevens zijn bewaard. Oude gegenereerde rapportdata werd verwijderd om opslagruimte vrij te maken.', 'warning');
-                    } catch(retryError) {
-                        console.error('Data save retry failed:', retryError);
-                        alert('Opslaan mislukt. De gegevens zijn niet bewaard. Controleer opslagruimte of browserinstellingen.');
-                        return false;
+                        localStorage.removeItem('data');
+                        localStorage.setItem('data', JSON.stringify(candidate.data));
+                        if (candidate.notice === 'reports') {
+                            this.data.rapportages = {};
+                            showDriveNotice('Opslag opgeschoond', 'Medicatie, metingen en patiëntgegevens zijn bewaard. Oude gegenereerde rapportdata werd verwijderd om opslagruimte vrij te maken.', 'warning');
+                        }
+                        if (candidate.notice === 'photo') {
+                            this.data.rapportages = {};
+                            if (this.data.patient) this.data.patient.photo = null;
+                            showDriveNotice('Opslag opgeschoond', 'Medicatie, metingen en patiëntgegevens zijn bewaard. De patiëntfoto werd verwijderd om opslagruimte vrij te maken.', 'warning');
+                        }
+                        queueDriveAutoSync('data-save');
+                        return true;
+                    } catch(e) {
+                        console.error('Data save attempt failed:', e);
                     }
                 }
-                queueDriveAutoSync('data-save');
-                return true;
+
+                alert('Opslaan mislukt. De gegevens zijn niet bewaard. Controleer opslagruimte of browserinstellingen.');
+                return false;
             }
 
             today() {
