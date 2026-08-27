@@ -566,7 +566,7 @@
         }
 
         
-const APP_VERSION = '3.0.0';
+const APP_VERSION = '3.0.2';
 
 function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
@@ -969,8 +969,19 @@ class App {
 
             save() {
                 this.normalizeMeds();
-                localStorage.setItem('data', JSON.stringify(this.data));
+                const payload = JSON.stringify(this.data);
+                try {
+                    localStorage.setItem('data', payload);
+                    if (localStorage.getItem('data') !== payload) {
+                        throw new Error('localStorage verification failed');
+                    }
+                } catch(e) {
+                    console.error('Data save failed:', e);
+                    alert('Opslaan mislukt. De gegevens zijn niet bewaard. Controleer opslagruimte of browserinstellingen.');
+                    return false;
+                }
                 queueDriveAutoSync('data-save');
+                return true;
             }
 
             today() {
@@ -1048,6 +1059,15 @@ class App {
                 return med.type === 'sporadic' ? (parseFloat(med.pillsPerIntake) || 1) : 1;
             }
 
+            findExistingMed(name, type) {
+                const normalizedName = String(name || '').trim().toLowerCase();
+                if (!normalizedName) return null;
+                return (this.data.meds || []).find(med =>
+                    String(med.name || '').trim().toLowerCase() === normalizedName &&
+                    (med.type || 'daily') === type
+                ) || null;
+            }
+
             formatMedAmount(value) {
                 const rounded = Math.round((parseFloat(value) || 0) * 10) / 10;
                 return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
@@ -1057,8 +1077,24 @@ class App {
                 return this.formatMedAmount(value) + ' ' + this.getMedUnitLabel(med);
             }
 
+            getMedStockSplit(med) {
+                const packageAmount = parseFloat(med && med.stockPackageAmount);
+                const reserveAmount = parseFloat(med && med.stockReserveAmount);
+                const current = med ? this.getPills(med.id) : 0;
+                if (!packageAmount || packageAmount <= 0 || !reserveAmount || reserveAmount <= 0) {
+                    return { hasSplit: false, packageRemaining: current, reserveRemaining: 0 };
+                }
+                const reserveRemaining = Math.min(reserveAmount, Math.max(0, current - packageAmount));
+                const packageRemaining = Math.max(0, current - reserveRemaining);
+                return { hasSplit: reserveRemaining > 0, packageRemaining, reserveRemaining };
+            }
+
             formatMedStock(med) {
-                return this.formatMedQuantity(med, this.getPills(med.id)) + '/' + this.formatMedQuantity(med, this.getMedDisplayTotalAmount(med));
+                const split = this.getMedStockSplit(med);
+                const currentLabel = split.hasSplit
+                    ? this.formatMedAmount(split.packageRemaining) + ' + ' + this.formatMedAmount(split.reserveRemaining) + ' ' + this.getMedUnitLabel(med)
+                    : this.formatMedQuantity(med, this.getPills(med.id));
+                return currentLabel + '/' + this.formatMedQuantity(med, this.getMedDisplayTotalAmount(med));
             }
 
             getPills(id) {
@@ -1090,6 +1126,32 @@ class App {
                     doseAmount = parseFloat(prompt('Dagelijkse dosis in ' + stockUnit + ':', defaultDose) || '0');
                     if (doseAmount <= 0 || doseAmount > p) { alert('Dagelijkse dosis moet tussen 0 en ' + p + ' liggen!'); return; }
                 }
+
+                const existingMed = this.findExistingMed(name, isSporadic ? 'sporadic' : 'daily');
+                if (existingMed) {
+                    this.normalizeMed(existingMed, this.data.meds.indexOf(existingMed));
+                    if (this.getMedUnit(existingMed) !== stockUnit) {
+                        alert('Deze medicatie bestaat al met een andere voorraadeenheid. Pas de bestaande medicatie aan of kies dezelfde eenheid.');
+                        return;
+                    }
+                    const oldCurrent = this.getPills(existingMed.id);
+                    const used = this.getMedUsedAmount(existingMed);
+                    const newCurrentTarget = oldCurrent + p;
+                    const newTotal = newCurrentTarget + used;
+                    existingMed.dosage = dosage || existingMed.dosage;
+                    existingMed.doseAmount = doseAmount;
+                    existingMed.doseUnit = stockUnit;
+                    existingMed.pillsPerIntake = isSporadic ? doseAmount : 1;
+                    existingMed.pills = newTotal;
+                    existingMed.stockAmount = newTotal;
+                    existingMed.stockDisplayAmount = newCurrentTarget;
+                    existingMed.stockPackageAmount = p;
+                    existingMed.stockReserveAmount = oldCurrent;
+                    if (!this.save()) return;
+                    this.sendTg(`📦 <b>${existingMed.name}</b> - NIEUWE VERPAKKING\n├─ ${isSporadic ? '🔵 Sporadische medicatie' : '🟢 Dagelijkse medicatie'}\n├─ Reserve: ${this.formatMedQuantity(existingMed, oldCurrent)}\n├─ Nieuwe verpakking: ${this.formatMedQuantity(existingMed, p)}\n├─ Voorraad: ${this.formatMedStock(existingMed)}\n└─ ✅`);
+                    this.refreshMedicationDisplay({ keepMedicationMenu: true });
+                    return;
+                }
                 
                 const med = {
                     id: Date.now().toString(),
@@ -1109,7 +1171,7 @@ class App {
                 this.data.meds.push(med);
                 this.normalizeMeds();
                 this.showSet = true;
-                this.save();
+                if (!this.save()) return;
                 if (isSporadic) {
                     this.sendTg(`${med.icon} <b>${med.name}</b> TOEGEVOEGD!
 ├─ 🔵 Sporadische medicatie
@@ -1152,7 +1214,8 @@ class App {
                     `Kies een optie:\n` +
                     `1 = ➕ ${unit} toevoegen\n` +
                     `2 = ➖ ${unit} verwijderen\n` +
-                    `3 = 📦 Nieuwe verpakking toevoegen`
+                    `3 = 📦 Nieuwe verpakking toevoegen\n` +
+                    `4 = ✏️ Aantallen wijzigen`
                 );
                 if (!choice) return;
 
@@ -1165,8 +1228,9 @@ class App {
                     med.pills = newTotal;
                     med.stockAmount = newTotal;
                     med.stockDisplayAmount = this.getMedDisplayTotalAmount(med) + qty;
+                    med.stockReserveAmount = (parseFloat(med.stockReserveAmount) || 0) + qty;
                     const newCurrent = this.getPills(id);
-                    this.save();
+                    if (!this.save()) return;
                     this.sendTg(`📦 <b>${med.name}</b> - VOORRAAD AANGEPAST\n├─ ${typeLabel}\n├─ ➕ ${this.formatMedQuantity(med, qty)} toegevoegd\n├─ ${this.formatMedQuantity(med, oldCurrent)} → ${this.formatMedQuantity(med, newCurrent)}\n└─ ✅`);
                     this.refreshMedicationDisplay({ keepMedicationMenu: true });
                     return;
@@ -1186,7 +1250,7 @@ class App {
                     med.stockAmount = newTotal;
                     med.stockDisplayAmount = Math.max(this.getMedDisplayTotalAmount(med), oldCurrent);
                     const newCurrent = this.getPills(id);
-                    this.save();
+                    if (!this.save()) return;
                     this.sendTg(`📦 <b>${med.name}</b> - VOORRAAD AANGEPAST\n├─ ${typeLabel}\n├─ ➖ ${this.formatMedQuantity(med, qty)} verwijderd\n├─ ${this.formatMedQuantity(med, oldCurrent)} → ${this.formatMedQuantity(med, newCurrent)}\n└─ ✅`);
                     this.refreshMedicationDisplay({ keepMedicationMenu: true });
                     return;
@@ -1202,14 +1266,55 @@ class App {
                     med.pills = newTotal;
                     med.stockAmount = newTotal;
                     med.stockDisplayAmount = newCurrentTarget;
+                    med.stockPackageAmount = qty;
+                    med.stockReserveAmount = oldCurrent;
                     const newCurrent = this.getPills(id);
-                    this.save();
+                    if (!this.save()) return;
                     this.sendTg(`📦 <b>${med.name}</b> - NIEUWE VERPAKKING\n├─ ${typeLabel}\n├─ 📦 Nieuwe verpakking: ${this.formatMedQuantity(med, qty)}\n├─ ${this.formatMedQuantity(med, oldCurrent)} → ${this.formatMedQuantity(med, newCurrent)}\n└─ ✅`);
                     this.refreshMedicationDisplay({ keepMedicationMenu: true });
                     return;
                 }
 
-                alert('Ongeldige keuze. Kies 1, 2 of 3.');
+                if (choice === '4') {
+                    this.setMedCurrentStock(id);
+                    return;
+                }
+
+                alert('Ongeldige keuze. Kies 1, 2, 3 of 4.');
+            }
+
+            setMedCurrentStock(id) {
+                const med = this.data.meds.find(m => m.id === id);
+                if (!med) return;
+                this.normalizeMed(med, this.data.meds.indexOf(med));
+
+                const unit = this.getMedUnit(med);
+                const oldCurrent = this.getPills(id);
+                const input = prompt(
+                    `${med.name} - Aantallen wijzigen\n\n` +
+                    `Huidige voorraad: ${this.formatMedStock(med)}\n\n` +
+                    `Geef het nieuwe huidige aantal in ${unit}:`,
+                    this.formatMedAmount(oldCurrent)
+                );
+                if (input === null || input === '') return;
+
+                const newCurrent = parseFloat(String(input).replace(',', '.'));
+                if (newCurrent < 0 || newCurrent > 5000 || Number.isNaN(newCurrent)) {
+                    alert('Aantal moet tussen 0 en 5000 zijn!');
+                    return;
+                }
+
+                const used = this.getMedUsedAmount(med);
+                const newTotal = newCurrent + used;
+                med.pills = newTotal;
+                med.stockAmount = newTotal;
+                med.stockDisplayAmount = newCurrent;
+                delete med.stockPackageAmount;
+                delete med.stockReserveAmount;
+
+                if (!this.save()) return;
+                this.sendTg(`✏️ <b>${med.name}</b> - AANTAL GEWIJZIGD\n├─ ${this.formatMedQuantity(med, oldCurrent)} → ${this.formatMedQuantity(med, newCurrent)}\n└─ ✅`);
+                this.refreshMedicationDisplay({ keepMedicationMenu: true });
             }
 
             setIntake(id, time) {
@@ -1261,7 +1366,7 @@ class App {
 └─ 📊 ${this.formatMedStock(med)}`);
                     }
                 }
-                this.save();
+                if (!this.save()) return;
                 this.refreshMedicationDisplay();
             }
 
@@ -4086,8 +4191,9 @@ class App {
                         const medTypeLabel = med.type === 'sporadic' ? ' 🔵 ' + t('sporadic') : ' 🟢 ' + t('daily');
                         const perIntakeLabel = med.type === 'sporadic' ? ' • ' + this.formatMedQuantity(med, this.getMedDoseAmount(med)) + ' ' + translateTextValue('per inname', getAppLanguage()) : (this.getMedDoseAmount(med) !== 1 ? ' • ' + this.formatMedQuantity(med, this.getMedDoseAmount(med)) + ' ' + translateTextValue('per dag', getAppLanguage()) : '');
                         html += '<div><div style="font-weight:700;">' + med.icon + ' ' + med.name + '</div><div style="font-size:11px;color:#6b7280;">' + med.dosage + ' • ' + this.formatMedStock(med) + medTypeLabel + perIntakeLabel + '</div></div>';
-                        html += '<div style="display:flex;gap:6px;">';
+                        html += '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">';
                         html += '<button onclick="app.adjustMedStock(\'' + med.id + '\')" style="background:#3b82f6;color:white;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;">📦 ' + t('stock') + '</button>';
+                        html += '<button onclick="app.setMedCurrentStock(\'' + med.id + '\')" style="background:#6366f1;color:white;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;">✏️ ' + translateTextValue('Aantal', getAppLanguage()) + '</button>';
                         html += '<button onclick="app.rmMed(\'' + med.id + '\')" style="background:#ef4444;color:white;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;">✕</button>';
                         html += '</div></div>';
                     }
