@@ -187,6 +187,41 @@
           return false;
         }
 
+        function getStoredPatientPhoto() {
+          try {
+            const src = localStorage.getItem('patient_photo');
+            return src && src !== 'null' && src !== 'undefined' ? src : '';
+          } catch(e) {
+            return '';
+          }
+        }
+
+        function saveStoredPatientPhoto(photo) {
+          try {
+            if (photo) localStorage.setItem('patient_photo', photo);
+            else localStorage.removeItem('patient_photo');
+            return true;
+          } catch(e) {
+            console.error('Patient photo save failed:', e);
+            return false;
+          }
+        }
+
+        function stripPatientPhotoForStorage(data) {
+          const copy = JSON.parse(JSON.stringify(data || {}));
+          if (copy.patient && copy.patient.photo) copy.patient.photo = '__PATIENT_PHOTO_STORED_SEPARATELY__';
+          return copy;
+        }
+
+        function mergeStoredPatientPhoto(data) {
+          if (!data || !data.patient) return data;
+          const storedPhoto = getStoredPatientPhoto();
+          if (storedPhoto && (!data.patient.photo || data.patient.photo === '__PATIENT_PHOTO_STORED_SEPARATELY__')) {
+            data.patient.photo = storedPhoto;
+          }
+          return data;
+        }
+
         function updateDriveConnectionStatus() {
           if (typeof document === 'undefined' || !document.body) return;
           let chip = document.getElementById('drive-connection-status');
@@ -572,6 +607,7 @@
             app.data.measures = backup.measures || {};
             app.data.rapportages = backup.rapportages || {};
             app.data.patient = backup.patient || null;
+            if (app.data.patient && app.data.patient.photo) saveStoredPatientPhoto(app.data.patient.photo);
             app.settings = backup.settings || app.settings;
             app.save(); // CORRECT methode!
             
@@ -593,7 +629,7 @@
         }
 
         
-const APP_VERSION = '3.0.8';
+const APP_VERSION = '3.0.9';
 
 function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
@@ -940,7 +976,7 @@ class App {
             constructor() {
                 try {
                     const saved = localStorage.getItem('data');
-                    this.data = saved ? JSON.parse(saved) : {
+                    this.data = saved ? mergeStoredPatientPhoto(JSON.parse(saved)) : {
                         meds: [{ id: '1', name: 'Belsar', dosage: '20mg', pills: 49, color: '#ff0000', icon: '💊' }],
                         intakes: {},
                         measures: {},
@@ -997,9 +1033,11 @@ class App {
 
             save() {
                 this.normalizeMeds();
+                const patientPhoto = this.getPatientPhotoSrc(this.data.patient);
+                const storageData = stripPatientPhotoForStorage(this.data);
                 const candidates = [
-                    { data: this.data, notice: null },
-                    { data: { ...this.data, rapportages: {} }, notice: 'reports' }
+                    { data: storageData, notice: null },
+                    { data: { ...storageData, rapportages: {} }, notice: 'reports' }
                 ];
 
                 for (const candidate of candidates) {
@@ -1008,6 +1046,9 @@ class App {
                         if (candidate.notice === 'reports') {
                             this.data.rapportages = {};
                             showDriveNotice('Opslag opgeschoond', 'Medicatie, metingen en patiëntgegevens zijn bewaard. Oude gegenereerde rapportdata werd verwijderd om opslagruimte vrij te maken.', 'warning');
+                        }
+                        if (patientPhoto && !saveStoredPatientPhoto(patientPhoto)) {
+                            showDriveNotice('Foto niet lokaal bewaard', 'De tekstgegevens zijn bewaard. Synchroniseer met Google Drive om de patiëntfoto veilig te houden.', 'warning');
                         }
                         queueDriveAutoSync('data-save');
                         return true;
@@ -1044,7 +1085,7 @@ class App {
                 if (JSON.stringify(this.data.patient.lifeEvents || {}) !== JSON.stringify(normalized)) {
                     this.data.patient.lifeEvents = normalized;
                     try {
-                        localStorage.setItem('data', JSON.stringify(this.data));
+                        localStorage.setItem('data', JSON.stringify(stripPatientPhotoForStorage(this.data)));
                     } catch(e) {
                         console.warn('Life events migration save failed:', e);
                     }
@@ -1685,7 +1726,7 @@ class App {
                 
                 this.data.rapportages = this.data.rapportages || {};
                 this.data.rapportages[today] = r;
-                localStorage.setItem('data', JSON.stringify(this.data));
+                localStorage.setItem('data', JSON.stringify(stripPatientPhotoForStorage(this.data)));
                 return r;
             }
 
@@ -1704,8 +1745,9 @@ class App {
                             this.data.measures = backup.measures || {};
                             this.data.rapportages = backup.rapportages || {};
                             this.data.patient = backup.patient || null;
+                            if (this.data.patient && this.data.patient.photo) saveStoredPatientPhoto(this.data.patient.photo);
                             this.settings = backup.settings || this.settings;
-                            localStorage.setItem('data', JSON.stringify(this.data));
+                            localStorage.setItem('data', JSON.stringify(stripPatientPhotoForStorage(this.data)));
                             localStorage.setItem('settings', JSON.stringify(this.settings));
                             this.show();
                         } catch(err) {
@@ -4022,6 +4064,7 @@ class App {
                 const isNew = !this.data.patient;
                 const existingPhoto = this.getPatientPhotoSrc(this.data.patient);
                 const nextPhoto = removePhoto ? null : (photoBase64 || existingPhoto || null);
+                if (removePhoto) saveStoredPatientPhoto(null);
                 const patientLanguage = normalizeLangCode(language || 'nl');
                 const existingLifeEvents = this.data.patient && this.data.patient.lifeEvents ? this.data.patient.lifeEvents : null;
                 this.data.patient = {
