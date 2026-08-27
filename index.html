@@ -193,23 +193,21 @@
         }
 
         function getStoredPatientPhoto() {
-          try {
-            const src = localStorage.getItem('patient_photo');
-            return src && src !== 'null' && src !== 'undefined' ? src : '';
-          } catch(e) {
-            return '';
-          }
+          return '';
         }
 
         function saveStoredPatientPhoto(photo) {
           try {
-            if (photo) localStorage.setItem('patient_photo', photo);
-            else localStorage.removeItem('patient_photo');
+            localStorage.removeItem('patient_photo');
             return true;
           } catch(e) {
-            console.error('Patient photo save failed:', e);
+            console.warn('Patient photo cleanup failed:', e);
             return false;
           }
+        }
+
+        function cleanupLocalPhotoStorage() {
+          try { localStorage.removeItem('patient_photo'); } catch(e) {}
         }
 
         function stripPatientPhotoForStorage(data) {
@@ -482,6 +480,9 @@
 
         async function driveSync(options = {}) {
           const auto = !!(options && options.auto);
+          showDriveNotice('Synchroniseren tijdelijk geblokkeerd', 'Herstellen vanuit Google Drive blijft beschikbaar. Synchroniseren zetten we pas terug aan nadat lokaal opslaan stabiel is.', 'warning');
+          setDriveConnectionStatus('warning', 'Sync tijdelijk uit');
+          return;
           if (window.app && !hasMeaningfulHealthData(app.data)) {
             setDriveConnectionStatus('warning', 'Drive restore aanbevolen');
             showDriveNotice('Google Drive niet overschreven', 'Lokale patiëntgegevens lijken leeg. Herstel eerst vanuit Google Drive voordat synchroniseren doorgaat.', 'warning');
@@ -612,7 +613,7 @@
             app.data.measures = backup.measures || {};
             app.data.rapportages = backup.rapportages || {};
             app.data.patient = backup.patient || null;
-            if (app.data.patient && app.data.patient.photo) saveStoredPatientPhoto(app.data.patient.photo);
+            cleanupLocalPhotoStorage();
             app.settings = backup.settings || app.settings;
             app.save(); // CORRECT methode!
             
@@ -634,7 +635,7 @@
         }
 
         
-const APP_VERSION = '3.0.10';
+const APP_VERSION = '3.0.11';
 
 function getVersionTheme(version = APP_VERSION) {
  const parts = String(version).split('.').map(part => parseInt(part, 10) || 0);
@@ -979,6 +980,7 @@ function applyPatientLanguage(root){
 
 class App {
             constructor() {
+                cleanupLocalPhotoStorage();
                 try {
                     const saved = localStorage.getItem('data');
                     this.data = saved ? mergeStoredPatientPhoto(JSON.parse(saved)) : {
@@ -1038,7 +1040,7 @@ class App {
 
             save() {
                 this.normalizeMeds();
-                const patientPhoto = this.getPatientPhotoSrc(this.data.patient);
+                cleanupLocalPhotoStorage();
                 const storageData = stripPatientPhotoForStorage(this.data);
                 const candidates = [
                     { data: storageData, notice: null },
@@ -1051,9 +1053,6 @@ class App {
                         if (candidate.notice === 'reports') {
                             this.data.rapportages = {};
                             showDriveNotice('Opslag opgeschoond', 'Medicatie, metingen en patiëntgegevens zijn bewaard. Oude gegenereerde rapportdata werd verwijderd om opslagruimte vrij te maken.', 'warning');
-                        }
-                        if (patientPhoto && !saveStoredPatientPhoto(patientPhoto)) {
-                            showDriveNotice('Foto niet lokaal bewaard', 'De tekstgegevens zijn bewaard. Synchroniseer met Google Drive om de patiëntfoto veilig te houden.', 'warning');
                         }
                         queueDriveAutoSync('data-save');
                         return true;
@@ -1750,7 +1749,7 @@ class App {
                             this.data.measures = backup.measures || {};
                             this.data.rapportages = backup.rapportages || {};
                             this.data.patient = backup.patient || null;
-                            if (this.data.patient && this.data.patient.photo) saveStoredPatientPhoto(this.data.patient.photo);
+                            cleanupLocalPhotoStorage();
                             this.settings = backup.settings || this.settings;
                             localStorage.setItem('data', JSON.stringify(stripPatientPhotoForStorage(this.data)));
                             localStorage.setItem('settings', JSON.stringify(this.settings));
