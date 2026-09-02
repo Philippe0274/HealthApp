@@ -184,6 +184,52 @@ jobs:
             }
           }
 
+          function isPlainObject(value) {
+            return value && typeof value === 'object' && !Array.isArray(value);
+          }
+
+          function chooseObject(topLevel, nested) {
+            if (isPlainObject(topLevel) && Object.keys(topLevel).length > 0) return topLevel;
+            if (isPlainObject(nested)) return nested;
+            return {};
+          }
+
+          function normalizeBackup(backup) {
+            const root = isPlainObject(backup) ? backup : {};
+            const nested = isPlainObject(root.data) ? root.data : {};
+            return {
+              meds: Array.isArray(root.meds) ? root.meds : (Array.isArray(nested.meds) ? nested.meds : []),
+              intakes: chooseObject(root.intakes, nested.intakes),
+              measures: chooseObject(root.measures, nested.measures),
+              rapportages: chooseObject(root.rapportages, nested.rapportages),
+              patient: isPlainObject(root.patient) ? root.patient : (isPlainObject(nested.patient) ? nested.patient : null),
+              settings: chooseObject(root.settings, nested.settings),
+              timestamp: root.timestamp || nested.timestamp || ''
+            };
+          }
+
+          function getDateVariants(dateValue) {
+            const value = String(dateValue || '').trim();
+            const variants = new Set();
+            if (value) variants.add(value);
+            const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (iso) {
+              variants.add(`${iso[3]}-${iso[2]}-${iso[1]}`);
+              variants.add(`${iso[3]}/${iso[2]}/${iso[1]}`);
+            }
+            const be = value.match(/^(\d{2})[-/](\d{2})[-/](\d{4})$/);
+            if (be) variants.add(`${be[3]}-${be[2]}-${be[1]}`);
+            return Array.from(variants);
+          }
+
+          function getBackupDateRecord(collection, dateValue) {
+            if (!isPlainObject(collection)) return {};
+            for (const key of getDateVariants(dateValue)) {
+              if (isPlainObject(collection[key])) return collection[key];
+            }
+            return {};
+          }
+
           async function listDriveBackupCandidates(accessToken) {
             if (!DRIVE_FOLDER_ID) throw new Error('DRIVE_FOLDER_ID is missing');
             const query = `name = '${escapeDriveQueryValue(DRIVE_FILE_NAME)}' and '${escapeDriveQueryValue(DRIVE_FOLDER_ID)}' in parents and trashed = false`;
@@ -244,7 +290,8 @@ jobs:
                   backupTimestampMs: Number.isFinite(backupTimestampMs) ? backupTimestampMs : 0,
                   modifiedTimeMs: Number.isFinite(modifiedTimeMs) ? modifiedTimeMs : 0
                 });
-                console.log(`Backup candidate parsed: id=${candidate.id}; name=${candidate.name}; modifiedTime=${candidate.modifiedTime || 'not available'}; backup.timestamp=${backup.timestamp || 'not available'}; meds=${Array.isArray(backup.meds) ? backup.meds.length : 0}; measureDays=${backup.measures ? Object.keys(backup.measures).length : 0}`);
+                const normalized = normalizeBackup(backup);
+                console.log(`Backup candidate parsed: id=${candidate.id}; name=${candidate.name}; modifiedTime=${candidate.modifiedTime || 'not available'}; backup.timestamp=${normalized.timestamp || backup.timestamp || 'not available'}; meds=${normalized.meds.length}; intakeDays=${Object.keys(normalized.intakes || {}).length}; measureDays=${Object.keys(normalized.measures || {}).length}`);
               } catch (e) {
                 lastError = e;
                 console.log(`Candidate failed (Drive API; file id: ${candidate.id}; name=${candidate.name}): ${e.message}`);
@@ -392,11 +439,12 @@ jobs:
           }
 
           function buildDailySummary(backup, today) {
-            const meds = Array.isArray(backup.meds) ? backup.meds : [];
-            const allIntakes = backup.intakes || {};
-            const intakesToday = backup.intakes?.[today] || {};
-            const measuresToday = backup.measures?.[today] || {};
-            const patientName = backup.patient?.name || backup.patient?.firstName || 'Patient';
+            const normalized = normalizeBackup(backup);
+            const meds = normalized.meds;
+            const allIntakes = normalized.intakes || {};
+            const intakesToday = getBackupDateRecord(allIntakes, today);
+            const measuresToday = getBackupDateRecord(normalized.measures, today);
+            const patientName = normalized.patient?.name || normalized.patient?.firstName || 'Patient';
             const moments = [
               { key: 'ochtend', label: 'Ochtend' },
               { key: 'middag', label: 'Middag' },
@@ -535,15 +583,20 @@ jobs:
               console.log('Telegram test message sent');
             }
 
-            const backup = await loadBackup();
-            const meds = Array.isArray(backup.meds) ? backup.meds : [];
-            const intakesToday = backup.intakes?.[today] || {};
-            const measuresToday = backup.measures?.[today] || {};
+            const rawBackup = await loadBackup();
+            const backup = normalizeBackup(rawBackup);
+            const meds = backup.meds;
+            const intakesToday = getBackupDateRecord(backup.intakes, today);
+            const measuresToday = getBackupDateRecord(backup.measures, today);
             const patientLanguage = getBackupLanguage(backup);
 
             console.log(`Backup timestamp: ${backup.timestamp || 'not available'}`);
             console.log(`Patient language: ${patientLanguage}`);
             console.log(`Medication count: ${meds.length}`);
+            console.log(`Intake days in backup: ${Object.keys(backup.intakes || {}).length}`);
+            console.log(`Measure days in backup: ${Object.keys(backup.measures || {}).length}`);
+            console.log(`Date keys checked for today: ${getDateVariants(today).join(', ')}`);
+            console.log(`Intakes today: ${Object.keys(intakesToday).length}`);
             console.log(`Measurements today: ${Object.keys(measuresToday).filter(key => hasMeasurement(measuresToday[key])).length}`);
 
             const alerts = [];
@@ -552,6 +605,11 @@ jobs:
 
             if (shouldSendDailySummary) {
               console.log(`Daily summary check active for ${dailySummaryDate}`);
+              const summaryIntakes = getBackupDateRecord(backup.intakes, dailySummaryDate);
+              const summaryMeasures = getBackupDateRecord(backup.measures, dailySummaryDate);
+              console.log(`Daily summary date keys checked: ${getDateVariants(dailySummaryDate).join(', ')}`);
+              console.log(`Daily summary intakes found: ${Object.keys(summaryIntakes).length}`);
+              console.log(`Daily summary complete measurements found: ${Object.keys(summaryMeasures).filter(key => hasMeasurement(summaryMeasures[key])).length}`);
               sendTelegram(buildDailySummary(backup, dailySummaryDate), patientLanguage);
               console.log(`Daily summary sent for ${dailySummaryDate}`);
             }
